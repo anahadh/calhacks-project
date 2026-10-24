@@ -1,15 +1,27 @@
-// Scene colors. State colors mirror the spec's Design Language; the building
-// itself uses the console template's navy and slate.
+// Scene colors from the Hippocra.tech design system (graphite theme).
+// The building is matte graphite clay; infection is the only light in it.
 export const C = {
-  bg: "#0C131C",
-  slab: "#1B2A3A",
-  slabEdge: "#2F4458",
-  wall: "#3A506A",
-  healthy: "#5AA9FF",
-  infected: "#FF6B3D",
-  ok: "#E8ECF1",
-  delayed: "#F5B942",
-  disrupted: "#FF4D6D",
-  zone: "#B79CFF",
-  muted: "#6F8299",
+  bg: "#111315", // scene-ground: canvas background and fog
+  slab: "#1D2023",
+  slabEdge: "#3C4247",
+  wall: "#2A2E32",
+  healthy: "#4DB0FF",
+  infected: "#FF6A2E",
+  ok: "#DDE4EA",
+  delayed: "#FFC53D",
+  disrupted: "#FF4778",
+  zone: "#B08CFF",
+  cut: "#6B7378",
+  muted: "#7D858B",
+} as const;
+
+// Motion (ms), from the design system's duration tokens. Timing only: never add an animation.
+export const MOTION = {
+  heartbeat: 1000, // one infected-device pulse (60 bpm), sine in-out
+  flash: 600, // white -> infected on infection
+  fade: 400, // room tint, service down, toast in/out
+  messageMin: 1200, // UX rule 5
+  toastMin: 2000,
+  roomTintMax: 0.22,
+  zoneFill: 0.1,
 } as const;

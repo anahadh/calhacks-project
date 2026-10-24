@@ -5,6 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
+import { C } from "@/lib/colors";
 import { NetworkArc, type Arc } from "./arcs";
 import { FloorSlab, RoomShell } from "./building";
 import { DeviceBox } from "./devices";
@@ -81,8 +82,8 @@ export function HospitalScene({
       camera={{ position: [4, 36, 76], fov: 34, near: 0.5, far: 400 }}
       onPointerMissed={() => onHover(null)}
     >
-      <color attach="background" args={["#14202D"]} />
-      <fog attach="fog" args={["#14202D", 80, 150]} />
+      <color attach="background" args={[C.bg]} />
+      <fog attach="fog" args={[C.bg, 80, 150]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[20, 40, 25]} intensity={0.9} castShadow />
       <OrbitControls target={[0, 1, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />

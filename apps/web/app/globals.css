@@ -2,17 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hippocra.tech design system, graphite theme. Values mirror tailwind.config.ts. */
+:root {
+  --bg: #0d0f10;
+  --panel: #131618;
+  --panel-2: #1a1d20;
+  --line: #24282b;
+  --line-2: #3e4448;
+  --ink: #e9ecee;
+  --ink-muted: #a1a8ae;
+  --ink-faint: #7d858b;
+  --select: #e9ecee;
+  --on-select: #0d0f10;
+  --select-wash: rgba(233, 236, 238, 0.07);
+  --dur-heartbeat: 1000ms;
+  --dur-flash: 600ms;
+  --dur-fade: 400ms;
+  --ease-breath: cubic-bezier(0.37, 0, 0.63, 1);
+  --ease-travel: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 html {
   color-scheme: dark;
 }
 
 body {
   min-height: 100%;
-  background:
-    radial-gradient(1200px 700px at 78% -10%, rgba(88, 198, 216, 0.06), transparent 60%),
-    radial-gradient(900px 600px at -5% 110%, rgba(139, 120, 230, 0.06), transparent 55%),
-    #0c131c;
-  color: #e9eef3;
+  background: var(--bg);
+  color: var(--ink);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -21,9 +39,15 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-grotesk), var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-hanken), "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-weight: 400;
   letter-spacing: -0.01em;
   text-wrap: balance;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 @layer components {
@@ -31,28 +55,50 @@ h3 {
     font-family: var(--font-plex-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
   }
-  /* Small uppercase mono label, used for panel captions and states. */
+  /* Light readout numerals (Patients affected and friends). */
+  .readout {
+    font-family: var(--font-hanken), "Helvetica Neue", Arial, sans-serif;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Small uppercase mono caption, used above readouts and for panel captions. */
   .eyebrow {
     font-family: var(--font-plex-mono), ui-monospace, monospace;
     font-size: 10.5px;
-    letter-spacing: 0.18em;
+    font-weight: 500;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #6f8299;
+    color: var(--ink-faint);
   }
+  /* Hairline panel: border and fill step, no shadow. */
   .panel {
-    @apply min-w-0 rounded-panel border border-line bg-panel shadow-panel;
+    @apply min-w-0 rounded-panel border border-line bg-panel;
   }
   .panel-h {
-    @apply flex min-h-[44px] flex-wrap items-center gap-2.5 border-b border-line px-3.5 py-2.5;
+    @apply flex min-h-[44px] flex-wrap items-center gap-2.5 border-b border-line px-4 py-2.5;
   }
   .panel-h h2 {
-    @apply text-[13px] font-semibold;
+    @apply text-[15px] font-medium;
+  }
+  /* Infected device pulse in 2D views: 60 bpm, breathing. */
+  .breathe {
+    animation: breathe var(--dur-heartbeat) var(--ease-breath) infinite;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
   }
 }
 
 .scroll-quiet {
   scrollbar-width: thin;
-  scrollbar-color: #2f4458 transparent;
+  scrollbar-color: #3e4448 transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

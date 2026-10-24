@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Html } from "@react-three/drei";
-import { C } from "@/lib/colors";
+import { C, MOTION } from "@/lib/colors";
 import type { Floor, Room } from "@/lib/stdb/types";
 import { FLOOR_GAP, to3 } from "./space";
 
@@ -68,7 +68,7 @@ export function RoomShell({ room, level, infectedShare }: { room: Room; level: n
         <meshBasicMaterial
           color={C.infected}
           transparent
-          opacity={infectedShare > 0 ? 0.04 + infectedShare * 0.32 : 0}
+          opacity={infectedShare > 0 ? 0.04 + infectedShare * (MOTION.roomTintMax - 0.04) : 0}
           side={THREE.DoubleSide}
           depthWrite={false}
         />

@@ -2,10 +2,10 @@ import type { PatientStateValue } from "@/lib/stdb/types";
 
 // Patient states always pair color with a glyph (UX rule 3).
 export const PATIENT_STATE: Record<PatientStateValue, { label: string; glyph: string; color: string }> = {
-  ok: { label: "OK", glyph: "", color: "#E8ECF1" },
-  delayed: { label: "Delayed", glyph: "◷", color: "#F5B942" },
-  disrupted: { label: "Disrupted", glyph: "!", color: "#FF4D6D" },
-  diverted: { label: "Diverted", glyph: "↩", color: "#FF4D6D" },
+  ok: { label: "OK", glyph: "", color: "#DDE4EA" },
+  delayed: { label: "Delayed", glyph: "◷", color: "#FFC53D" },
+  disrupted: { label: "Disrupted", glyph: "!", color: "#FF4778" },
+  diverted: { label: "Diverted", glyph: "↩", color: "#FF4778" },
 };
 
 export function PatientBadge({ state, size = "sm" }: { state: PatientStateValue; size?: "sm" | "md" }) {

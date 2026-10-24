@@ -154,7 +154,7 @@ function Step({
       disabled={disabled}
       onClick={onClick}
       className={`flex items-center gap-2.5 rounded-panel border bg-panel px-3.5 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
-        on ? "border-accent shadow-[inset_0_0_0_1px_#58C6D8]" : "border-line hover:border-line2"
+        on ? "border-accent shadow-[inset_0_0_0_1px_#E9ECEE]" : "border-line hover:border-line2"
       }`}
     >
       <span

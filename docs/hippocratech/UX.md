@@ -19,7 +19,7 @@ Every screen exists to make one of those three visible. The demo walks them in o
 ## Rules
 
 1. **The human number leads.** Patients affected is the largest number on the panel. Devices compromised comes second.
-2. **State colors mean state.** Orange, blue, amber, rose, and purple appear only on devices, patients, arcs, zones, and spread effects. Agents, presence, buttons, and chrome use neutral colors or the teal chrome accent (`#58C6D8`), never a state color.
+2. **State colors mean state.** Orange, blue, amber, rose, and purple appear only on devices, patients, arcs, zones, and spread effects. Agents, presence, buttons, and chrome use neutral colors and the monochrome ink selection (`#E9ECEE`), never a state color.
 3. **Never color alone.** Patient states have badges. Message types have shapes (◆ proposal, ● accept, ✕ reject, ↻ revision, ? question). Review verdicts have icons and words. Cut connections are dashed.
 4. **Every visual is backed by data.** A pulse means a `spread_attempt` row; a flash means a `device_state` change; a message particle means an `agent_message` row. Never animate something that didn't happen.
 5. **Readable before fast.** Agent messages reveal no faster than one every 1.2 seconds. Event toasts stay for at least 2 seconds. **Skip to result** is always available.
