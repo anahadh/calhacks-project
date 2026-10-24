@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { tickClock } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot, SimEventRow } from "@/lib/stdb/types";
@@ -18,7 +20,13 @@ const DOT: Record<string, string> = {
 };
 
 export function Timeline({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
-  const run = session.runs.find((r) => r.id === session.activeRunId)!;
+  const run = session.runs.find((r) => r.id === session.activeRunId) ?? session.runs[0];
+  const [err, setErr] = useState<string>();
+  const can = session.isPresenter;
+  const act = (fn: () => Promise<unknown>) => () => {
+    setErr(undefined);
+    fn().catch((e: Error) => setErr(e.message));
+  };
   const patientZero = index.device.get(run.patientZero)?.name ?? run.patientZero;
   const pct = (tick: number) => `${(tick / SPAN_TICKS) * 100}%`;
   const total = session.hospital.devices.length;
@@ -32,7 +40,9 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
       <div className="flex flex-wrap items-center gap-3.5">
         <button
           aria-label={run.status === "running" ? "Pause" : "Play"}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line2 bg-panel2 text-ink transition hover:border-accent hover:text-accent"
+          disabled={!can}
+          onClick={act(run.status === "running" ? session.actions.pause : session.actions.play)}
+          className="disabled:opacity-40 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line2 bg-panel2 text-ink transition hover:border-accent hover:text-accent"
         >
           {run.status === "running" ? (
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -45,6 +55,7 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
           )}
         </button>
 
+        {err && <span role="alert" className="text-[11px] text-state-infected">{err}</span>}
         <div className="min-w-0">
           <div className="flex items-baseline gap-2">
             <span className="font-disp text-[19px] font-semibold tabular-nums">{tickClock(run.tick)}</span>
@@ -52,6 +63,7 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
           </div>
           <div className="num text-[10.5px] uppercase tracking-[0.08em] text-ink-muted">
             {run.label} · patient zero {patientZero} · {run.status}
+            {!can && session.source === "live" && " · presenter controls playback"}
           </div>
         </div>
 
@@ -60,6 +72,8 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
             <button
               key={s}
               aria-pressed={s === run.speed}
+              disabled={!can}
+              onClick={act(() => session.actions.setSpeed(s))}
               className={`num rounded-md border px-2 py-1 text-[10.5px] ${
                 s === run.speed ? "border-accent bg-accent text-bg" : "border-line2 bg-panel2 text-ink-muted"
               }`}

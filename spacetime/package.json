@@ -1,0 +1,22 @@
+{
+  "name": "hippocratech-module",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "publish:local": "spacetime publish --server local hippocratech",
+    "generate": "spacetime generate --lang typescript --out-dir ../apps/web/lib/stdb/module_bindings --module-path ."
+  },
+  "dependencies": {
+    "@hippo/sim-core": "*",
+    "spacetimedb": "2.13.0"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "vite": "5.4.10",
+    "vitest": "2.1.3"
+  }
+}

@@ -15,6 +15,14 @@ import { useSession, useSessionIndex } from "@/lib/stdb/use-session";
 export function SessionView({ sessionId }: { sessionId: string }) {
   const session = useSession(sessionId);
   const index = useSessionIndex(session);
+
+  if (session.source === "error" || session.source === "missing" || !session.hospital.devices.length) {
+    const text =
+      session.source === "missing" ? `Session "${sessionId}" doesn't exist.`
+      : session.source === "error" ? session.error ?? "Something went wrong."
+      : "Connecting to SpacetimeDB…";
+    return <div role="status" className="flex h-screen items-center justify-center p-8 text-sm text-ink-muted">{text}</div>;
+  }
   const [view, setView] = useState<ViewId>("simulation");
   const [hovered, setHovered] = useState<string | null>(null);
 
