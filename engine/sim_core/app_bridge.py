@@ -273,6 +273,7 @@ def run_session(hospital: dict, patient_zero: str, plan: Plan | None = None, *,
     run_hospital = applied.hospital
     result, bridge = run(run_hospital, patient_zero, plan)
     name = {d["id"]: d["name"] for d in hospital["devices"]}
+    room_name = {r["id"]: r.get("name", r["id"]) for r in hospital.get("rooms", [])}
     device_ids = [d["id"] for d in hospital["devices"]]
     room_of = {d["id"]: d.get("roomId", "") for d in hospital["devices"]}
     svc_name = {s["id"]: s.get("name", s["id"]) for s in hospital["services"]}
@@ -329,7 +330,7 @@ def run_session(hospital: dict, patient_zero: str, plan: Plan | None = None, *,
     svc_changes_det = [{"serviceId": sid, "down": True, "downSinceTick": det_tick} for sid in down_services]
     pat_changes_det = [{"groupId": gid, "state": st} for gid, st in group_state.items() if st != "ok"]
     events_det = [{"kind": "service_down", "targetId": sid, "text": f"{svc_name.get(sid, sid)} offline"} for sid in down_services]
-    events_det += [{"kind": "diversion", "targetId": group_room[gid], "text": f"Ambulances diverted from {name.get(group_room[gid], group_room[gid])}"}
+    events_det += [{"kind": "diversion", "targetId": group_room[gid], "text": f"Ambulances diverted from {room_name.get(group_room[gid], group_room[gid])}"}
                    for gid, st in group_state.items() if st == "diverted" and group_type.get(gid) == "er"]
 
     # Cumulative state, frame by frame.

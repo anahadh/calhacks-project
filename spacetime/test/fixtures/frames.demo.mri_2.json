@@ -1439,7 +1439,7 @@
         {
           "kind": "diversion",
           "targetId": "rm_er",
-          "text": "Ambulances diverted from rm_er"
+          "text": "Ambulances diverted from Emergency"
         }
       ],
       "snapshot": {
@@ -1961,7 +1961,7 @@
     {
       "kind": "diversion",
       "targetId": "rm_er",
-      "text": "Ambulances diverted from rm_er"
+      "text": "Ambulances diverted from Emergency"
     }
   ],
   "snapshots": [

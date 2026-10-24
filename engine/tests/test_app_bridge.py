@@ -62,6 +62,16 @@ def test_frames_are_contiguous_and_honest():
                 assert a["flowId"] in flows and {a["from"], a["to"]} == set(flows[a["flowId"]])
 
 
+def test_a_diversion_names_the_room_it_targets():
+    hospital = demo()
+    session = run_session(hospital, "mri_2")
+    rooms = {r["id"]: r["name"] for r in hospital["rooms"]}
+    diversions = [e for f in session["frames"] for e in f["events"] if e["kind"] == "diversion"]
+    assert diversions  # the ER group diverts at detonation on the demo
+    for e in diversions:
+        assert e["targetId"] in rooms and e["text"] == f"Ambulances diverted from {rooms[e['targetId']]}"
+
+
 def test_a_policy_contains_the_attack_and_fizzles_at_the_cut():
     hospital = demo()
     policy = json.loads((ROOT / "agents/fixtures/candidates/cand_keep_scans.json").read_text())["policy"]

@@ -51,3 +51,13 @@ def test_python_http_and_cli_agree_on_run_result(tmp_path):
     assert cli.returncode == 0, cli.stderr
 
     assert _canon(direct) == _canon(http) == _canon(json.loads(cli.stdout))
+
+
+def test_committed_session_fixtures_are_the_engines_current_output():
+    # The module and the watcher play copies of these files (scripts/build_frames_fixture.py
+    # writes them); a mismatch means the engine changed, so rebuild them and copy them again.
+    hospital = _hospital()
+    keep_scans = json.loads((ROOT / "agents/fixtures/candidates/cand_keep_scans.json").read_text())["policy"]
+    for name, policy in (("app_session.demo.mri_2.json", None), ("app_session.demo.mri_2.keep_scans.json", keep_scans)):
+        committed = json.loads((Path(__file__).parent / "fixtures" / name).read_text())
+        assert committed == run_session(hospital, "mri_2", policy=policy), name
