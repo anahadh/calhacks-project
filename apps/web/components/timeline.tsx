@@ -15,26 +15,36 @@ const MIN_SPAN = 16; // 4 simulated hours, until the run settles
 export function Timeline({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   const run = session.runs.find((r) => r.id === session.activeRunId) ?? session.runs[0];
   const [err, setErr] = useState<string>();
-  const can = session.isPresenter;
-  const act = (fn: () => Promise<unknown>) => () => {
-    setErr(undefined);
-    fn().catch((e: Error) => setErr(e.message));
-  };
-
-  const settled = run.status === "done";
-  const span = settled ? Math.max(run.tick, 1) : Math.max(run.tick + 4, MIN_SPAN);
-  const pct = (tick: number) => `${(Math.min(tick, span) / span) * 100}%`;
+  const runTick = run?.tick ?? 0;
+  const settled = run?.status === "done";
+  const span = settled ? Math.max(runTick, 1) : Math.max(runTick + 4, MIN_SPAN);
   const heat = useMemo(() => {
     const byTick = new Map(session.snapshots.map((s) => [s.tick, s.infectedCount]));
     const peak = Math.max(1, ...session.snapshots.map((s) => s.infectedCount));
     // Segment t covers the tick that ends at t + 1, so the played part ends under the thumb.
     return Array.from({ length: span }, (_, t) => {
       const c = byTick.get(t + 1) ?? byTick.get(t) ?? 0;
-      return t < run.tick
+      return t < runTick
         ? `rgba(255,106,46,${(0.12 + 0.75 * (c / peak)).toFixed(2)})`
         : "rgba(125,133,139,0.08)";
     });
-  }, [session.snapshots, span, run.tick]);
+  }, [session.snapshots, span, runTick]);
+
+  // Before any attack there is no run; show just the runs strip (with + New run).
+  if (!run) {
+    return (
+      <div className="flex flex-col gap-3 border-b border-line p-4">
+        <RunsStrip session={session} index={index} />
+      </div>
+    );
+  }
+  const can = session.isPresenter;
+  const act = (fn: () => Promise<unknown>) => () => {
+    setErr(undefined);
+    fn().catch((e: Error) => setErr(e.message));
+  };
+
+  const pct = (tick: number) => `${(Math.min(tick, span) / span) * 100}%`;
 
   const playing = run.status === "running";
   const lock = !can ? `Only ${session.presenterName} controls playback.` : undefined;

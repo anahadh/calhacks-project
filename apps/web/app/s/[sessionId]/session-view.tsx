@@ -5,6 +5,7 @@ import { Counters } from "@/components/panel/counters";
 import { DeviceCard } from "@/components/panel/device-card";
 import { SpreadStats, SystemsDown } from "@/components/panel/spread";
 import { HospitalScene } from "@/components/scene/hospital-scene";
+import { SceneBoundary } from "@/components/scene/scene-boundary";
 import { PatientBadge } from "@/components/shell/badges";
 import { SessionHeader, type ViewId } from "@/components/shell/header";
 import { Timeline } from "@/components/timeline";
@@ -94,13 +95,15 @@ export function SessionView({ sessionId }: { sessionId: string }) {
               </div>
 
               <div className="relative min-h-[620px] flex-1">
-                <HospitalScene
-                  session={session}
-                  index={index}
-                  hovered={hovered}
-                  onHover={setHovered}
-                  floorId={floor === "all" ? undefined : floor}
-                />
+                <SceneBoundary session={session}>
+                  <HospitalScene
+                    session={session}
+                    index={index}
+                    hovered={hovered}
+                    onHover={setHovered}
+                    floorId={floor === "all" ? undefined : floor}
+                  />
+                </SceneBoundary>
                 {hovered && (
                   <div className="pointer-events-none absolute right-4 top-4 z-10">
                     <DeviceCard session={session} index={index} deviceId={hovered} />

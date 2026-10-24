@@ -37,7 +37,6 @@ import {
 import AgentMessageAddReducer from "./agent_message_add_reducer";
 import AgentStatusSetReducer from "./agent_status_set_reducer";
 import AnnotationAddReducer from "./annotation_add_reducer";
-import AnnotationAddNoteReducer from "./annotation_add_note_reducer";
 import AnnotationClearReducer from "./annotation_clear_reducer";
 import ConfigSetServerReducer from "./config_set_server_reducer";
 import DefendRequestReducer from "./defend_request_reducer";
@@ -298,7 +297,6 @@ const reducersSchema = __reducers(
   __reducerSchema("agent_message_add", AgentMessageAddReducer),
   __reducerSchema("agent_status_set", AgentStatusSetReducer),
   __reducerSchema("annotation_add", AnnotationAddReducer),
-  __reducerSchema("annotation_add_note", AnnotationAddNoteReducer),
   __reducerSchema("annotation_clear", AnnotationClearReducer),
   __reducerSchema("config_set_server", ConfigSetServerReducer),
   __reducerSchema("defend_request", DefendRequestReducer),
