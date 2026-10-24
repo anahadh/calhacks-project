@@ -21,17 +21,20 @@ export function DeviceBox({
   level,
   state,
   hovered,
+  zero,
   onHover,
 }: {
   device: Device;
   level: number;
   state?: DeviceStateRow;
   hovered: boolean;
+  /** Patient zero of the selected run: its own red, so the start of the spread stays findable. */
+  zero?: boolean;
   onHover: (id: string | null) => void;
 }) {
   const [w, h, d] = SIZE[device.type] ?? DEFAULT_SIZE;
   const infected = !!state?.infected;
-  const color = infected ? C.infected : C.healthy;
+  const color = zero ? C.zero : infected ? C.infected : C.healthy;
 
   return (
     <group position={to3(device.position, level, h / 2)}>

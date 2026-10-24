@@ -120,7 +120,7 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
       <div className="scroll-quiet max-h-[520px] overflow-y-auto px-3.5 py-2">
         {!messages.length && (
           <p className="num py-6 text-center text-[11px] text-ink-faint">
-            No agent messages yet. Agents stay idle while the attack runs; press Create aggregate fix when it has finished or is paused.
+            No agent messages yet. Agents stay idle while the attack runs; press Create segmentation plan when it has finished or is paused.
           </p>
         )}
         {rounds.map((r) => (

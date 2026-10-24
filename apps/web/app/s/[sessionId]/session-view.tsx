@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Counters } from "@/components/panel/counters";
-import { ImpactPanel } from "@/components/panel/impact";
-import { InspectorPanel } from "@/components/panel/inspector";
-import { ServicesPanel } from "@/components/panel/services";
+import { DeviceCard } from "@/components/panel/device-card";
+import { SpreadStats, SystemsDown } from "@/components/panel/spread";
 import { HospitalScene } from "@/components/scene/hospital-scene";
 import { PatientBadge } from "@/components/shell/badges";
 import { SessionHeader, type ViewId } from "@/components/shell/header";
@@ -21,16 +20,19 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   const index = useSessionIndex(session);
   const [view, setView] = useState<ViewId>("simulation");
   const [hovered, setHovered] = useState<string | null>(null);
+  const [floor, setFloor] = useState("all");
 
   // ?view=agents opens straight onto the Agents tab.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("view") === "agents") setView("agents");
   }, []);
 
-  // 1 and 2 switch views, as in the design template.
+  // 1 and 2 switch views.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return;
+      const t = e.target;
+      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "1") setView("simulation");
       if (e.key === "2") setView("agents");
     };
@@ -46,178 +48,163 @@ export function SessionView({ sessionId }: { sessionId: string }) {
     return <div role="status" className="flex h-screen items-center justify-center p-8 text-sm text-ink-muted">{text}</div>;
   }
 
+  const { hospital } = session;
+  const deviceCount = (fid: string) => hospital.devices.filter((d) => index.room.get(d.roomId)?.floorId === fid).length;
+  const floors = [...hospital.floors].sort((a, b) => b.level - a.level);
+
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <SessionHeader sessionId={sessionId} session={session} view={view} onView={setView} />
       <JoinModal session={session} sessionId={sessionId} />
 
-      <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <div className="mt-3.5 empty:hidden">
-          <QuestionBanner session={session} index={index} />
-        </div>
-        {view === "simulation" ? (
-          <div className="mt-3.5 space-y-3.5">
+      <div className="px-4 empty:hidden md:px-6 [&:not(:empty)]:pt-6">
+        <QuestionBanner session={session} index={index} />
+      </div>
+
+      {view === "simulation" ? (
+        <main className="flex flex-grow flex-wrap items-stretch gap-6 p-4 md:p-6">
+          <section aria-label="Simulation" className="panel flex min-w-0 flex-[999_1_760px] flex-col overflow-hidden">
             <Timeline session={session} index={index} />
-            <DemoSteps session={session} onAgents={() => setView("agents")} />
 
-            <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(340px,0.9fr)]">
-              <div className="panel flex flex-col overflow-hidden">
-                <div className="panel-h">
-                  <div className="num flex flex-wrap items-center gap-1.5 text-[11.5px]">
-                    <span className="font-semibold text-ink">{session.hospital.name}</span>
-                    <span className="text-ink-faint">· {session.hospital.floors.length} floors, synthetic layout</span>
-                  </div>
-                  <div className="ml-auto flex items-center gap-2.5">
-                    <button className="num rounded-md border border-line px-2.5 py-1 text-[11px] text-ink-muted hover:border-line2 hover:text-ink">
-                      Change conditions
-                    </button>
-                    <div className="flex overflow-hidden rounded-[7px] border border-line" role="group" aria-label="View mode">
-                      <button aria-pressed className="num bg-accent px-3.5 py-1 text-[11px] font-bold tracking-[0.06em] text-bg">
-                        3D
-                      </button>
-                      <button aria-pressed={false} className="num px-3.5 py-1 text-[11px] tracking-[0.06em] text-ink-muted">
-                        2D
-                      </button>
-                    </div>
-                  </div>
+            <div className="flex flex-grow flex-col bg-scene-ground">
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4">
+                <div className="relative inline-flex">
+                  <label htmlFor="floor" className="sr-only">Floor</label>
+                  <select
+                    id="floor"
+                    value={floor}
+                    onChange={(e) => {
+                      setFloor(e.target.value);
+                      setHovered(null);
+                    }}
+                    className="num h-11 cursor-pointer appearance-none rounded-ctl border border-line2 bg-panel2 pl-3 pr-9 text-xs text-ink"
+                  >
+                    <option value="all">All floors · {hospital.devices.length} devices</option>
+                    {floors.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name} · {deviceCount(f.id)} devices
+                      </option>
+                    ))}
+                  </select>
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted">
+                    <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
-
-                <div className="relative min-h-[620px] flex-1">
-                  <HospitalScene session={session} index={index} hovered={hovered} onHover={setHovered} />
-                </div>
-
-                <div className="num flex flex-wrap items-center gap-x-3.5 gap-y-1.5 border-t border-line px-3.5 py-2.5 text-[10.5px] text-ink-muted">
-                  <Swatch className="bg-state-healthy">Healthy</Swatch>
-                  <Swatch className="bg-state-infected">Infected</Swatch>
-                  <span className="inline-flex items-center gap-1.5">
-                    <PatientBadge state="delayed" /> Delayed
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <PatientBadge state="disrupted" /> Disrupted
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <PatientBadge state="diverted" /> Diverted
-                  </span>
-                  <span className="ml-auto text-ink-faint">Drag to rotate · scroll to zoom · hover a device</span>
-                </div>
+                <Legend />
               </div>
 
-              <div className="flex flex-col gap-3.5">
-                <ImpactPanel session={session} index={index} />
-                <ServicesPanel session={session} index={index} />
-                <InspectorPanel session={session} index={index} deviceId={hovered} />
+              <div className="relative min-h-[620px] flex-1">
+                <HospitalScene
+                  session={session}
+                  index={index}
+                  hovered={hovered}
+                  onHover={setHovered}
+                  floorId={floor === "all" ? undefined : floor}
+                />
+                {hovered && (
+                  <div className="pointer-events-none absolute right-4 top-4 z-10">
+                    <DeviceCard session={session} index={index} deviceId={hovered} />
+                  </div>
+                )}
+                <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
+                  Drag to rotate · scroll to zoom · hover a device
+                </span>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="mt-3.5 space-y-3.5">
-            <Counters session={session} index={index} />
-            <AgentRoom session={session} index={index} />
-          </div>
-        )}
+          </section>
 
-        <footer className="num mt-10 border-t border-line pb-10 pt-4 text-[10.5px] leading-relaxed text-ink-faint">
-          <b className="text-ink-muted">All hospital data is synthetic.</b> No field identifies a person; patient groups are
-          counts. Agents act only inside the simulation and never touch a real network. Humans approve every plan before
-          anything is exported.
-        </footer>
-      </div>
-    </>
+          <aside aria-label="Infection statistics" className="flex min-w-0 flex-[1_1_380px] flex-col gap-4">
+            <SpreadStats session={session} index={index} />
+            <SystemsDown session={session} index={index} />
+            <PlanButton session={session} onAgents={() => setView("agents")} />
+          </aside>
+        </main>
+      ) : (
+        <main className="flex-grow space-y-3.5 p-4 md:p-6">
+          <Counters session={session} index={index} />
+          <AgentRoom session={session} index={index} />
+        </main>
+      )}
+
+      <footer className="num mt-auto flex flex-wrap gap-x-6 gap-y-2 border-t border-line px-4 py-4 text-xs text-ink-faint md:px-6">
+        <span>Illustrative simulation. Spread rates are not measured from real incidents.</span>
+        <span>All hospital data is synthetic. Agents act only inside the simulation; humans approve every plan.</span>
+      </footer>
+    </div>
   );
 }
 
-function DemoSteps({ session, onAgents }: { session: SessionSnapshot; onAgents: () => void }) {
-  const run = session.runs.find((r) => r.id === session.activeRunId);
-  const blocker = defendBlocker(session);
+/**
+ * Create segmentation plan: writes defend_request and opens the Agents view.
+ * Disabled while the run is running (spec 7.4); the agents never start on their own.
+ */
+function PlanButton({ session, onAgents }: { session: SessionSnapshot; onAgents: () => void }) {
   const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const blocker = defendBlocker(session);
   const round = session.roundState.state;
   const negotiating = round === "running" || round === "waiting_for_human";
 
-  // Step 2 is Create aggregate fix itself; disabled while the run is running (spec 7.4).
-  const defend = async () => {
+  const press = async () => {
+    if (negotiating) return onAgents();
     setError(undefined);
+    setBusy(true);
     try {
       await session.actions.defend();
       onAgents();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
-  const next =
-    error ?? (!run ? "Click a device to make it patient zero, then press Run."
-    : run.status === "running" ? "The attack is spreading. Agents stay idle until it finishes or you pause it."
-    : negotiating ? "The agents are negotiating. Press 2 to watch."
-    : blocker ?? "Press Create aggregate fix to let the agents negotiate a plan.");
 
   return (
-    <div className="flex flex-wrap items-stretch gap-2.5">
-      <Step n={1} title="Run the attack" sub="infect a device, watch it spread" state={!blocker || negotiating ? undefined : "on"} />
-      <Arrow />
-      <Step
-        n={2} title="Create aggregate fix" sub="four agents negotiate a plan"
-        state={!blocker || negotiating ? "on" : undefined}
-        disabled={!!blocker && !negotiating}
-        onClick={negotiating ? onAgents : defend}
-      />
-      <Arrow />
-      <Step n={3} title="Show the solution" sub="same attack, with the plan" disabled />
-      <p className="min-w-[200px] flex-[1_1_220px] self-center pl-1.5 font-disp text-[15px] text-ink-muted">{next}</p>
+    <div className="mt-auto flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={press}
+        disabled={(!!blocker && !negotiating) || busy}
+        className="num inline-flex min-h-[52px] w-full items-center justify-center gap-2.5 rounded-ctl bg-state-infected text-[13px] font-medium text-bg transition-[filter] duration-fade enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:border disabled:border-line2 disabled:bg-transparent disabled:text-ink-faint"
+      >
+        {negotiating ? "Watch the agents negotiate" : busy ? "Starting…" : "Create segmentation plan"}
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+          <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {(error || (blocker && !negotiating)) && <p className="num m-0 text-xs leading-snug text-ink-faint">{error ?? blocker}</p>}
     </div>
   );
 }
 
-function Step({
-  n,
-  title,
-  sub,
-  state,
-  disabled,
-  onClick,
-}: {
-  n: number;
-  title: string;
-  sub: string;
-  state?: "on";
-  disabled?: boolean;
-  onClick?: () => void;
-}) {
-  const on = state === "on";
+function Legend() {
   return (
-    <button
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex items-center gap-2.5 rounded-panel border bg-panel px-3.5 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
-        on ? "border-accent shadow-[inset_0_0_0_1px_#E9ECEE]" : "border-line hover:border-line2"
-      }`}
-    >
-      <span
-        className={`num grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full border text-[12px] font-bold ${
-          on ? "border-accent bg-accent text-bg" : "border-line2 bg-panel2"
-        }`}
-      >
-        {n}
-      </span>
-      <span>
-        <b className="block font-disp text-[14.5px]">{title}</b>
-        <small className="block text-[11.5px] text-ink-faint">{sub}</small>
-      </span>
-    </button>
-  );
-}
-
-function Arrow() {
-  return (
-    <span className="self-center text-lg text-ink-faint" aria-hidden>
-      →
-    </span>
-  );
-}
-
-function Swatch({ className, children }: { className: string; children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <i className={`h-[9px] w-[9px] rounded-[3px] ${className}`} />
-      {children}
-    </span>
+    <ul className="num m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-xs leading-4 text-ink-muted">
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-state-healthy" />
+        Healthy
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-state-zero shadow-[0_0_0_2px_#111315,0_0_0_3px_#E9ECEE]" />
+        Patient zero
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-state-infected" />
+        Infected
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <svg width="22" height="8" viewBox="0 0 22 8" aria-hidden>
+          <path d="M1 7Q11 -1 19 5" fill="none" stroke="#FF6A2E" strokeWidth="1.5" />
+          <path d="M21 6.5 17 6.8 18.6 3.3z" fill="#FF6A2E" />
+        </svg>
+        Infection path
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <PatientBadge state="delayed" /> Delayed
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <PatientBadge state="disrupted" /> Disrupted
+      </li>
+    </ul>
   );
 }

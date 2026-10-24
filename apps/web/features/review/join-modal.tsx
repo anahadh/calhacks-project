@@ -5,7 +5,7 @@ import type { PresenceRow, SessionSnapshot } from "@/lib/stdb/types";
 import { InviteLink } from "./invite";
 
 // People join with a name only. Everyone gets the same role, so anyone in the
-// session can answer an agent's question and create an aggregate fix.
+// session can answer an agent's question and create a segmentation plan.
 // presence_join still takes a role, and it must be one question_answer allows.
 const JOIN_ROLE: PresenceRow["role"] = "security";
 

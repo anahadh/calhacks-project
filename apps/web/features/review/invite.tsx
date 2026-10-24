@@ -59,7 +59,7 @@ export function InviteButton({ sessionId }: { sessionId: string }) {
     <button
       onClick={copy}
       title={link}
-      className="num rounded-md border border-line px-2.5 py-1 text-[11px] text-ink-muted hover:border-line2 hover:text-ink"
+      className="btn"
     >
       {copied ? "Link copied" : "Invite"}
     </button>
