@@ -85,8 +85,8 @@ Under **My Agents** you should see four agents, each with the **Mailbox** tag:
 |---|---|
 | Hippocratech Inventory Agent | `@hippocratech-inventory` |
 | Hippocratech Flow Agent | `@hippocratech-flow` |
-| Hippocratech Clinical Workflow Agent | `@hippocratech-clinical-workflow` |
-| Hippocratech Sign-off Coordinator | `@hippocratech-coordinator` |
+| Hippocratech Clinical Workflow | `@hippocratech-clinical-workflow` |
+| Hippocratech Coordinator | `@hippocratech-coordinator` |
 
 Open each one: the description and README (from `agents/profiles/<agent>.md`) should be on its page, and the address should match `addresses.py`. Note each profile URL, and fill in the addresses and URLs in [`../README.md`](../README.md).
 
@@ -95,7 +95,7 @@ The `run_all` output should no longer show `Failed to connect to mailbox server`
 ## 7. Test on ASI:One
 
 1. Open [asi1.ai](https://asi1.ai), signed in with the same account.
-2. Find the Coordinator: search for **Hippocratech Sign-off Coordinator** or `@hippocratech-coordinator`, or open it from its Agentverse page (its chat button).
+2. Find the Coordinator: search for **Hippocratech Coordinator** or `@hippocratech-coordinator`, or open it from its Agentverse page (its chat button).
 
    Button and menu names here are from memory, not checked from this environment. Fix this page if they differ.
 3. Send `simulate ransomware from MRI 2`. You should get, in order:

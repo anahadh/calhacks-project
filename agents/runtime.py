@@ -78,11 +78,11 @@ PROFILES = {
         "Proposes and revises hospital network-segmentation plans, each tested against the same simulated attack.",
     ),
     "clinical_workflow": Profile(
-        "Hippocratech Clinical Workflow Agent", "hippocratech-clinical-workflow",
+        "Hippocratech Clinical Workflow", "hippocratech-clinical-workflow",
         "Rejects any segmentation plan that breaks a protected clinical flow or keeps a critical service down.",
     ),
     "coordinator": Profile(
-        "Hippocratech Sign-off Coordinator", "hippocratech-coordinator",
+        "Hippocratech Coordinator", "hippocratech-coordinator",
         "Runs the agents' negotiation and routes the plan to the humans who must sign off. Chat: 'simulate ransomware from MRI 2'.",
     ),
 }

@@ -4,8 +4,6 @@ import { useState } from "react";
 import { PlaybackButtons, SpeedButtons } from "@/components/playback";
 import { HospitalScene } from "@/components/scene/hospital-scene";
 import { SceneBoundary } from "@/components/scene/scene-boundary";
-import { SessionHeader } from "@/components/shell/header";
-import { Assumptions } from "@/components/timeline";
 import { ROLE_LABEL } from "@/lib/format";
 import { pairOf, roundRefusal, runProgress } from "@/lib/stdb/run-status";
 import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
@@ -58,22 +56,24 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
 
   return (
     <>
-      <SessionHeader session={session}>
-        <span className="num hidden truncate text-[11px] uppercase tracking-[0.08em] text-ink-muted md:inline">
+      <header className="flex items-center gap-3 border-b border-line px-4 py-3 md:px-6">
+        <span className="text-[13px] font-medium text-ink">
           Solution rerun{rec ? ` · ${rec.name}` : ""}
         </span>
-        {session.isPresenter ? (
-          <button
-            onClick={close}
-            disabled={closing}
-            className="num rounded-md border border-line2 px-2.5 py-1 text-[11px] text-ink transition hover:border-accent disabled:opacity-50"
-          >
-            ← Back to the session
-          </button>
-        ) : (
-          <span className="num text-[10.5px] text-ink-faint">{session.presenterName} leads this view</span>
-        )}
-      </SessionHeader>
+        <div className="ml-auto">
+          {session.isPresenter ? (
+            <button
+              onClick={close}
+              disabled={closing}
+              className="num rounded-md border border-line2 px-2.5 py-1 text-[11px] text-ink transition hover:border-accent disabled:opacity-50"
+            >
+              ← Back to the session
+            </button>
+          ) : (
+            <span className="num text-[10.5px] text-ink-faint">{session.presenterName} leads this view</span>
+          )}
+        </div>
+      </header>
 
       <div className="mx-auto max-w-[1440px] space-y-3.5 px-4 pb-10 md:px-6">
         {/* One shared play control and clock for both sides. */}
@@ -109,7 +109,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
             title="No segmentation"
             sub="the network as it is today"
             run={none}
-            scene={<SceneBoundary session={leftScene}><HospitalScene session={leftScene} index={leftIndex} hovered={hovered} onHover={setHovered} compact /></SceneBoundary>}
+            scene={<SceneBoundary session={leftScene}><HospitalScene session={leftScene} index={leftIndex} hovered={hovered} onHover={setHovered} /></SceneBoundary>}
           />
           <Side
             title={rec ? `With plan: ${rec.name}` : plan?.label ?? "With the plan"}
@@ -118,7 +118,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
             warning={
               brokenPurposes.length ? `Breaks a protected flow: ${brokenPurposes.join(", ")}` : undefined
             }
-            scene={<SceneBoundary session={rightScene}><HospitalScene session={rightScene} index={rightIndex} hovered={hovered} onHover={setHovered} compact /></SceneBoundary>}
+            scene={<SceneBoundary session={rightScene}><HospitalScene session={rightScene} index={rightIndex} hovered={hovered} onHover={setHovered} /></SceneBoundary>}
           />
         </div>
 
@@ -133,7 +133,9 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
           Illustrative simulation. Spread rates are not measured from real incidents. This rerun is a simulation, not a
           change to any network: only humans decide what gets deployed.
         </p>
-        {notes.length > 0 && <Assumptions notes={notes} />}
+        {notes.length > 0 && (
+          <details className="num text-[11px] text-ink-faint"><summary className="cursor-pointer">What the engine assumed ({notes.length})</summary><ul className="mt-1 list-disc pl-5">{notes.map((n, i) => (<li key={i}>{n}</li>))}</ul></details>
+        )}
       </div>
     </>
   );

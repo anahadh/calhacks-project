@@ -31,6 +31,8 @@ const config: Config = {
         state: {
           healthy: "#4DB0FF",
           infected: "#FF6A2E",
+          // Patient zero: the device a run started from, ringed in ink.
+          zero: "#FF3B3B",
           ok: "#DDE4EA",
           delayed: "#FFC53D",
           disrupted: "#FF4778",
@@ -54,7 +56,7 @@ const config: Config = {
         "readout-l": ["48px", { lineHeight: "48px", letterSpacing: "-0.03em", fontWeight: "300" }],
         "readout-m": ["30px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "300" }],
         title: ["22px", { lineHeight: "28px", letterSpacing: "-0.01em" }],
-        caption: ["10.5px", { lineHeight: "14px", letterSpacing: "0.14em" }],
+        caption: ["11px", { lineHeight: "14px", letterSpacing: "0.14em" }],
       },
       borderRadius: {
         ctl: "2px",

@@ -14,7 +14,7 @@ Updated Friday, Oct 23, 2026.
 ## What judges must see
 
 1. **The attack, visibly spreading.** Pulses race along network links, devices flash orange, services go dark, and ambulances turn away. The same view is live on both laptops.
-2. **The aggregate fix, visibly negotiated.** After the attack (not during it), the human presses **Create aggregate fix**. Messages fly between the four agents in the Agent Room and land as a readable conversation. The building highlights what each message is about, and the agents stop to ask a human about an unidentified device when needed.
+2. **The segmentation plan, visibly negotiated.** After the attack (not during it), the human presses **Create segmentation plan**. Messages fly between the four agents in the Agent Room and land as a readable conversation. The building highlights what each message is about, and the agents stop to ask a human about an unidentified device when needed.
 3. **The solution, visibly working.** A split screen replays the same attack with and without the plan. The left side spreads everywhere; the right stops at the purple zone edge.
 
 ## How the build works
@@ -35,7 +35,7 @@ Updated Friday, Oct 23, 2026.
 ## Milestones, in order
 
 1. A spreading attack runs in SpacetimeDB, and two laptops show it identically. Team target: Saturday morning.
-2. After a completed baseline run, **Create aggregate fix** starts a round with a rejection and a revision, visible in the Agent Room.
+2. After a completed baseline run, **Create segmentation plan** starts a round with a rejection and a revision, visible in the Agent Room.
 3. The solution view shows the split-screen replay containing the attack.
 4. Approval and export work. Record the first demo video.
 5. The new-challenge beat works, including the human question.

@@ -7,6 +7,7 @@ export const C = {
   wall: "#2A2E32",
   healthy: "#4DB0FF",
   infected: "#FF6A2E",
+  zero: "#FF3B3B", // patient zero
   ok: "#DDE4EA",
   delayed: "#FFC53D",
   disrupted: "#FF4778",

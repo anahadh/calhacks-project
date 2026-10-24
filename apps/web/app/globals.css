@@ -50,6 +50,16 @@ h3 {
   outline-offset: 2px;
 }
 
+::selection {
+  background: var(--ink);
+  color: var(--on-select);
+}
+
+html {
+  scrollbar-color: var(--line-2) var(--bg);
+  accent-color: var(--ink);
+}
+
 @layer components {
   .num {
     font-family: var(--font-plex-mono), ui-monospace, monospace;
@@ -64,7 +74,7 @@ h3 {
   /* Small uppercase mono caption, used above readouts and for panel captions. */
   .eyebrow {
     font-family: var(--font-plex-mono), ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -79,6 +89,36 @@ h3 {
   }
   .panel-h h2 {
     @apply text-[15px] font-medium;
+  }
+  /* Buttons: 44px targets, mono labels, ink border. Primary is the ink fill. */
+  .btn {
+    @apply num inline-flex min-h-[44px] items-center justify-center gap-2.5 whitespace-nowrap rounded-ctl border border-line2 bg-transparent px-4 text-[13px] text-ink transition-colors duration-fade;
+  }
+  .btn:enabled:hover {
+    @apply border-ink-faint;
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-disabled;
+  }
+  .btn-primary {
+    @apply border-select bg-select font-medium text-select-on;
+  }
+  .btn-primary:enabled:hover {
+    @apply border-select bg-ink-muted;
+  }
+  /* Square transport control (rewind, play, replay). */
+  .ctl {
+    @apply inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-ctl border border-line2 bg-transparent px-0 text-ink transition-colors duration-fade;
+  }
+  .ctl:enabled:hover {
+    @apply border-ink-faint;
+  }
+  .ctl:disabled {
+    @apply cursor-not-allowed opacity-disabled;
+  }
+  .ctl[aria-pressed="true"],
+  .ctl-on {
+    @apply border-select bg-select text-select-on;
   }
   /* Infected device pulse in 2D views: 60 bpm, breathing. */
   .breathe {

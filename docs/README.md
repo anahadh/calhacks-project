@@ -3,7 +3,7 @@
 An autonomous, multi-agent hospital cyber-defense simulator.
 
 1. **Watch the attack.** Load a synthetic hospital, infect one device, and watch ransomware spread through a 3D model of the building, tick by tick, live on every screen.
-2. **Create an aggregate fix.** After the attack finishes, four Fetch.ai agents argue out a defense on screen (no agent traffic while the simulation is running). A graph optimizer finds candidates, the Flow Agent tests each one against the same attack, and Claude explains every move.
+2. **Create a segmentation plan.** After the attack finishes, four Fetch.ai agents argue out a defense on screen (no agent traffic while the simulation is running). A graph optimizer finds candidates, the Flow Agent tests each one against the same attack, and Claude explains every move.
 3. **See the solution.** The same attack replays side by side, with and without the plan. Humans approve before anything is exported.
 
 Built at Cal Hacks 13.0. All hospital data is synthetic. Sponsor tracks: **Fetch.ai, Armadin, Microsoft, Anthropic, SpacetimeDB.**
@@ -21,7 +21,7 @@ npm run dev -w web                               # the app, memo and export rout
 cd agents && python run_all.py                   # the four uAgents
 ```
 
-Open the app and choose **Demo hospital**. Infect MRI 2, press **Run**, wait for the run to finish, press **Create aggregate fix**, then **Show the solution**.
+Open the app and choose **Demo hospital**. Infect MRI 2, press **Run**, wait for the run to finish, press **Create segmentation plan**, then **Show the solution**.
 
 ## How the simulation runs (one engine + SpacetimeDB)
 
@@ -59,8 +59,8 @@ Design and evidence limits are in [`engine/RESEARCH_DECISIONS.md`](../engine/RES
 |---|---|---|---|---|
 | Inventory | Hippocratech Inventory Agent | `@hippocratech-inventory` | *after registration* | *after registration* |
 | Flow | Hippocratech Flow Agent | `@hippocratech-flow` | *after registration* | *after registration* |
-| Clinical Workflow | Hippocratech Clinical Workflow Agent | `@hippocratech-clinical-workflow` | *after registration* | *after registration* |
-| Sign-off Coordinator | Hippocratech Sign-off Coordinator | `@hippocratech-coordinator` | *after registration* | *after registration* |
+| Clinical Workflow | Hippocratech Clinical Workflow | `@hippocratech-clinical-workflow` | *after registration* | *after registration* |
+| Sign-off Coordinator | Hippocratech Coordinator | `@hippocratech-coordinator` | *after registration* | *after registration* |
 
 Addresses come from the team's shared seed phrases, and the profile URLs from Agentverse. Both get filled in here after the agents are registered on a laptop ([`hippocratech/AGENTVERSE_SETUP.md`](hippocratech/AGENTVERSE_SETUP.md)).
 

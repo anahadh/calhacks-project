@@ -145,7 +145,7 @@ export const PRESENCE: Presence[] = [
 
 const annotation = (id: bigint, author: Identity, active: boolean): Annotation => ({
   id, sessionId: SESSION, runId: BASE, kind: "focus", targetId: "srv_file", note: "Feeds the ER", author,
-  authorName: author.isEqual(PRESENTER) ? "Ana" : "Kai", role: "operations", active, createdAt: at(3000), clearedBy: "",
+  authorName: author.isEqual(PRESENTER) ? "Ana" : "Kai", role: "operations", active, createdAt: at(3000), clearedBy: "", tick: 3,
 });
 
 export const ANNOTATION: Annotation[] = [annotation(9n, VIEWER, true), annotation(8n, PRESENTER, false)];

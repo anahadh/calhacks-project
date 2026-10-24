@@ -58,7 +58,7 @@ Each agent handles one of the four reasons real segmentation plans stall: an inc
 Every design and build decision serves these three moments. If something doesn't make one of them clearer, it waits.
 
 1. **The attack, visibly spreading.** Infection travels along network links, devices flash and turn orange, rooms fill, services go dark, patients' badges change, and ambulances turn away. See [7.3](#73-watch-the-attack-spread).
-2. **The agents, visibly talking — after the attack.** While a simulation is running, agents stay idle. When a human asks for an **aggregate fix**, the four agents negotiate in the Agent Room: every message animates from sender to receiver and lands in a readable conversation, and the 3D scene highlights whatever each message is about. See [7.4](#74-create-an-aggregate-fix-agents-talk).
+2. **The agents, visibly talking — after the attack.** While a simulation is running, agents stay idle. When a human asks for an **segmentation plan**, the four agents negotiate in the Agent Room: every message animates from sender to receiver and lands in a readable conversation, and the 3D scene highlights whatever each message is about. See [7.4](#74-create-an-segmentation-plan-agents-talk).
 3. **The solution, visibly working.** A split screen replays the same attack with and without the plan, in lockstep. The zones, kept connections and cut connections are drawn on the building, and the before/after numbers sit underneath. See [7.6](#76-see-the-solution).
 
 ---
@@ -80,7 +80,7 @@ Every design and build decision serves these three moments. If something doesn't
 
 ## Hackathon Scope
 
-The loop: **load a hospital → infect a device → watch it spread (no agent traffic during this) → press Create aggregate fix and watch the agents negotiate → see the solution contain the same attack → optionally add a new challenge and create an aggregate fix again → humans approve → export.**
+The loop: **load a hospital → infect a device → watch it spread (no agent traffic during this) → press Create segmentation plan and watch the agents negotiate → see the solution contain the same attack → optionally add a new challenge and create a segmentation plan again → humans approve → export.**
 
 **In**
 
@@ -90,7 +90,7 @@ The loop: **load a hospital → infect a device → watch it spread (no agent tr
 - Four Fetch.ai uAgents on Agentverse, connected to SpacetimeDB through **watchers**. Their whole conversation is stored and animated live.
 - A graph-based policy optimizer, `hippo-sim` test runs for every candidate, and Claude for proposals, explanations and questions.
 - A solution view: synchronized before/after replay, the zones drawn on the building, and the plan in plain language.
-- **New challenge:** an unidentified device appears; the human creates an aggregate fix again, and the agents pause to ask a human if needed, then adapt.
+- **New challenge:** an unidentified device appears; the human creates a segmentation plan again, and the agents pause to ask a human if needed, then adapt.
 - Human review: role approvals, then a memo and ruleset export.
 
 **Out**
@@ -134,7 +134,7 @@ See [Out of Scope](#out-of-scope).
 
 ### 7.1 Load a hospital
 
-- Two cards: **Demo hospital** and **Upload JSON** (up to 2 MB, validated in the browser, then again in the server reducer).
+- **My hospitals:** one row per hospital with a drawn model of the building, its counts, **Edit hospital** (not built yet) and **Simulate attacks**. A dashed **Add hospital** row opens **Upload JSON** (up to 2 MB, validated in the browser, then again in the server reducer).
 - Every error is listed with its JSON path, and nothing loads from an invalid file.
 - A valid file shows a summary, then **Start session**.
 - Unknown fields are rejected, and patients are counts with no identity fields.
@@ -151,6 +151,12 @@ See [Out of Scope](#out-of-scope).
 
 Click a device to make it patient zero, then press **Run**. The simulation runs in SpacetimeDB (see [Simulation in SpacetimeDB](#simulation-in-spacetimedb)), and every laptop renders the same live state.
 
+**Several runs per session, each monitored separately.** A session holds any number of baseline runs, each started from a different machine (patient zero). Anyone in the session can press **+ New run**, pick a device, and start one: "Run 1 · MRI 2" by Maya, "Run 2 · HVAC controller" by Dev, "Run 3 · Imaging WS 1" by Jo. Runs can be running at the same time, each on its own clock.
+
+- Every run keeps its own rows (device, service and patient state, spread attempts, events, snapshots), its own timeline, notes and dashboard numbers. Nothing is merged across runs in the simulation.
+- The **runs strip** above the timeline has one tab per run: the run number and patient zero, then who started it and its status ("settles T+4:30" once it has settled). Selecting a tab shows that run in the scene, dashboard and timeline. While following the presenter, you see the run the presenter selected.
+- All the runs are the agents' context: **Create segmentation plan** hands every run to the agents, which must find one plan that contains all of them (7.4).
+
 What judges see each tick (one tick is 15 simulated minutes; at 1× a tick lasts 1 second):
 
 | Element | Visual |
@@ -162,18 +168,18 @@ What judges see each tick (one tick is 15 simulated minutes; at 1× a tick lasts
 | Patients | Figures change color and get badges: a clock for delayed, "!" for disrupted. ER diversion turns arriving ambulances around at the entrance |
 | Event toasts | A short label anchored at the device in 3D ("PACS compromised"), also logged in the event feed |
 | Camera | On the demo hospital, the camera follows the front of the infection, then pulls back to a wide shot. Anyone can take over with the mouse |
-| Dashboard | Patients affected (delayed, disrupted, diverted) as the headline number, then devices compromised, services down, delayed procedures, and choke points, all counting up live |
-| Timeline | A scrubber with event markers ("PACS falls") and a thin heat strip showing infected count over time |
+| Side column | Devices infected as the headline number (`/ 48`, share, bar), services offline with one pip per service, then **Relevant systems down**, newest first: each down service with the devices behind it, what stops working, and how many patients depend on it; ER diversion too |
+| Timeline | The selected run's clock as time since it started (`T+1:15`), a scrubber with event markers ("PACS falls") and note markers (▼), a segmented heat strip showing infected count over time, and the end label "Settles T+4:30" once the run has settled |
 
-Playback controls: play, pause, step, speed (0.5×, 1×, 2×, 4×), reset, and scrub. The presenter controls playback for everyone.
+Playback controls, per run: back to start, play/pause, forward 15 minutes, speed (0.5×, 1×, 2×, 4×), and **Add note**. The presenter and the person who started a run control that run; everyone else watches it. Presence avatars sit at the end of the rail (`+N` past three).
 
-### 7.4 Create an aggregate fix (agents talk)
+### 7.4 Create a segmentation plan (agents talk)
 
 **Simulation and agent rounds are separate.** While a visible run is `running`, agents do not message each other; the Agent Room stays idle (or shows the last finished round only). Fast `hippo-sim` test runs inside an agent round are not shown in the 3D scene.
 
-When the human is ready — after the baseline attack has finished or been paused — they press **Create aggregate fix**. That writes `defend_request` and starts one negotiation round (see [The Agents](#the-agents)). The agents read the **completed baseline run** (infected devices, services down, active challenges), not live ticks. The point of this feature is that judges can follow the agents' reasoning as a conversation without it overlapping the spreading attack.
+When the humans are ready — after the baseline runs have finished or been paused — they press **Create segmentation plan**. That writes `defend_request` and starts one negotiation round (see [The Agents](#the-agents)). The agents receive **every baseline run in the session** as context (each run's patient zero, seed, infected devices, services down, and active challenges), not live ticks. The segmentation plan is one segmentation plan that has to contain all of those attacks at once, so a plan that stops the MRI 2 run but lets the HVAC controller run through fails. The point of this feature is that judges can follow the agents' reasoning as a conversation without it overlapping the spreading attacks.
 
-**Create aggregate fix** is disabled while a visible run is `running`. It does not fire automatically when a run ends.
+**Create segmentation plan** is disabled while any visible run in the session is `running`. It does not fire automatically when a run ends.
 
 **The Agent Room** (right panel, Agents tab; expands to a large overlay with one click):
 
@@ -212,9 +218,9 @@ When the human is ready — after the baseline attack has finished or been pause
   - an unidentified device appears on the network in Imaging (`unknown_device_imaging`, the demo preset);
   - a vendor remote-access link to MRI 3 (`vendor_link_mri3`);
   - a device marked vulnerable (`mark_vulnerable_ehr`).
-- The change appears in 3D (the new device drops in, outlined, marked "Unidentified"). Nothing starts an agent round until the human presses **Create aggregate fix** again.
+- The change appears in 3D (the new device drops in, outlined, marked "Unidentified"). Nothing starts an agent round until the human presses **Create segmentation plan** again.
 
-**Done well:** the human challenges the agreed policy, creates a new aggregate fix, the agents pause to ask a human if needed, adapt, and the solution view updates.
+**Done well:** the human challenges the agreed policy, creates a new segmentation plan, the agents pause to ask a human if needed, adapt, and the solution view updates.
 
 ### 7.6 See the solution
 
@@ -243,7 +249,7 @@ When the human is ready — after the baseline attack has finished or been pause
 
 ## The Agents
 
-Four independent Fetch.ai **uAgents**, registered on **Agentverse**, talk to each other with typed messages when a human starts an **aggregate fix** round. **Watchers** connect them to the live SpacetimeDB world (see [Watchers](#watchers)), so every message is stored and every laptop sees the conversation as it happens. They do not talk during a visible simulation run.
+Four independent Fetch.ai **uAgents**, registered on **Agentverse**, talk to each other with typed messages when a human starts an **segmentation plan** round. **Watchers** connect them to the live SpacetimeDB world (see [Watchers](#watchers)), so every message is stored and every laptop sees the conversation as it happens. They do not talk during a visible simulation run.
 
 Agents decide with code and explain with Claude. Every accept, reject, or question is computed from the inventory, simulation results, and constraints. Claude writes the text in plain language.
 
@@ -268,15 +274,15 @@ Agents decide with code and explain with Claude. Every accept, reject, or questi
 | `Answer` | question id, author, role, choice |
 | `Recommendation` | policy, test result, verdicts, explanation, required roles |
 
-**Round** (one **aggregate fix** attempt):
-0. A human presses **Create aggregate fix** (`defend_request`). The round watcher wakes the Sign-off Coordinator with the latest completed baseline run and active challenges.
-1. The Inventory Agent checks the infection path and sends `Question`s for anything unidentified.
-2. The Coordinator asks the Flow Agent for a proposal. The Flow Agent asks the optimizer and tests the candidate with `hippo-sim`.
-3. The Clinical Workflow and Inventory agents return verdicts.
+**Round** (one **segmentation plan** attempt):
+0. A human presses **Create segmentation plan** (`defend_request`). The round watcher wakes the Sign-off Coordinator with **every baseline run in the session** (each run's id, patient zero, seed and challenges). The Coordinator runs a `hippo-sim` baseline for each.
+1. The Inventory Agent checks every run's infection path and sends `Question`s for anything unidentified.
+2. The Coordinator asks the Flow Agent for a proposal. The Flow Agent asks the optimizer with the union of the runs' infected sets, and tests the candidate with `hippo-sim` **once per run** (same patient zero and seed as that run).
+3. The Clinical Workflow and Inventory agents return verdicts. A candidate is judged on every run: it is rejected if any run breaks a protected flow or keeps a critical service down past `MAX_SERVICE_LOSS`.
 4. The Coordinator adds each rejection's constraint and asks the Flow Agent to revise.
 5. If a question is open, the round pauses (`waiting_for_human`) until a human answers, then resumes.
 
-The round ends when both guardians accept, or after `MAX_ROUNDS = 4`. The Coordinator attaches the required roles and publishes the recommendation (the **aggregate fix** as one or more recommendation cards).
+The round ends when both guardians accept, or after `MAX_ROUNDS = 4`. The Coordinator attaches the required roles and publishes the recommendation (the **segmentation plan** as one or more recommendation cards). A recommendation's verified numbers are per run (with and without the plan), plus their total.
 
 **Human approval:** agents create and test policies only inside the simulation. Nothing reaches a real network. Approval and export are human actions.
 
@@ -293,7 +299,7 @@ The simulation is the live, shared world. It runs inside the SpacetimeDB module,
 - A candidate's numbers from `hippo-sim` always equal what the visible run shows.
 
 **How a visible run works:**
-- `run_start` creates a `run` row: hospital, seed, patient zero, policy (or none), challenge set, speed. It writes tick 0.
+- `run_start` creates a `run` row: hospital, seed, patient zero, policy (or none), challenge set, speed, its number in the session, and who started it. It writes tick 0. A session can hold many baseline runs; each is independent and keyed by its run id.
 - A **scheduled reducer**, `run_tick`, fires every `TICK_MS / speed`. It advances one tick using the seeded RNG state stored on the run, and writes:
   - `device_state` (infected, infected at tick, infected by);
   - `service_state`;
@@ -301,7 +307,8 @@ The simulation is the live, shared world. It runs inside the SpacetimeDB module,
   - `spread_attempt` rows (from, to, success), which drive the pulses and fizzles;
   - `sim_event` rows (e.g. "PACS compromised").
 - Each tick also appends a compact `tick_snapshot`, so scrubbing and replay read history without re-running.
-- Pause, speed, step, and reset are reducers. Only the presenter can call them while others are following.
+- Pause, speed, step, and reset are reducers, per run. Only the presenter and the run's starter can call them.
+- Each running run (or solution pair) has its own `tick_timer` row, so several runs advance at the same time without affecting each other. When a run settles, its `settled_at_tick` is recorded for the "settles T+h:mm" label.
 - The solution view starts two runs with a shared `pair_id`. `run_tick` advances both in the same reducer call, so they stay in lockstep.
 
 **Spread model:**
@@ -341,14 +348,14 @@ A **watcher** is a long-running SpacetimeDB client. It subscribes to specific ta
 
 | Watcher | Subscribes to | Does |
 |---|---|---|
-| **Round watcher** | `defend_request` only | Wakes the Sign-off Coordinator uAgent to start a round (`start_round`) or reassess after a new challenge (`reassess`). Does **not** subscribe to `run` completion |
+| **Round watcher** | `defend_request` only | Wakes the Sign-off Coordinator uAgent to start a round (`start_round`, with every baseline run in the session) or reassess after a new challenge (`reassess`). Does **not** subscribe to `run` completion |
 | **Answer watcher** | `question` (answer set) | Sends the `Answer` to the Coordinator, which resumes the round |
 | **Message relay** | — (receives from uAgents) | Every message a uAgent sends or receives is written to `agent_message` through `agent_message_add`. The UI animates it from there |
 | **Status relay** | — (receives from uAgents) | Writes each agent's live status (idle, thinking, speaking, waiting) to `agent_status`, which drives the Agent Room nodes |
 
 - Watchers run in one Node process, `apps/watcher`, using the SpacetimeDB TypeScript SDK. They connect with the server identity stored in the module's `config` table, and only that identity can call the server-only reducers.
 - **Agent-to-agent traffic still goes over Fetch.ai** (uAgents messaging via Agentverse). The relay mirrors it into SpacetimeDB, so the conversation is persistent and visible.
-- **Agents read baseline run outcomes through the watcher** when a round starts (device, service, and challenge state from the run the human chose for the aggregate fix). They do not subscribe to live `run_tick` updates during a spreading attack.
+- **Agents read baseline run outcomes through the watcher** when a round starts (device, service, and challenge state from every baseline run in the session). They do not subscribe to live `run_tick` updates during a spreading attack.
 
 ---
 
@@ -448,22 +455,23 @@ The full system (tokens, components, usage rules) is the **Hippocra.tech design 
 | Hairline / control border | `#24282B` / `#3E4448` | Rules between cells; button and input borders |
 | Ink / muted / faint | `#E9ECEE` / `#A1A8AE` / `#7D858B` | Text; also the monochrome selection fill |
 | Healthy device | `#4DB0FF` | Uninfected; kept connections in the solution view |
-| Infected device | `#FF6A2E` | Infected devices, spread pulses, room tint |
+| Infected device | `#FF6A2E` | Infected devices, spread pulses, room tint, the **Create segmentation plan** button |
+| Patient zero | `#FF3B3B` + ink ring | The device a run started from |
 | Patient OK | `#DDE4EA` | Figures |
 | Patient delayed | `#FFC53D` + ◷ badge | Delayed |
 | Patient disrupted | `#FF4778` + "!" / "↩" badge | Disrupted, diverted |
 | Segment zone | `#B08CFF` | Zones, proposed cuts |
 | Cut connection | `#6B7378`, dashed + ✕ | Cut connections |
 
-- Chrome is monochrome. Selection, primary buttons, active tabs and presenter controls use ink (`#E9ECEE`) with graphite text. There is no hue accent, so nothing in the chrome can be mistaken for a state.
+- Chrome is monochrome. Selection, primary buttons, active tabs and presenter controls use ink (`#E9ECEE`) with graphite text. There is no hue accent, so nothing in the chrome can be mistaken for a state. The one exception is **Create segmentation plan**, filled with infected orange as the answer to the spread on screen.
 - State colors are luminous "monitor traces" and appear only on devices, patients, arcs, zones and spread effects. Use blue and orange, never red and green, and always pair color with a badge or shape.
 - Surfaces: hairline grid. 1px borders, 4px panel radius, 2px control radius, no shadows except the Agent Room overlay and join modal.
-- Fonts: Hanken Grotesk for words and big numbers (weights 300/400/500; readouts are light 300), IBM Plex Mono for numbers, ids, controls and uppercase captions.
+- Fonts: Hanken Grotesk for words and big numbers (weights 300/400/500; readouts are light 300), IBM Plex Mono for numbers, ids, controls and uppercase captions (11px minimum).
 - Before/after numbers: the old value small, struck and faint, then an arrow, then the new value large and light ("~~212~~ → 9").
 - 3D scene: matte graphite clay (slabs `#1D2023`, walls `#2A2E32`, edges `#3C4247`, ground `#111315`), low soft light. Nothing is emissive except infection.
 - **Agents:** each has a neutral node and an icon (Inventory: tag; Flow: network; Clinical Workflow: heartbeat line; Coordinator: checklist). Status is shown by form (faint, breathing dots, solid ring, dashed ring). Message particles use one shape per type (proposal ◆, accept ●, reject ✕, revision ↻, question ?), so type never depends on color alone.
 - **Motion budget:** spread pulses, device flashes, room tints, agent message particles, the camera follow, and the split-screen replay. Nothing else animates. It breathes: infected devices pulse at 60 bpm (sine in-out), pulses travel eased over the tick, flashes settle over 600 ms.
-- Lead with the human number. Never write "deaths," "lives," "fatal," or "mortality."
+- On the simulation view, devices infected leads and each down system names the patients who depend on it; elsewhere, patients affected leads. Never write "deaths," "lives," "fatal," or "mortality."
 - The memo page prints on the design system's Paper theme.
 
 ---
@@ -475,8 +483,9 @@ SpacetimeDB tables (in `spacetime/`):
 ```
 session         { id, hospital, hospitalSummary, presenterId, activeRunId, challenges[],
                   roundState: idle|running|waiting_for_human|done, memo { draft, status, approvedBy } }
-run             { id, sessionId, pairId?, seed, rngState, patientZero, policyId?, challenges[],
-                  tick, status: running|paused|done, speed, startedAt }
+run             { id, sessionId, number, pairId?, seed, rngState, patientZero, policyId?, challenges[],
+                  tick, status: running|paused|done, speed, startedBy, startedByName, startedAt,
+                  settledAtTick? }
 device_state    { runId, deviceId, infected, infectedAtTick?, infectedBy? }
 service_state   { runId, serviceId, down, downSinceTick? }
 patient_state   { runId, groupId, state }
@@ -491,11 +500,12 @@ question        { sessionId, round, agent, targetId, text, choices[], allowedRol
 recommendation  { sessionId, round, name, rules[], explanation, diff, verified { … },
                   agentVerdicts[], requiredRoles[], status: draft|ready }
 review          { sessionId, recommendationId, role, author, verdict, reason, createdAt }
-defend_request_log { sessionId, runId, patientZero, seed, challenges[], requestedBy, createdAt }
+defend_request_log { sessionId, runs[{ runId, patientZero, seed, challenges[] }], requestedBy, createdAt }
 config          { serverIdentity }
 ```
 
-- `defend_request_log` holds one row per **Create aggregate fix** press (the `defend_request` reducer; a table can't share a reducer's name). The round watcher wakes the Coordinator on each new row.
+- `defend_request_log` holds one row per **Create segmentation plan** press (the `defend_request` reducer; a table can't share a reducer's name), listing every baseline run in the session at that moment. The round watcher wakes the Coordinator on each new row.
+- `session.activeRunId` is the run the presenter has selected in the runs strip. Baseline runs are the session's runs with no `pairId` and no policy.
 - In the module, `session.roundState` is the columns `round_state`, `round` and `round_detail` (the Coordinator's detail, or a watcher error to show). `agent_message` also stores `direction` (sent or received), `reasonSource` and `fixture` (AGENT_NOTES.md "Relay rows").
 
 - `recommendation.status` is written only by the `review_submit` reducer.
@@ -555,7 +565,7 @@ When two laptops show the same spreading attack, the shared contracts are frozen
 2. The agents finish one round with a rejection and a revision, visible in the Agent Room.
 3. The solution view shows the split-screen replay containing the attack.
 4. Approval and export work. Record the first demo video.
-5. The new-challenge beat works: human adds a challenge, presses **Create aggregate fix** again, including the human question.
+5. The new-challenge beat works: human adds a challenge, presses **Create segmentation plan** again, including the human question.
 
 **If behind, cut in this order:**
 1. The 3D key-equipment models (keep boxes).
@@ -574,12 +584,12 @@ The brief's script runs **3:00**. The official guide says about **2 minutes**. F
 
 1. **(0:00–0:30) The hospital.** The 3D hospital, everything healthy and blue. "[Quote from the hospital IT/biomed person.] One bad rule can stop scans reaching radiologists, so hospitals don't segment."
 2. **(0:30–1:00) The attack.** Infect MRI 2. Pulses race along the links, devices flash orange, PACS falls ("Radiology reading offline"), and the camera follows the infection across both floors. Ambulances turn away at the ER. "212 patients affected." *(Placeholder: use the real number.)*
-3. **(1:00–1:40) The aggregate fix.** The run finishes. Press **Create aggregate fix** and open the Agent Room. Messages fly between the agents:
+3. **(1:00–1:40) The segmentation plan.** The run finishes. Press **Create segmentation plan** and open the Agent Room. Messages fly between the agents:
    - the Flow Agent proposes, and the cut lines flash in the building;
    - the Clinical Workflow Agent **rejects** it, and MRI → PACS glows "keep: scans to radiologists";
    - the Flow Agent's test result lands in the thread, and it revises.
 4. **(1:40–2:20) The solution.** Press **Show the solution**. On the split screen, the left side spreads everywhere while the right side stops at the purple zone edge, tick for tick. "212 → 9 patients affected. Every protected flow still working." *(Placeholder.)*
-5. **(2:20–3:00) A new challenge.** An unidentified device drops into Imaging. Press **Create aggregate fix** again. The Inventory Agent pauses: "Is this a workstation or a scanner?" Clinical engineering answers on the second laptop. The agents resume, update the plan, and route it to Security and Clinical engineering, who both approve. Export. "Agents do the homework. Humans decide."
+5. **(2:20–3:00) A new challenge.** An unidentified device drops into Imaging. Press **Create segmentation plan** again. The Inventory Agent pauses: "Is this a workstation or a scanner?" Clinical engineering answers on the second laptop. The agents resume, update the plan, and route it to Security and Clinical engineering, who both approve. Export. "Agents do the homework. Humans decide."
 
 **Backup:** a recorded run, plus a cached agent round for the demo seed.
 
@@ -647,6 +657,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 |---|---|
 | Oct 23, 2026 | User requested `claude_instructions/IMPLEMENTATION.md` and scoped it to research-intensive work. Standalone deterministic Python `engine/` implements causal propagation, service dependencies and research protocols as a **separate backtest/validation tool** (not the live run engine; rule 3's `sim-core` stays authoritative). Its CLI is `hippo-backtest` to avoid colliding with the agents' `hippo-sim`. No SpacetimeDB integration is claimed. |
 | Oct 24, 2026 | **SpacetimeDB module is TypeScript** (2.13), sharing `packages/sim-core` with `hippo-sim`. Verified on a local server: live runs match `sim-core` tick for tick, and two clients stay in sync |
+| Oct 24, 2026 | **Final design canvas adopted for Load and Simulation.** Devices infected leads on the simulation view (patients stay in each down system and lead elsewhere); the button is **Create segmentation plan**, filled orange; patient zero gets `#FF3B3B`; Load lists My hospitals; demo steps, the service tiles and the inspector panel are gone (a hover card replaces the inspector) |
 | Oct 22, 2026 | Product name **Hippocra.tech**; upload in scope; one simulation engine |
 | Oct 23, 2026 | Collaborative review; human approval gate; table judging with the whole team present |
 | Oct 23, 2026 | Sponsor tracks: Fetch.ai, Armadin, Microsoft, Factory, Anthropic, SpacetimeDB. All others dropped |
@@ -660,8 +671,11 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 24, 2026 | **Design system adopted (supersedes the template's look).** Clinical instrument on graphite; monochrome chrome replaces the teal accent, which read too close to healthy blue; state colors retuned as monitor traces (same meanings); Hanken Grotesk + IBM Plex Mono; hairline grid surfaces; breathing motion. Layout unchanged |
 | Oct 23, 2026 | **Factory Droid dropped.** The Flow Agent tests candidates with `hippo-sim` directly. `/api/droid` and the Factory sponsor track are removed |
 | Oct 23, 2026 | `implementation-steps.md` removed. The build plan lives in this spec, plus the owner and file map in `hippocratech/CODE_REFERENCE.md` |
+| Oct 24, 2026 | **Several runs per session, all given to the agents.** Anyone can start a run from a different machine (**+ New run**); each is monitored separately (own rows, timeline, notes, numbers, runs-strip tab with who started it and when it settles). **Create segmentation plan** hands every baseline run to the agents, which must find one plan that contains all of them; candidates are tested with `hippo-sim` once per run. Changes `StartRound`, `ProposalRequest`, test results and `defend_request_log` (see AGENT_NOTES.md) |
+| Oct 24, 2026 | **Timeline notes.** `annotation` gains `kind: note` and `tick`; anyone in the session can pin free text (≤ 280 chars) to a moment of the active run, shared live. Notes are for people; agents don't read them |
+| Oct 24, 2026 | **Join by name only.** The people joining are real people; the join modal asks no role. Everyone joins with the same role (`security`), so anyone can answer an agent's question. Per-role sign-off needs roles back later |
 | Oct 24, 2026 | **Agent loop hooked up.** Tables in `spacetime/src/schema.ts`; agent reducers in `agents.ts`, `question.ts`, `recommendation.ts`; watchers in `apps/watcher`; the Agent Room reads the live rows. The defend table is `defend_request_log` |
-| Oct 24, 2026 | **Simulation and agent rounds decoupled.** Agents message only after the human presses **Create aggregate fix** (`defend_request`). No agent traffic during a visible run; the round watcher does not wake on run completion |
+| Oct 24, 2026 | **Simulation and agent rounds decoupled.** Agents message only after the human presses **Create segmentation plan** (`defend_request`). No agent traffic during a visible run; the round watcher does not wake on run completion |
 
 ---
 
@@ -671,8 +685,8 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 - **Watcher.** A long-running SpacetimeDB client that subscribes to tables and acts when rows change.
 - **Reducer.** A SpacetimeDB server function. A **scheduled reducer** runs on a timer; `run_tick` advances the simulation.
 - **Visible run.** A simulation run inside SpacetimeDB that everyone watches. A **test run** is a fast `hippo-sim` run the agents use, never animated.
-- **Aggregate fix.** The combined segmentation plan the agents negotiate in one round, published as recommendation card(s). Started only when a human presses **Create aggregate fix**.
-- **Round.** One aggregate-fix cycle: inventory check, proposal, test run, verdicts, constraints, and revision, pausing for human answers when needed.
+- **Segmentation plan.** The combined segmentation plan the agents negotiate in one round, published as recommendation card(s). Started only when a human presses **Create segmentation plan**.
+- **Round.** One segmentation-plan cycle: inventory check, proposal, test run, verdicts, constraints, and revision, pausing for human answers when needed.
 - **Constraint.** What a rejecting agent requires: keep a flow, keep a service, confirm a device, stay under a rule count.
 - **Question.** An agent asking a human for a fact it can't compute, usually what an unidentified device is.
 - **Agent Room.** The UI that shows the agents as nodes, their messages in flight, and the conversation thread.

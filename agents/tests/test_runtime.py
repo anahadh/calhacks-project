@@ -191,6 +191,10 @@ def test_profiles(name):
     p = runtime.PROFILES[name]
     assert agent.name == p.name and p.handle == f"hippocratech-{name.replace('_', '-')}"
     assert agent._handle == p.handle and agent._description == p.description and agent._publish_agent_details
+    # Agentverse refuses the mailbox connect when these are over its limits.
+    from uagents_core.registration import RegistrationRequest
+    limit = lambda field: next(m.max_length for m in RegistrationRequest.model_fields[field].metadata if hasattr(m, "max_length"))
+    assert len(p.name) <= limit("name") and len(p.handle) <= limit("handle"), (p.name, p.handle)
     readme = agent._readme
     for must in ("## Messages", "Code decides", "Claude (Anthropic) writes only", "## Humans decide", "synthetic"):
         assert must in readme, (name, must)

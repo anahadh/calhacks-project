@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
-import { finalOf, notFinalYet } from "@/features/flow/final";
 import { RecommendationCard } from "@/features/policy/card-body";
 import { showBlocker } from "@/features/solution/pair";
 import { AgentIcon } from "./agent-icon";
 import { AGENTS, MESSAGE_SHAPE, SPEAKER_NAME } from "./agents";
 import { DefendButton } from "./defend-button";
-import { RevealClock } from "./reveal";
 
 // The Agents tab: who the agents are, what they are saying, and what comes
 // out of the round. Renders agent_message, agent_status, question and
@@ -23,6 +19,13 @@ export function AgentRoom({ session, index }: { session: SessionSnapshot; index:
       <Recommendations session={session} index={index} />
     </div>
   );
+}
+
+/** Patients affected on the active visible run right now. Read from patient_state rows. */
+function currentAffected(session: SessionSnapshot, index: SessionIndex): number {
+  return session.hospital.patients
+    .filter((g) => (index.patientState.get(g.id) ?? "ok") !== "ok")
+    .reduce((a, g) => a + g.count, 0);
 }
 
 const STATUS: Record<AgentStatusRow["status"], { label: string; cls: string }> = {
@@ -69,61 +72,32 @@ function AgentList({ session }: { session: SessionSnapshot }) {
         <div className="eyebrow">Humans in the session</div>
         <ul className="mt-2 space-y-1.5">
           {session.presence.map((p, i) => (
-            <li key={`${p.name}:${i}`} className="flex items-center gap-2 text-[12px]">
+            <li key={`${p.name}-${i}`} className="flex items-center gap-2 text-[12px]">
               <span className="grid h-5 w-5 place-items-center rounded-full bg-panel2 font-disp text-[10px] font-bold text-ink-muted">
                 {p.name[0]}
               </span>
               <span>{p.name}</span>
-              <span className="num ml-auto text-[10px] text-ink-faint">{ROLE_LABEL[p.role]}</span>
             </li>
           ))}
         </ul>
         <div className="mt-3">
           <DefendButton session={session} />
         </div>
+        <button className="num mt-2 w-full rounded-[7px] border border-accent px-3 py-2.5 text-[11.5px] font-semibold text-accent transition hover:bg-accent/10">
+          Skip to result
+        </button>
       </div>
     </div>
   );
 }
 
-/**
- * The messages this tab shows now, paced no faster than one per 1.2 s (UX rule 5,
- * reveal.ts), how many are still to come, and a way to show them all at once.
- */
-function useRevealed(all: readonly AgentMessageRow[]) {
-  const clock = useRef<RevealClock>();
-  if (!clock.current) clock.current = new RevealClock();
-  const [, redraw] = useState(0);
-  const c = clock.current;
-  const now = performance.now();
-  c.observe(all.map((m) => m.seq), now);
-  const next = c.nextAt(now);
-  useEffect(() => {
-    if (next === undefined) return;
-    const id = setTimeout(() => redraw((n) => n + 1), Math.max(0, next - performance.now()) + 16);
-    return () => clearTimeout(id);
-  }, [next]);
-  return {
-    messages: all.filter((m) => c.shown(m.seq, now)),
-    waiting: c.waiting(now),
-    showAll: () => {
-      c.flush(performance.now());
-      redraw((n) => n + 1);
-    },
-  };
-}
-
 function Negotiation({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
-  const { roundState } = session;
-  // Only what has been revealed counts below, so no number runs ahead of the thread.
-  const { messages, waiting, showAll } = useRevealed(session.messages);
+  const { roundState, messages } = session;
   const thinking = session.agentStatus.find((s) => s.status === "thinking");
   const rounds = [...new Set(messages.map((m) => m.round))];
   const lastTest = [...messages].reverse().find((m) => m.tested)?.tested;
   const constraints = messages.filter((m) => m.constraint).length;
-  // The baseline run's own column (the run row), never summed in the browser,
-  // and only once the run is done: a paused baseline's column is its current step's.
-  const baseline = finalOf(session.activeRun)?.patientsAffected;
+  const baseline = currentAffected(session, index);
 
   return (
     <div className="panel">
@@ -140,14 +114,14 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
       )}
       {messages.some((m) => m.fixture) && (
         <p className="num border-b border-line px-3.5 py-1.5 text-[10px] text-ink-faint">
-          Test numbers in this round come from fixture files, not the engine.
+          Test numbers in this round come from fixture files, not hippo-sim.
         </p>
       )}
 
       <div className="scroll-quiet max-h-[520px] overflow-y-auto px-3.5 py-2">
-        {!session.messages.length && (
+        {!messages.length && (
           <p className="num py-6 text-center text-[11px] text-ink-faint">
-            No agent messages yet. Agents stay idle while the attack runs; press Create aggregate fix when it has finished or is paused.
+            No agent messages yet. Agents stay idle while the attack runs; press Create segmentation plan when it has finished or is paused.
           </p>
         )}
         {rounds.map((r) => (
@@ -160,16 +134,6 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
               ))}
           </div>
         ))}
-        {waiting > 0 && (
-          <div className="num flex items-center gap-2 py-2.5 text-[10.5px] text-ink-faint">
-            <span>
-              {waiting} more message{waiting === 1 ? "" : "s"} coming, one at a time
-            </span>
-            <button onClick={showAll} className="ml-auto rounded border border-line2 px-2 py-0.5 text-ink-muted transition hover:border-accent hover:text-ink">
-              Show all now
-            </button>
-          </div>
-        )}
         {thinking && (
           <div className="num flex items-center gap-2 py-3 text-[10.5px] text-ink-faint">
             <AgentIcon who={thinking.agent} size={20} />
@@ -183,10 +147,7 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
         <PlanCell label="Patients affected">
           {lastTest ? (
             <>
-              {lastTest.patientsAffected}{" "}
-              <small className="text-[11px] font-medium text-ink-faint">
-                {baseline !== undefined ? `was ${baseline}` : `baseline ${notFinalYet(session.activeRun)}`}
-              </small>
+              {lastTest.patientsAffected} <small className="text-[11px] font-medium text-ink-faint">was {baseline}</small>
             </>
           ) : (
             "—"
@@ -257,9 +218,6 @@ function PlanCell({ label, children }: { label: string; children: React.ReactNod
 
 function Recommendations({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   const recs = session.recommendations.slice(0, 3);
-  // Compared with the baseline's result only once the baseline has finished playing.
-  const baseline = finalOf(session.activeRun)?.patientsAffected;
-  const baselineNote = baseline === undefined ? `baseline ${notFinalYet(session.activeRun)}` : undefined;
   return (
     <div className="panel">
       <div className="panel-h">
@@ -272,20 +230,27 @@ function Recommendations({ session, index }: { session: SessionSnapshot; index: 
         <RecommendationCard
           key={rec.id}
           rec={rec}
-          baseline={baseline}
-          baselineNote={baselineNote}
+          baseline={currentAffected(session, index)}
           index={index}
           blocked={showBlocker(session, rec.id)}
           onShow={() => session.actions.showSolution(rec.id)}
         />
       ))}
-      {!recs.length && (
-        <p className="num p-3.5 text-[11.5px] leading-relaxed text-ink-faint">
-          {session.roundState.state === "done"
-            ? "No recommendation came out of this round."
-            : "Up to three recommendations appear here when a round ends, each with its rules, tested numbers, every agent's verdict, the roles that must sign off, and Show the solution."}
-        </p>
-      )}
+      <div className="p-3.5">
+        {!recs.length && (
+          <p className="num text-[11.5px] leading-relaxed text-ink-faint">
+            {session.roundState.state === "done"
+              ? "No recommendation came out of this round."
+              : "Up to three recommendations appear here when a round ends, each with its rules, tested numbers, every agent's verdict, and the roles that must sign off."}
+          </p>
+        )}
+        <button
+          disabled
+          className="num mt-3 w-full cursor-not-allowed rounded-[7px] border border-line2 px-3 py-2.5 text-[11.5px] font-semibold text-ink-faint"
+        >
+          Show the solution →
+        </button>
+      </div>
     </div>
   );
 }

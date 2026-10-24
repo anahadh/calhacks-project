@@ -7,6 +7,10 @@ export const SPEEDS = [0.5, 1, 2, 4] as const;
 /** Spread attempts older than this many ticks are deleted, so subscriptions stay light. */
 export const KEEP_ATTEMPT_TICKS = 2;
 export const NOTE_MAX = 140;
+/** Timeline notes are written to be read, so they get more room than focus pins. */
+export const TIMELINE_NOTE_MAX = 280;
+/** The furthest tick a timeline note may mark (the rail shows 48; runs can go longer). */
+export const TIMELINE_TICK_MAX = 10_000;
 export const ROLES = ["security", "clinical_engineering", "operations", "observer"] as const;
 export const ANNOTATING_ROLES = ["security", "clinical_engineering", "operations"] as const;
 

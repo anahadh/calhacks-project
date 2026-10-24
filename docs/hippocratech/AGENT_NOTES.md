@@ -329,6 +329,18 @@ Code makes every decision (`logic/`). Claude only puts it into words, in four pl
   - The relay accepts POSTs at `/agent_message` and `/agent_status` (see "Relay rows").
 - **Realism check on the demo story.** With MRI 2 as patient zero and MRI → PACS (DICOM) kept, the spec's spread model reaches PACS with p = 0.10 per tick, which is about 99% over 48 ticks. When real `hippo-sim` results replace the fixtures, "keep scans flowing" will likely lose PACS, and Clinical will reject it with `keep_service[svc_reading]`. The fixture `cand_keep_scans.json` assumes PACS stays clean. Lead: decide whether the demo seed, the tick count, or the story changes.
 
+## Several runs per segmentation plan (decided Oct 24, not built yet)
+
+A session can hold several baseline runs, each from a different patient zero, and **Create segmentation plan** gives the agents all of them (spec 7.3, 7.4). What has to change here:
+
+- `StartRound`: `runs: [{ runId, patientZero, seed, challenges }]` (at least one) replaces the single `runId`, `patientZero`, `seed` and `challenges`. The watcher fills it from the `defend_request_log` row.
+- The Coordinator runs one `hippo-sim` baseline per run. `ProposalRequest` carries `baselines: [{ runId, patientZero, seed, challenges, result }]`.
+- Inventory's preflight walks every run's infection path. The optimizer gets the union of the runs' infected sets.
+- Flow tests each candidate once per run. `Proposal`, `Revision` and `Recommendation` carry `testResults: [{ runId, result }]` instead of one `testResult`.
+- Clinical Workflow rejects if **any** run breaks a protected flow or keeps a critical service down past `MAX_SERVICE_LOSS` (with `unavoidable_services` worked out per run). `logic.flow.rank` ranks on the totals across runs.
+- `facts.py` and the chat summary report numbers per run plus the total. The chat command keeps one patient zero (a one-run segmentation plan).
+- Fixtures: one results file per run's patient zero, or `HIPPO_SIM_BIN`. Fixture mode still covers MRI 2 only, so a multi-run round needs real `hippo-sim`.
+
 ## Decision logic (`agents/logic/`)
 
 Pure functions; the agents only execute what they return (AGENTS.md rule 7). No network, Claude, uagents runtime, clock, or randomness, and every set-derived output is sorted (a test replays a scenario under three `PYTHONHASHSEED`s).
