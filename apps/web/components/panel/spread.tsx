@@ -16,13 +16,13 @@ export function SpreadStats({ session, index }: { session: SessionSnapshot; inde
   const down = services.filter((s) => index.serviceState.get(s.id)?.down);
 
   return (
-    <div className="panel flex flex-col gap-4 p-4">
-      <div className="flex flex-col gap-3">
+    <div className="panel flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4">
         <span className="eyebrow">Devices infected</span>
-        <div className="flex items-baseline gap-2 tabular-nums">
-          <span className="readout text-readout-l">{infected}</span>
-          <span className="readout text-readout-m text-ink-muted">/ {total}</span>
-          <span className="num ml-auto text-xs text-ink-muted">{share}%</span>
+        <div className="flex items-baseline gap-2.5 tabular-nums">
+          <span className="readout text-[64px] leading-[0.9] tracking-[-0.035em]">{infected}</span>
+          <span className="readout text-[34px] leading-none tracking-[-0.02em] text-ink-muted">/ {total}</span>
+          <span className="num ml-auto text-[13px] text-ink-muted">{share}%</span>
         </div>
         <div
           role="progressbar"
@@ -38,16 +38,16 @@ export function SpreadStats({ session, index }: { session: SessionSnapshot; inde
           />
         </div>
       </div>
-      <div className="flex items-center gap-3 border-t border-line pt-3">
+      <div className="flex items-center gap-3.5 border-t border-line pt-5">
         <span className="eyebrow flex-auto">Services offline</span>
-        <span className="num text-xs tabular-nums">
+        <span className="num text-[13px] tabular-nums">
           {down.length} / {services.length}
         </span>
-        <span aria-hidden className="flex gap-0.5">
+        <span aria-hidden className="flex gap-[3px]">
           {services.map((s) => (
             <span
               key={s.id}
-              className={`h-2 w-2 rounded-[1px] ${index.serviceState.get(s.id)?.down ? "bg-state-infected" : "bg-line2"}`}
+              className={`h-2.5 w-2.5 rounded-[1px] ${index.serviceState.get(s.id)?.down ? "bg-state-infected" : "bg-line2"}`}
             />
           ))}
         </span>
@@ -99,24 +99,21 @@ export function SystemsDown({ session, index }: { session: SessionSnapshot; inde
   return (
     <section aria-labelledby="systems-down" className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="systems-down" className="m-0 text-[15px] font-medium leading-5">Relevant systems down</h2>
-        {items.length > 1 && <span className="num text-xs text-ink-faint">Newest first</span>}
+        <h2 id="systems-down" className="m-0 text-[17px] font-medium leading-6">Relevant systems down</h2>
+        {items.length > 1 && <span className="num text-[13px] text-ink-muted">Newest first</span>}
       </div>
       {items.length === 0 ? (
         <p className="m-0 rounded-panel border border-dashed border-line px-4 py-5 text-sm text-ink-muted">
           {run ? "Every clinical service is still running." : "Nothing is down. Start a run to see what the attack takes offline."}
         </p>
       ) : (
-        <ol className="m-0 flex list-none flex-col gap-2 p-0">
+        <ol className="m-0 flex list-none flex-col gap-3 p-0">
           {items.map((it) => (
-            <li
-              key={it.key}
-              className={`flex flex-col gap-3 rounded-panel border bg-panel p-4 ${it.tick === run?.tick ? "border-line2" : "border-line"}`}
-            >
-              <div className="num flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs">
+            <li key={it.key} className="flex flex-col gap-3.5 rounded-panel border border-line bg-panel px-6 py-5">
+              <div className="num flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
                 <span className="text-ink-faint">{tickClock(it.tick)}</span>
                 {it.chip && (
-                  <span className="inline-flex items-center gap-1.5 rounded-ctl border border-state-infected/45 px-2 py-0.5">
+                  <span className="chip-down">
                     <span className="h-1.5 w-1.5 rounded-full bg-state-infected" />
                     {it.chip.label}{" "}
                     <span className="text-state-infected">
@@ -125,13 +122,13 @@ export function SystemsDown({ session, index }: { session: SessionSnapshot; inde
                   </span>
                 )}
               </div>
-              <div className="flex items-start gap-2.5">
-                <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden className="flex-none text-ink-muted">
-                  <path d="M8 3.5v6M4.6 6.2a5 5 0 1 0 6.8 0" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              <div className="flex items-start gap-3.5">
+                <svg width="18" height="22" viewBox="0 0 18 22" aria-hidden className="mt-0.5 flex-none text-ink-muted">
+                  <path d="M4 2v10a3 3 0 0 0 3 3h8M11 11l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[15px] font-medium leading-5">{it.title}</span>
-                  <span className="text-sm leading-[21px] text-ink-muted">{it.what}</span>
+                  <span className="text-[17px] font-medium leading-6">{it.title}</span>
+                  <span className="text-[15px] leading-[23px] text-ink-muted">{it.what}</span>
                 </div>
               </div>
             </li>

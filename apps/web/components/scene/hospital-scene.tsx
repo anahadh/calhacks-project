@@ -1,17 +1,27 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 import { C } from "@/lib/colors";
-import { NetworkArc, type Arc } from "./arcs";
+import { SpreadFx } from "@/features/scene/spread-fx";
+import { SpreadTracker, stoppedAt, type Toast } from "@/features/scene/spread-timing";
+import { NetworkArc, type Arc, type Vec3 } from "./arcs";
 import { FloorSlab, RoomShell } from "./building";
-import { DeviceBox } from "./devices";
+import { CHIP_LIFT, DeviceBox } from "./devices";
 import { RoomChip } from "./labels";
 import { PatientFigures } from "./patients";
-import { bounds, FLOOR_GAP, to3 } from "./space";
+import { centroid, FLOOR_GAP, roomsBounds, to3 } from "./space";
+
+// The isometric view of the design: the camera sits front-right and above the
+// building, so the slab's long edge runs upper-left to lower-right.
+const CAM_OFFSET: Vec3 = [36, 48, 58];
+const CAM_FOV = 30;
+/** drei Html scale so a 30px chip is 30px at the default camera distance: tan(fov/2) × distance. */
+const CAM_DIST = Math.hypot(...CAM_OFFSET);
+const HTML_FACTOR = Math.tan((CAM_FOV / 2) * (Math.PI / 180)) * CAM_DIST;
 
 export function HospitalScene({
   session,
@@ -28,7 +38,8 @@ export function HospitalScene({
   floorId?: string;
 }) {
   const { hospital } = session;
-  const patientZero = session.runs.find((r) => r.id === session.activeRunId)?.patientZero;
+  const run = session.activeRun ?? session.runs.find((r) => r.id === session.activeRunId);
+  const patientZero = run?.patientZero;
   const onFloor = (fid: string) => !floorId || fid === floorId;
   const shownRoom = (roomId: string) => onFloor(index.room.get(roomId)?.floorId ?? "");
   const drop = floorId ? (hospital.floors.find((f) => f.id === floorId)?.level ?? 0) * FLOOR_GAP : 0;
@@ -39,10 +50,28 @@ export function HospitalScene({
     const r = d && index.room.get(d.roomId);
     return r ? floorLevel.get(r.floorId) ?? 0 : 0;
   };
-  const devicePoint = (id: string, lift = 1) => {
-    const d = index.device.get(id)!;
-    return to3(d.position, levelOfDevice(id), lift);
+  /** Where a device's chip floats, or undefined for an id the hospital does not have. */
+  const devicePoint = (id: string, lift = CHIP_LIFT): Vec3 | undefined => {
+    const d = index.device.get(id);
+    return d ? to3(d.position, levelOfDevice(id), lift) : undefined;
   };
+
+  // When this tab saw each row land (spread-timing.ts), so paths draw in and
+  // chips pop exactly as their row arrives. Idempotent for the same rows.
+  const tracker = useRef<SpreadTracker>();
+  if (!tracker.current) tracker.current = new SpreadTracker();
+  const timing = tracker.current.observe(
+    {
+      runId: run?.id ?? "",
+      tick: run?.tick ?? 0,
+      speed: run?.speed ?? 1,
+      devices: session.devices,
+      services: session.services,
+      attempts: session.attempts,
+      events: session.events,
+    },
+    performance.now(),
+  );
 
   const roomCounts = useMemo(() => {
     const m = new Map<string, { infected: number; total: number }>();
@@ -55,77 +84,117 @@ export function HospitalScene({
     return m;
   }, [hospital.devices, index.deviceState]);
 
-  // Infection path from infected_by, plus the hovered device's own flows.
+  // Infection paths from infected_by (one per infected device), plus the hovered device's own flows.
   const arcs = useMemo<Arc[]>(() => {
     const shown = (id: string) => shownRoom(index.device.get(id)?.roomId ?? "");
-    const out: Arc[] = session.devices
-      .filter((s) => s.infected && s.infectedBy && shown(s.deviceId) && shown(s.infectedBy))
-      .map((s) => ({ key: `inf_${s.deviceId}`, from: devicePoint(s.infectedBy!), to: devicePoint(s.deviceId), kind: "infection" }));
+    const out: Arc[] = [];
+    for (const s of session.devices) {
+      if (!s.infected || !s.infectedBy || s.infectedBy === s.deviceId) continue;
+      if (!shown(s.deviceId) || !shown(s.infectedBy)) continue;
+      const from = devicePoint(s.infectedBy);
+      const to = devicePoint(s.deviceId);
+      if (!from || !to) continue;
+      out.push({ key: `inf_${s.deviceId}`, from, to, kind: "infection", since: timing.flashAt.get(s.deviceId) });
+    }
     if (hovered) {
       for (const fl of hospital.flows) {
         if (fl.active === false || (fl.from !== hovered && fl.to !== hovered)) continue;
         if (!shown(fl.from) || !shown(fl.to)) continue;
         if (out.some((a) => a.key === `inf_${fl.to}` || a.key === `inf_${fl.from}`)) continue;
-        out.push({ key: fl.id, from: devicePoint(fl.from), to: devicePoint(fl.to), kind: fl.protected ? "protected" : "flow" });
+        const from = devicePoint(fl.from);
+        const to = devicePoint(fl.to);
+        if (from && to) out.push({ key: fl.id, from, to, kind: fl.protected ? "protected" : "flow" });
       }
     }
     return out;
     // devicePoint only reads from index and floorLevel.
-  }, [session.devices, hospital.flows, hovered, index, floorLevel, floorId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.devices, hospital.flows, hovered, index, floorLevel, floorId, timing.flashAt]);
+
+  // Cut connections the infection reached but did not cross (run.removed_flows_json).
+  const stops = useMemo(() => {
+    const ids = stoppedAt(run?.removedFlows ?? [], index.flow, index.deviceState);
+    const out: { key: string; from: Vec3; to: Vec3 }[] = [];
+    for (const id of ids) {
+      const f = index.flow.get(id);
+      if (!f || !shownRoom(index.device.get(f.from)?.roomId ?? "") || !shownRoom(index.device.get(f.to)?.roomId ?? "")) continue;
+      const from = devicePoint(f.from);
+      const to = devicePoint(f.to);
+      if (from && to) out.push({ key: id, from, to });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.removedFlows, index, floorLevel, floorId]);
 
   // Down services, keyed by the room of their first device.
   const downByRoom = useMemo(() => {
     const m = new Map<string, typeof hospital.services>();
     for (const svc of hospital.services) {
       if (!index.serviceState.get(svc.id)?.down) continue;
-      const roomId = index.device.get(svc.dependsOnDevices[0])!.roomId;
+      const roomId = index.device.get(svc.dependsOnDevices[0] ?? "")?.roomId;
+      if (!roomId) continue;
       m.set(roomId, [...(m.get(roomId) ?? []), svc]);
     }
     return m;
   }, [hospital.services, index]);
 
+  // Where a sim_event toast sits: over its device, else over its room.
+  const anchor = (t: Toast): Vec3 | undefined => {
+    const d = devicePoint(t.targetId, CHIP_LIFT + 1.3);
+    if (d) return d;
+    const room = index.room.get(t.targetId);
+    return room && onFloor(room.floorId) ? to3(centroid(room.polygon), floorLevel.get(room.floorId) ?? 0, 1.2) : undefined;
+  };
+
+  // The camera looks at the middle of what is shown.
+  const shownRooms = hospital.rooms.filter((r) => onFloor(r.floorId));
+  const b = roomsBounds(shownRooms);
+  const topLevel = floorId ? 0 : Math.max(0, ...hospital.floors.map((f) => f.level));
+  const [cx, , cz] = to3([(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2], 0);
+  const target: Vec3 = [cx, (topLevel * FLOOR_GAP) / 2 + 1, cz];
+  const camera: Vec3 = [target[0] + CAM_OFFSET[0], target[1] + CAM_OFFSET[1], target[2] + CAM_OFFSET[2]];
+
   return (
     <Canvas
-      shadows
       dpr={[1, 2]}
-      camera={{ position: [4, 36, 76], fov: 34, near: 0.5, far: 400 }}
+      camera={{ position: camera, fov: CAM_FOV, near: 0.5, far: 500 }}
       onPointerMissed={() => onHover(null)}
+      gl={{ antialias: true }}
     >
       <color attach="background" args={[C.bg]} />
-      <fog attach="fog" args={[C.bg, 80, 150]} />
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[20, 40, 25]} intensity={0.9} castShadow />
-      <OrbitControls target={[0, 1, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
+      <fog attach="fog" args={[C.bg, CAM_DIST + 40, CAM_DIST + 140]} />
+      <ambientLight intensity={1} />
+      <OrbitControls
+        target={target}
+        enableDamping
+        maxPolarAngle={Math.PI / 2.05}
+        minDistance={30}
+        maxDistance={150}
+      />
 
       <group position={[0, -drop, 0]}>
-        {hospital.floors.filter((f) => onFloor(f.id)).map((f) => (
-          <FloorSlab
-            key={f.id}
-            floor={f}
-            subtitle={hospital.rooms
-              .filter((r) => r.floorId === f.id)
-              .map((r) => r.name.toLowerCase())
-              .join(", ")}
-          />
-        ))}
+        {hospital.floors.filter((f) => onFloor(f.id)).map((f) => {
+          const rooms = hospital.rooms.filter((r) => r.floorId === f.id);
+          return <FloorSlab key={f.id} floor={f} rooms={rooms} subtitle={rooms.map((r) => r.name.toLowerCase()).join(", ")} />;
+        })}
 
-        {hospital.rooms.filter((room) => onFloor(room.floorId)).map((room) => {
+        {shownRooms.map((room) => {
           const level = floorLevel.get(room.floorId) ?? 0;
           const c = roomCounts.get(room.id) ?? { infected: 0, total: 0 };
           const group = hospital.patients.find((g) => g.roomId === room.id);
           const groupState = group ? index.patientState.get(group.id) ?? "ok" : undefined;
-          const b = bounds(room.polygon);
           return (
             <group key={room.id}>
               <RoomShell room={room} level={level} infectedShare={c.total ? c.infected / c.total : 0} />
               {group && groupState && <PatientFigures room={room} level={level} count={group.count} state={groupState} />}
               <RoomChip
-                position={to3([(b.minX + b.maxX) / 2, b.maxY], level, 0.3)}
+                position={to3(centroid(room.polygon), level, 0.35)}
                 name={room.name}
                 infected={c.infected}
                 total={c.total}
                 patients={group && groupState ? { count: group.count, state: groupState } : undefined}
                 servicesDown={downByRoom.get(room.id) ?? []}
+                downAt={timing.downAt}
               />
             </group>
           );
@@ -142,6 +211,8 @@ export function HospitalScene({
               hovered={hovered === d.id}
               zero={d.id === patientZero && !!st?.infected}
               onHover={onHover}
+              flashAt={timing.flashAt.get(d.id)}
+              distanceFactor={HTML_FACTOR}
             />
           );
         })}
@@ -149,8 +220,15 @@ export function HospitalScene({
         {arcs.map((a) => (
           <NetworkArc key={a.key} arc={a} />
         ))}
-      </group>
 
+        <SpreadFx
+          pulses={timing.pulses}
+          toasts={timing.toasts}
+          stops={stops}
+          point={(id) => devicePoint(id)}
+          anchor={anchor}
+        />
+      </group>
     </Canvas>
   );
 }

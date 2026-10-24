@@ -17,6 +17,15 @@ export function tickClock(tick: number): string {
   return `T+${h}:${String(m).padStart(2, "0")}`;
 }
 
+/** The run tab's second line: "settles T+4:30" once done, else where the run is. */
+export function runStatusLabel(r: { status: string; tick: number }): string {
+  if (r.status === "done") return `settles ${tickClock(r.tick)}`;
+  if (r.status === "running") return `running · ${tickClock(r.tick)}`;
+  if (r.status === "requested") return "computing…";
+  if (r.status === "error") return "failed";
+  return `paused · ${tickClock(r.tick)}`;
+}
+
 export const ROLE_LABEL = {
   security: "Security",
   clinical_engineering: "Clinical engineering",

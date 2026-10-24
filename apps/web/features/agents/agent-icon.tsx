@@ -32,6 +32,25 @@ const PATHS: Record<Speaker, React.ReactNode> = {
   ),
 };
 
+/** The bare glyph, in currentColor. The node graph and the "now talking" pill draw it on their own backgrounds. */
+export function AgentGlyph({ who, size = 16, strokeWidth = 1.4 }: { who: Speaker; size?: number; strokeWidth?: number }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {PATHS[who]}
+    </svg>
+  );
+}
+
 export function AgentIcon({ who, size = 28 }: { who: Speaker; size?: number }) {
   return (
     <span
@@ -39,9 +58,7 @@ export function AgentIcon({ who, size = 28 }: { who: Speaker; size?: number }) {
       style={{ width: size, height: size }}
       aria-hidden
     >
-      <svg viewBox="0 0 16 16" width={size * 0.55} height={size * 0.55} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        {PATHS[who]}
-      </svg>
+      <AgentGlyph who={who} size={size * 0.55} />
     </span>
   );
 }

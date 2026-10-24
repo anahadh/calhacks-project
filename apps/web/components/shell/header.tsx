@@ -26,10 +26,10 @@ export function SessionHeader({
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg">
-      <div className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-3 px-4 py-2 md:px-6">
+      <div className="flex min-h-[72px] flex-wrap items-center gap-x-5 gap-y-3 px-6 py-2 md:px-8">
         <Brand />
-        <span aria-hidden className="h-5 w-px bg-line" />
-        <span className="min-w-0 truncate text-[15px] leading-5 text-ink-muted">{session.hospital.name}</span>
+        <span aria-hidden className="h-7 w-px bg-line2" />
+        <span className="min-w-0 truncate text-[20px] leading-6 text-ink">{session.hospital.name}</span>
 
         <nav className="ml-auto flex gap-0.5 rounded-ctl border border-line2 p-[3px]" role="tablist" aria-label="Views">
           {TABS.map((t) => (

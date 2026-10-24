@@ -41,6 +41,11 @@ export class RevealClock {
     return t !== undefined && t <= now;
   }
 
+  /** When this tab showed (or will show) a message; -Infinity for history shown at once; undefined when never observed. */
+  shownAt(seq: number): number | undefined {
+    return this.at.get(seq);
+  }
+
   /** How many observed messages are still waiting at `now`. */
   waiting(now: number): number {
     let n = 0;

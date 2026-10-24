@@ -130,7 +130,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       ) : (
         <main className="flex-grow space-y-3.5 p-4 md:p-6">
           <Counters session={session} />
-          <AgentRoom session={session} index={index} />
+          <AgentRoom session={session} index={index} onClose={() => setView("simulation")} />
         </main>
       )}
 
@@ -172,7 +172,7 @@ function PlanButton({ session, onAgents }: { session: SessionSnapshot; onAgents:
         type="button"
         onClick={press}
         disabled={(!!blocker && !negotiating) || busy}
-        className="num inline-flex min-h-[52px] w-full items-center justify-center gap-2.5 rounded-ctl bg-state-infected text-[13px] font-medium text-bg transition-[filter] duration-fade enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:border disabled:border-line2 disabled:bg-transparent disabled:text-ink-faint"
+        className="num inline-flex min-h-[60px] w-full items-center justify-center gap-2.5 rounded-panel bg-state-infected text-[15px] font-medium text-bg transition-[filter] duration-fade enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:border disabled:border-line2 disabled:bg-transparent disabled:text-ink-faint"
       >
         {negotiating ? "Watch the agents negotiate" : busy ? "Starting…" : "Create segmentation plan"}
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>

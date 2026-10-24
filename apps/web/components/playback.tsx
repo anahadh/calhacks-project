@@ -6,6 +6,7 @@ import type { RunRow, SessionActions, Speed } from "@/lib/stdb/types";
 // Play/pause, step, reset and speed for one run, or for a solution pair (any
 // run of a pair moves the whole pair). Each button calls one reducer; only the
 // presenter's buttons are live, and a follower can never move playback.
+// Styled like the timeline's transport row: square controls, a segmented speed.
 
 /** The run each control is sent to: the session's run, or a side of the pair (features/solution/pair.ts). */
 export type PlaybackTargets = Record<PlaybackControl | "speed", RunRow | undefined>;
@@ -37,16 +38,16 @@ export function PlaybackButtons({
 
   const toggle: PlaybackControl = playing ? "pause" : "play";
   return (
-    <div className="flex items-center gap-1.5">
-      <RoundButton label={playing ? "Pause" : "Play"} blocked={why(toggle)} onClick={send(toggle)} large>
-        {playing ? <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /> : <path d="M8 5v14l11-7z" />}
-      </RoundButton>
-      <RoundButton label="Step" blocked={why("step")} onClick={send("step")}>
-        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-      </RoundButton>
-      <RoundButton label="Reset" blocked={why("reset")} onClick={send("reset")}>
-        <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
-      </RoundButton>
+    <div className="flex items-center gap-2">
+      <SquareButton label="Reset" blocked={why("reset")} onClick={send("reset")}>
+        <path d="M3 3v10M13 3.5 7 8l6 4.5zM8.5 3.5 2.5 8l6 4.5z" fill="currentColor" />
+      </SquareButton>
+      <SquareButton label={playing ? "Pause" : "Play"} blocked={why(toggle)} onClick={send(toggle)} on>
+        {playing ? <path d="M4.5 3h2.5v10H4.5zM9 3h2.5v10H9z" fill="currentColor" /> : <path d="M5 3v10l8-5z" fill="currentColor" />}
+      </SquareButton>
+      <SquareButton label="Step" blocked={why("step")} onClick={send("step")}>
+        <path d="M13 3v10M3 3.5 9 8l-6 4.5zM7.5 3.5 13.5 8l-6 4.5z" fill="currentColor" />
+      </SquareButton>
     </div>
   );
 }
@@ -68,49 +69,50 @@ export function SpeedButtons({
     actions.setSpeed(s, target.id).catch((e: Error) => onError(e.message));
   };
   return (
-    <div className="flex items-center gap-1" role="group" aria-label="Speed">
+    <div className={`flex gap-0.5 rounded-ctl border border-line2 p-[3px] ${target ? "" : "opacity-disabled"}`} role="group" aria-label="Speed">
       {SPEEDS.map((s) => (
         <button
           key={s}
+          type="button"
           aria-pressed={s === target?.speed}
           disabled={!isPresenter || !target}
           title={isPresenter ? undefined : PRESENTER_ONLY}
           onClick={set(s)}
-          className={`num rounded-md border px-2 py-1 text-[10.5px] disabled:cursor-not-allowed ${
-            s === target?.speed ? "border-accent bg-accent text-bg" : "border-line2 bg-panel2 text-ink-muted"
-          } ${!target ? "opacity-40" : isPresenter ? "" : "opacity-60"}`}
+          className={`num h-9 min-w-[48px] rounded-[1px] px-2.5 text-xs disabled:cursor-not-allowed ${
+            s === target?.speed ? "bg-select font-medium text-select-on" : "text-ink-muted enabled:hover:text-ink"
+          }`}
         >
-          {s === 0.5 ? "½" : s}×
+          {s}×
         </button>
       ))}
     </div>
   );
 }
 
-function RoundButton({
+function SquareButton({
   label,
   blocked,
   onClick,
-  large,
+  on,
   children,
 }: {
   label: string;
   blocked: string | null;
   onClick: () => void;
-  large?: boolean;
+  /** The light-filled control (play). */
+  on?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
+      type="button"
       aria-label={label}
       title={blocked ?? label}
       disabled={!!blocked}
       onClick={onClick}
-      className={`grid shrink-0 place-items-center rounded-full border border-line2 bg-panel2 text-ink transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line2 ${
-        large ? "h-10 w-10" : "h-8 w-8"
-      }`}
+      className={`ctl ${on ? "ctl-on" : ""}`}
     >
-      <svg viewBox="0 0 24 24" className={large ? "h-4 w-4" : "h-3.5 w-3.5"} fill="currentColor" aria-hidden>
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
         {children}
       </svg>
     </button>

@@ -50,6 +50,7 @@ export function messagesOf(rows: Iterable<AgentMessage>): AgentMessageRow[] {
       round: m.round, seq: m.seq, from: m.fromAgent as Speaker,
       to: (m.toAgent === "relay" ? "all" : m.toAgent) as AgentMessageRow["to"],
       reason: m.reason, source: source(m.reasonSource), fixture: m.fixture,
+      createdAt: Number(m.createdAt.microsSinceUnixEpoch),
     };
     switch (m.type) {
       case "proposal_request":

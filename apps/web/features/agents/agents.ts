@@ -16,6 +16,29 @@ export const SPEAKER_NAME: Record<Speaker | "all", string> = {
   all: "all",
 };
 
+/** Full names, as the Agent Room transcript and the "now talking" pill print them. */
+export const SPEAKER_LABEL: Record<Speaker | "all", string> = {
+  inventory: "Inventory Agent",
+  flow: "Flow Agent",
+  clinical_workflow: "Clinical Workflow Agent",
+  coordinator: "Sign-off Coordinator",
+  humans: "Humans",
+  all: "everyone",
+};
+
+/**
+ * Each speaker's hue in the Agent Room: the ring on its node, its name in the
+ * transcript and the highlighted line while it talks. Humans stay ink.
+ */
+export const SPEAKER_COLOR: Record<Speaker | "all", string> = {
+  coordinator: "#3DD68C",
+  flow: "#4DB0FF",
+  inventory: "#F2C14E",
+  clinical_workflow: "#FF5C5C",
+  humans: "#E9ECEE",
+  all: "#A1A8AE",
+};
+
 // Message type never depends on color alone (UX rule 3).
 export const MESSAGE_SHAPE: Record<MessageType, { glyph: string; label: string }> = {
   request: { glyph: "▷", label: "Request" },

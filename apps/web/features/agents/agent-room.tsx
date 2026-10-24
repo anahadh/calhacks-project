@@ -1,267 +1,263 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SessionIndex } from "@/lib/stdb/use-session";
-import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
+import type { AgentMessageRow, SessionSnapshot, Speaker } from "@/lib/stdb/types";
 import { RecommendationCard } from "@/features/policy/card-body";
 import { showBlocker } from "@/features/solution/pair";
-import { AgentIcon } from "./agent-icon";
-import { AGENTS, MESSAGE_SHAPE, SPEAKER_NAME } from "./agents";
+import { AgentGlyph } from "./agent-icon";
+import { SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
 import { DefendButton } from "./defend-button";
+import { RevealClock } from "./reveal";
+import { createdMs, elapsedLabel, entryOf, statusLine, type TimedMessage } from "./transcript";
 
-// The Agents tab: who the agents are, what they are saying, and what comes
-// out of the round. Renders agent_message, agent_status, question and
-// recommendation rows only.
-export function AgentRoom({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
-  return (
-    <div className="grid items-start gap-3.5 lg:grid-cols-[280px_minmax(0,1.3fr)_minmax(0,1fr)]">
-      <AgentList session={session} />
-      <Negotiation session={session} index={index} />
-      <Recommendations session={session} index={index} />
-    </div>
-  );
-}
+/**
+ * The Agent Room: a modal over the simulation. Left, the five parties as a
+ * node graph with the line of whoever is talking lit; right, the transcript,
+ * one entry per agent_message row, revealed at a readable pace; below, the
+ * state of the round and Review recommendation. Renders agent_message,
+ * agent_status, session.round_state and recommendation rows only.
+ */
+export function AgentRoom({ session, index, onClose }: { session: SessionSnapshot; index: SessionIndex; onClose?: () => void }) {
+  const { messages, roundState, recommendations } = session;
+  const shown = useRevealed(messages);
+  const newest = shown[shown.length - 1];
+  const speaking = new Set<Speaker>(session.agentStatus.filter((s) => s.status === "speaking" || s.status === "thinking").map((s) => s.agent));
+  if (newest) speaking.add(newest.from);
+  const rec = recommendations[0];
 
-/** Patients affected on the active visible run right now. Read from patient_state rows. */
-function currentAffected(session: SessionSnapshot, index: SessionIndex): number {
-  return session.hospital.patients
-    .filter((g) => (index.patientState.get(g.id) ?? "ok") !== "ok")
-    .reduce((a, g) => a + g.count, 0);
-}
-
-const STATUS: Record<AgentStatusRow["status"], { label: string; cls: string }> = {
-  idle: { label: "Idle", cls: "bg-line text-ink-faint" },
-  thinking: { label: "Thinking", cls: "bg-accent/15 text-accent" },
-  speaking: { label: "Speaking", cls: "bg-accent/15 text-accent" },
-  waiting: { label: "Waiting", cls: "bg-ink/10 text-ink-muted" },
-};
-
-function AgentList({ session }: { session: SessionSnapshot }) {
-  const status = new Map(session.agentStatus.map((s) => [s.agent, s.status]));
-  const { roundState } = session;
+  // Without an onClose, fall back to the session view's own "1" shortcut (switches to Simulation).
+  const close = () => (onClose ? onClose() : window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", bubbles: true })));
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (onClose) onClose();
+      else window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", bubbles: true }));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
-    <div className="panel">
-      <div className="panel-h">
-        <h2>uAgents</h2>
-        <span className="num ml-auto rounded-full bg-panel2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-          Round {roundState.round} of {roundState.maxRounds}
-        </span>
-      </div>
-      <ul className="px-3.5">
-        {AGENTS.map((a) => {
-          const st = STATUS[status.get(a.id) ?? "idle"];
-          return (
-            <li key={a.id} className="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0">
-              <AgentIcon who={a.id} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-disp text-[12.5px] font-semibold">{a.name}</span>
-                  <span className={`num ml-auto rounded-full px-1.5 py-px text-[9.5px] uppercase tracking-[0.06em] ${st.cls}`}>
-                    {st.label}
-                    {status.get(a.id) === "thinking" && <Dots />}
-                  </span>
-                </div>
-                <p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{a.objective}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-[2px] md:p-8" role="dialog" aria-modal="true" aria-labelledby="agent-room-title">
+      <div className="flex h-full w-full max-w-[1760px] flex-col rounded-panel border border-line bg-panel shadow-overlay">
+        <header className="relative flex min-h-[96px] items-center justify-center border-b border-line px-6">
+          <h1 id="agent-room-title" className="text-[30px] font-normal tracking-[-0.01em] text-ink">
+            Creating a segmentation plan
+          </h1>
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Close the Agent Room"
+            className="ctl absolute right-6 top-1/2 h-14 min-w-[56px] -translate-y-1/2 text-ink"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+              <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+        </header>
 
-      <div className="border-t border-line px-3.5 py-3">
-        <div className="eyebrow">Humans in the session</div>
-        <ul className="mt-2 space-y-1.5">
-          {session.presence.map((p, i) => (
-            <li key={`${p.name}-${i}`} className="flex items-center gap-2 text-[12px]">
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-panel2 font-disp text-[10px] font-bold text-ink-muted">
-                {p.name[0]}
-              </span>
-              <span>{p.name}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-3">
-          <DefendButton session={session} />
+        <div className="grid min-h-0 flex-1 lg:grid-cols-2">
+          <section aria-label="Who is talking" className="relative min-h-[320px] border-b border-line lg:border-b-0 lg:border-r">
+            <Graph newest={newest} speaking={speaking} />
+          </section>
+
+          <section aria-label="Transcript" className="flex min-h-0 flex-col p-6">
+            <div className="flex min-h-[44px] flex-wrap items-center gap-5">
+              <span className="eyebrow">Now talking</span>
+              {newest ? (
+                <span className="inline-flex h-11 items-center gap-3 rounded-ctl border border-line2 bg-panel2 px-4 text-[17px]">
+                  <Party who={newest.from} />
+                  <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden className="text-ink-faint">
+                    <path d="M1 6h19M15 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {newest.to === "all" ? <span className="text-ink-muted">everyone</span> : <Party who={newest.to} />}
+                </span>
+              ) : (
+                <span className="num text-[13px] text-ink-faint">No one yet</span>
+              )}
+            </div>
+            <Transcript messages={shown} index={index} />
+          </section>
         </div>
-        <button className="num mt-2 w-full rounded-[7px] border border-accent px-3 py-2.5 text-[11.5px] font-semibold text-accent transition hover:bg-accent/10">
-          Skip to result
-        </button>
-      </div>
-    </div>
-  );
-}
 
-function Negotiation({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
-  const { roundState, messages } = session;
-  const thinking = session.agentStatus.find((s) => s.status === "thinking");
-  const rounds = [...new Set(messages.map((m) => m.round))];
-  const lastTest = [...messages].reverse().find((m) => m.tested)?.tested;
-  const constraints = messages.filter((m) => m.constraint).length;
-  const baseline = currentAffected(session, index);
-
-  return (
-    <div className="panel">
-      <div className="panel-h">
-        <h2>Negotiation</h2>
-        <span className="eyebrow ml-auto !tracking-[0.12em]">
-          {roundState.state === "running" ? "In progress" : roundState.state.replaceAll("_", " ")}
-        </span>
-      </div>
-      {roundState.detail && (
-        <p role="status" className="num border-b border-line px-3.5 py-2 text-[10.5px] leading-snug text-ink-muted">
-          {roundState.detail}
-        </p>
-      )}
-      {messages.some((m) => m.fixture) && (
-        <p className="num border-b border-line px-3.5 py-1.5 text-[10px] text-ink-faint">
-          Test numbers in this round come from fixture files, not hippo-sim.
-        </p>
-      )}
-
-      <div className="scroll-quiet max-h-[520px] overflow-y-auto px-3.5 py-2">
-        {!messages.length && (
-          <p className="num py-6 text-center text-[11px] text-ink-faint">
-            No agent messages yet. Agents stay idle while the attack runs; press Create segmentation plan when it has finished or is paused.
+        <footer className="flex min-h-[88px] flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-4">
+          <p role="status" className="m-0 text-[17px] text-ink-muted">
+            {statusLine(roundState, recommendations, messages.length > 0)}
+            {messages.some((m) => m.fixture) && <span className="num ml-3 text-[11px] text-ink-faint">Test numbers come from fixture files, not hippo-sim.</span>}
           </p>
-        )}
-        {rounds.map((r) => (
-          <div key={r}>
-            <div className="num pb-1 pt-3 text-[9.5px] uppercase tracking-[0.08em] text-accent">Round {r}</div>
-            {messages
-              .filter((m) => m.round === r)
-              .map((m) => (
-                <Message key={m.seq} m={m} index={index} />
-              ))}
-          </div>
-        ))}
-        {thinking && (
-          <div className="num flex items-center gap-2 py-3 text-[10.5px] text-ink-faint">
-            <AgentIcon who={thinking.agent} size={20} />
-            {SPEAKER_NAME[thinking.agent]} is thinking
-            <Dots />
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-3 gap-px border-t border-line bg-line">
-        <PlanCell label="Patients affected">
-          {lastTest ? (
-            <>
-              {lastTest.patientsAffected} <small className="text-[11px] font-medium text-ink-faint">was {baseline}</small>
-            </>
-          ) : (
-            "—"
-          )}
-        </PlanCell>
-        <PlanCell label="Constraints added">{constraints}</PlanCell>
-        <PlanCell label="Round">
-          {roundState.round} <small className="text-[11px] font-medium text-ink-faint">of {roundState.maxRounds}</small>
-        </PlanCell>
+          {rec ? (
+            <RecommendationCard rec={rec} index={index} blocked={showBlocker(session, rec.id)} onShow={() => session.actions.showSolution(rec.id)} />
+          ) : roundState.state === "idle" && !messages.length ? (
+            <div className="w-[280px]">
+              <DefendButton session={session} />
+            </div>
+          ) : null}
+        </footer>
       </div>
     </div>
   );
 }
 
-function Message({ m, index }: { m: AgentMessageRow; index: SessionIndex }) {
-  const shape = MESSAGE_SHAPE[m.type];
-  const name = (id: string) => index.device.get(id)?.name ?? id;
+/**
+ * Paces the thread: rows already there when this tab opened show at once, later
+ * rows one every REVEAL_MS in seq order (UX rule 5). Returns the rows on screen,
+ * each with the moment this tab showed it as a fallback clock.
+ */
+function useRevealed(messages: readonly AgentMessageRow[]): (TimedMessage & { revealedAt?: number })[] {
+  const clock = useRef(new RevealClock());
+  const [now, setNow] = useState(() => Date.now());
+  const seqs = messages.map((m) => m.seq).join(",");
 
-  return (
-    <div className="grid grid-cols-[22px_1fr] gap-2 border-b border-line/50 py-2 last:border-b-0">
-      <AgentIcon who={m.from} size={20} />
-      <div className="min-w-0">
-        <div className="num text-[9.5px] uppercase tracking-[0.06em] text-ink-faint">
-          <span className="text-ink">{shape.glyph}</span> {shape.label} · {SPEAKER_NAME[m.from]} → {SPEAKER_NAME[m.to]}
-        </div>
-        <p className="mt-0.5 text-[12.5px] leading-snug text-ink-muted">
-          {m.reason}
-          {m.source === "template" && <span className="num ml-1 text-[10px] text-ink-faint">(template text)</span>}
-        </p>
+  useEffect(() => {
+    const t = Date.now();
+    clock.current.observe(messages.map((m) => m.seq), t);
+    setNow(t);
+  }, [seqs]); // keyed on the seq list, so a re-rendered but unchanged thread observes nothing new
 
-        {m.constraint && (
-          <span className="num mt-1.5 inline-block rounded border border-line2 bg-panel2 px-1.5 py-0.5 text-[10px] text-ink">
-            {m.constraint.kind} · {m.constraint.targetIds.map(name).join(" → ")}
-          </span>
-        )}
-        {m.rules && (
-          <ul className="mt-1.5 space-y-1">
-            {m.rules.map((r, i) => (
-              <li key={i} className="rounded border border-line2 bg-panel2 px-2 py-1 text-[11.5px] text-ink-muted">
-                {r}
-              </li>
-            ))}
-          </ul>
-        )}
-        {m.diff && (
-          <pre className="num mt-1.5 whitespace-pre-wrap rounded border border-line2 bg-bg px-2 py-1 text-[10.5px] text-ink">
-            {m.diff.join("\n")}
-          </pre>
-        )}
-        {m.tested && (
-          <span className="num mt-1.5 inline-block rounded bg-panel2 px-1.5 py-0.5 text-[10px] text-ink-muted">
-            ✓ tested · {m.tested.patientsAffected} patients affected
-          </span>
-        )}
-      </div>
-    </div>
+  useEffect(() => {
+    const next = clock.current.nextAt(now);
+    if (next === undefined) return;
+    const id = window.setTimeout(() => setNow(Date.now()), Math.max(0, next - now));
+    return () => window.clearTimeout(id);
+  }, [now, seqs]);
+
+  return useMemo(
+    () =>
+      messages
+        .filter((m) => clock.current.shown(m.seq, now))
+        .map((m) => {
+          const at = clock.current.shownAt(m.seq);
+          return { ...m, revealedAt: at !== undefined && Number.isFinite(at) ? at : undefined };
+        }),
+    [messages, now],
   );
 }
 
-function PlanCell({ label, children }: { label: string; children: React.ReactNode }) {
+function Party({ who }: { who: Speaker }) {
   return (
-    <div className="bg-panel px-3 py-2.5">
-      <div className="eyebrow !text-[9.5px] !tracking-[0.1em]">{label}</div>
-      <div className="mt-0.5 font-disp text-lg font-semibold tabular-nums">{children}</div>
-    </div>
-  );
-}
-
-function Recommendations({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
-  const recs = session.recommendations.slice(0, 3);
-  return (
-    <div className="panel">
-      <div className="panel-h">
-        <h2>Recommendations</h2>
-        <span className="num ml-auto rounded-full bg-panel2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-          Humans approve
-        </span>
-      </div>
-      {recs.map((rec) => (
-        <RecommendationCard
-          key={rec.id}
-          rec={rec}
-          baseline={currentAffected(session, index)}
-          index={index}
-          blocked={showBlocker(session, rec.id)}
-          onShow={() => session.actions.showSolution(rec.id)}
-        />
-      ))}
-      <div className="p-3.5">
-        {!recs.length && (
-          <p className="num text-[11.5px] leading-relaxed text-ink-faint">
-            {session.roundState.state === "done"
-              ? "No recommendation came out of this round."
-              : "Up to three recommendations appear here when a round ends, each with its rules, tested numbers, every agent's verdict, and the roles that must sign off."}
-          </p>
-        )}
-        <button
-          disabled
-          className="num mt-3 w-full cursor-not-allowed rounded-[7px] border border-line2 px-3 py-2.5 text-[11.5px] font-semibold text-ink-faint"
-        >
-          Show the solution →
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Driven by an agent_status row of "thinking".
-function Dots() {
-  return (
-    <span className="ml-1 inline-flex gap-0.5 align-middle" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <span key={i} className="h-1 w-1 animate-pulse rounded-full bg-current" style={{ animationDelay: `${i * 200}ms` }} />
-      ))}
+    <span className="inline-flex items-center gap-2" style={{ color: SPEAKER_COLOR[who] }}>
+      <AgentGlyph who={who} size={16} />
+      {SPEAKER_LABEL[who]}
     </span>
+  );
+}
+
+// --- The node graph. Positions are fixed; only the rows decide what lights up. ---
+
+const NODE: Record<Speaker, { x: number; y: number; r: number }> = {
+  flow: { x: 320, y: 70, r: 38 },
+  inventory: { x: 90, y: 185, r: 38 },
+  clinical_workflow: { x: 550, y: 185, r: 38 },
+  coordinator: { x: 320, y: 300, r: 44 },
+  humans: { x: 550, y: 322, r: 38 },
+};
+const SPOKES: Speaker[] = ["flow", "inventory", "clinical_workflow", "humans"];
+
+function Graph({ newest, speaking }: { newest: AgentMessageRow | undefined; speaking: Set<Speaker> }) {
+  const from = newest?.from;
+  const to = newest?.to;
+  const lit = (a: Speaker, b: Speaker) =>
+    !!newest && ((from === a && (to === b || to === "all")) || (from === b && (to === a || to === "all")));
+  const litColor = from ? SPEAKER_COLOR[from] : SPEAKER_COLOR.coordinator;
+  // A message between two spokes (no coordinator end) gets its own lit line, since the row says so.
+  const extra = newest && from !== "coordinator" && to !== "coordinator" && to !== "all" ? [from!, to as Speaker] : undefined;
+
+  return (
+    <svg viewBox="0 0 640 400" className="absolute inset-0 h-full w-full" role="img" aria-label="Agents and humans around the Sign-off Coordinator">
+      <style>{`@keyframes agent-room-dash { to { stroke-dashoffset: -16; } }`}</style>
+      {SPOKES.map((s) => (
+        <Edge key={s} a="coordinator" b={s} lit={lit("coordinator", s)} color={litColor} />
+      ))}
+      {extra && <Edge a={extra[0]} b={extra[1]} lit color={litColor} />}
+      {(Object.keys(NODE) as Speaker[]).map((who) => (
+        <Node key={who} who={who} glow={speaking.has(who)} />
+      ))}
+    </svg>
+  );
+}
+
+function Edge({ a, b, lit, color }: { a: Speaker; b: Speaker; lit: boolean; color: string }) {
+  const p = NODE[a];
+  const q = NODE[b];
+  return (
+    <line
+      x1={p.x}
+      y1={p.y}
+      x2={q.x}
+      y2={q.y}
+      stroke={lit ? color : "#3E4448"}
+      strokeWidth={lit ? 1.5 : 1}
+      strokeDasharray={lit ? "5 5" : undefined}
+      style={lit ? { animation: "agent-room-dash 600ms linear infinite" } : undefined}
+    />
+  );
+}
+
+function Node({ who, glow }: { who: Speaker; glow: boolean }) {
+  const { x, y, r } = NODE[who];
+  const color = SPEAKER_COLOR[who];
+  const ring = who === "humans" ? "#7D858B" : color;
+  const size = who === "coordinator" ? 26 : 22;
+  return (
+    <g>
+      {glow && <circle cx={x} cy={y} r={r + 12} fill={ring} opacity={0.12} />}
+      <circle cx={x} cy={y} r={r} fill="#131618" stroke={ring} strokeWidth={1.5} />
+      <circle cx={x} cy={y} r={r} fill={ring} opacity={0.1} />
+      <g transform={`translate(${x - size / 2} ${y - size / 2})`} style={{ color: who === "humans" ? "#E9ECEE" : color }}>
+        <AgentGlyph who={who} size={size} strokeWidth={1.3} />
+      </g>
+      <title>{SPEAKER_LABEL[who]}</title>
+    </g>
+  );
+}
+
+// --- The transcript: one entry per row, newest marked, scrolled to the newest. ---
+
+function Transcript({ messages, index }: { messages: readonly (TimedMessage & { revealedAt?: number })[]; index: SessionIndex }) {
+  const list = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const el = list.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages.length]);
+
+  // The round clock starts at the first message's created_at, or when this tab first showed one.
+  const times = messages.map((m) => createdMs(m) ?? m.revealedAt);
+  const start = Math.min(...times.filter((t): t is number => t !== undefined), Infinity);
+
+  return (
+    <ol ref={list} className="scroll-quiet mt-5 min-h-0 flex-1 list-none overflow-y-auto rounded-panel border border-line bg-bg p-0">
+      {!messages.length && (
+        <li className="num px-5 py-8 text-[13px] text-ink-faint">No messages yet. The Sign-off Coordinator opens the round after Create segmentation plan.</li>
+      )}
+      {messages.map((m, i) => {
+        const e = entryOf(m, index);
+        const t = times[i];
+        const last = i === messages.length - 1;
+        return (
+          <li
+            key={m.seq}
+            className={`grid grid-cols-[88px_minmax(0,1fr)] gap-x-3 border-l-[3px] px-4 py-3 ${last ? "border-l-[#3DD68C] bg-select-wash" : "border-l-transparent"}`}
+          >
+            <span className="num pt-px text-[15px] text-ink-faint">{elapsedLabel(t === undefined || start === Infinity ? undefined : t - start)}</span>
+            <div className="min-w-0">
+              <div className="num text-[15px] leading-7">
+                <span style={{ color: SPEAKER_COLOR[m.from] }}>{SPEAKER_LABEL[m.from]}</span>
+                <span className="text-ink-faint"> → </span>
+                <span style={{ color: SPEAKER_COLOR[m.to] }}>{SPEAKER_LABEL[m.to]}</span>
+              </div>
+              <div className="num text-[15px] leading-7 text-ink">{e.subject}</div>
+              {e.detail && <div className="num text-[15px] leading-7 text-ink-muted">{e.detail}</div>}
+              {e.quote && (
+                <p className="m-0 text-[17px] leading-7 text-ink">
+                  “{e.quote}”
+                  {e.template && <span className="num ml-2 text-[11px] text-ink-faint">template text</span>}
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { MOCK_REFUSAL } from "@/features/agents/defend";
 import { recRow, runRow, withRun } from "@/features/fixtures";
 import type { Hospital, RunView, SessionSnapshot } from "@/lib/stdb/types";
-import { beforeAfter, keptWorking, pairClock, pairRefusal, pairTarget, sceneOf, showBlocker, stripPending } from "./pair";
+import {
+  beforeAfter, hullOf, keptWorking, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, showBlocker,
+  stripPending, withoutSegmentation,
+} from "./pair";
 
 describe("showBlocker", () => {
   const done = runRow({ status: "done", tick: 15, finalTick: 15 });
@@ -73,45 +76,127 @@ describe("pairClock", () => {
   });
 });
 
+const flows55 = {
+  flows: [
+    { id: "fl_1", from: "a", to: "b", protocol: "hl7" as const, port: 2575, protected: true, purpose: "Lab results to charts" },
+    ...Array.from({ length: 54 }, (_, i) => ({ id: `fl_${i + 2}`, from: "a", to: "b", protocol: "smb" as const, port: 445, protected: false })),
+  ],
+};
+
 describe("beforeAfter", () => {
-  it("copies the two run rows' summary columns, patients first", () => {
+  it("copies the two run rows' summary columns into the saved grid, with the plan's cuts and rules", () => {
     const d = beforeAfter(
-      none({ status: "done", patientsAffected: 212, devicesCompromised: 14, servicesDown: 7, delayedProcedures: 52 }),
-      plan({ status: "done", patientsAffected: 9, devicesCompromised: 1, servicesDown: 1, delayedProcedures: 0, protectedBroken: ["fl_1"] }),
-      3,
+      flows55,
+      none({ status: "done", devicesCompromised: 16, servicesDown: 7 }),
+      plan({ status: "done", devicesCompromised: 2, servicesDown: 2, protectedBroken: ["fl_1"], removedFlows: Array.from({ length: 38 }, (_, i) => `fl_${i + 1}`) }),
+      4,
     );
-    expect(d[0]).toEqual({ label: "Patients affected", before: 212, after: 9, lead: true });
-    expect(d.map((x) => [x.label, x.before, x.after])).toEqual([
-      ["Patients affected", 212, 9],
-      ["Devices compromised", 14, 1],
-      ["Services down", 7, 1],
-      ["Delayed procedures", 52, 0],
-      ["Protected flows broken", 0, 1],
-      ["Rules", 0, 3],
+    expect(d.map((x) => [x.label, x.before, x.after, x.note])).toEqual([
+      ["Devices infected", 16, 2, undefined],
+      ["Services offline", 7, 2, undefined],
+      ["Protected flows cut", 0, 1, "Lab results to charts"],
+      ["Connections", 55, 17, "4 allow rules"],
     ]);
   });
   it("leaves a side blank until its row arrives", () => {
-    const d = beforeAfter(undefined, plan({ status: "done", patientsAffected: 4 }), 2);
+    const d = beforeAfter(flows55, undefined, plan({ status: "done", devicesCompromised: 4 }), 1);
     expect(d[0]).toMatchObject({ before: undefined, after: 4 });
+    expect(d[3]).toMatchObject({ before: undefined, after: 55, note: "1 allow rule" });
   });
 
   it("leaves a side blank until its run is done, so mid-run columns never read as the result", () => {
-    // No segmentation part way through (patients 0 until its final step), the plan already finished.
-    const playing = none({ status: "running", tick: 5, finalTick: 14, patientsAffected: 0, devicesCompromised: 6 });
-    const finished = plan({ status: "done", tick: 1, finalTick: 1, patientsAffected: 26, devicesCompromised: 1, servicesDown: 1, delayedProcedures: 26 });
-    const d = beforeAfter(playing, finished, 2);
+    // No segmentation part way through, the plan already finished.
+    const playing = none({ status: "running", tick: 5, finalTick: 14, devicesCompromised: 6 });
+    const finished = plan({ status: "done", tick: 1, finalTick: 1, devicesCompromised: 1, servicesDown: 1 });
+    const d = beforeAfter(flows55, playing, finished, 2);
     expect(d.map((x) => [x.label, x.before, x.after])).toEqual([
-      ["Patients affected", undefined, 26],
-      ["Devices compromised", undefined, 1],
-      ["Services down", undefined, 1],
-      ["Delayed procedures", undefined, 26],
-      ["Protected flows broken", undefined, 0],
-      ["Rules", 0, 2],
+      ["Devices infected", undefined, 1],
+      ["Services offline", undefined, 1],
+      ["Protected flows cut", undefined, 0],
+      ["Connections", 55, 55],
     ]);
-    expect(beforeAfter(none({ status: "paused", tick: 5, finalTick: 14 }), plan({ status: "paused" }), 2)[0]).toMatchObject({
+    expect(beforeAfter(flows55, none({ status: "paused", tick: 5, finalTick: 14 }), plan({ status: "paused" }), 2)[0]).toMatchObject({
       before: undefined,
       after: undefined,
     });
+  });
+});
+
+describe("withoutSegmentation", () => {
+  it("counts the baseline's device rows infected by the plan's step when they are subscribed", () => {
+    const rows = [
+      { deviceId: "a", infected: true, infectedAtTick: 0 },
+      { deviceId: "b", infected: true, infectedAtTick: 3 },
+      { deviceId: "c", infected: true, infectedAtTick: 9 },
+      { deviceId: "d", infected: false },
+    ];
+    expect(withoutSegmentation(none({ status: "done", devicesCompromised: 3 }), rows, 5)).toBe(2);
+    expect(withoutSegmentation(none({ status: "done", devicesCompromised: 3 }), rows, 9)).toBe(3);
+  });
+  it("falls back to the baseline run's summary column without rows, and to nothing before the row", () => {
+    expect(withoutSegmentation(none({ status: "done", devicesCompromised: 16 }), [], 2)).toBe(16);
+    expect(withoutSegmentation(none(), [], 2)).toBeUndefined();
+    expect(withoutSegmentation(undefined, [], 2)).toBeUndefined();
+  });
+});
+
+describe("planFlows", () => {
+  it("splits the hospital's flows by the plan's removed_flows, skipping inactive ones", () => {
+    const hospital = {
+      flows: [
+        { id: "fl_1", from: "a", to: "b", protocol: "smb" as const, port: 445, protected: false },
+        { id: "fl_2", from: "a", to: "c", protocol: "smb" as const, port: 445, protected: false },
+        { id: "fl_3", from: "a", to: "d", protocol: "smb" as const, port: 445, protected: false, active: false },
+      ],
+    };
+    const { kept, cut } = planFlows(hospital, plan({ removedFlows: ["fl_2"] }));
+    expect(kept.map((f) => f.id)).toEqual(["fl_1"]);
+    expect(cut.map((f) => f.id)).toEqual(["fl_2"]);
+    expect(planFlows(hospital, undefined).kept.map((f) => f.id)).toEqual(["fl_1", "fl_2"]);
+  });
+});
+
+describe("segmentsOf", () => {
+  const dev = (id: string, roomId: string) => ({
+    id, roomId, type: "workstation" as const, name: id, os: "", vulnerable: false, criticality: "low" as const, vlan: 1, position: [0, 0] as [number, number],
+  });
+  const hospital: Hospital = {
+    id: "h", name: "H", flows: [], services: [], patients: [],
+    floors: [{ id: "fl_0", name: "Ground", level: 0 }, { id: "fl_1", name: "Level 1", level: 1 }],
+    rooms: [
+      { id: "r_img", floorId: "fl_0", name: "Imaging", type: "imaging", zone: "imaging", polygon: [] },
+      { id: "r_read", floorId: "fl_1", name: "Reading", type: "imaging", zone: "imaging", polygon: [] },
+      { id: "r_srv", floorId: "fl_1", name: "Server room", type: "server", zone: "it_core", polygon: [] },
+      { id: "r_x", floorId: "fl_0", name: "Annex", type: "other", zone: "research_wing", polygon: [] },
+    ],
+    devices: [dev("mri_1", "r_img"), dev("mri_2", "r_img"), dev("ws_rad", "r_read"), dev("pacs", "r_srv"), dev("x1", "r_x")],
+  };
+
+  it("groups devices by room zone, with floors spanned and the run's infected count, in the design's order", () => {
+    const s = segmentsOf(hospital, [{ deviceId: "mri_2", infected: true }, { deviceId: "pacs", infected: false }]);
+    expect(s.map((x) => [x.name, x.floors, x.infected, x.total])).toEqual([
+      ["Imaging", "Both floors", 1, 3],
+      ["IT core", "Level 1", 0, 1],
+      ["Research wing", "Ground", 0, 1],
+    ]);
+    expect(s[0].deviceIds).toEqual(["mri_1", "mri_2", "ws_rad"]);
+    expect(s[0].floorIds).toEqual(["fl_0", "fl_1"]);
+    expect(s[0].color).toBe("#B08CFF");
+  });
+});
+
+describe("hullOf", () => {
+  it("wraps three or more points in their convex hull, pushed out by the padding", () => {
+    const h = hullOf([[0, 0], [4, 0], [4, 4], [0, 4], [2, 2]], 0);
+    expect(h).toHaveLength(4);
+    expect(h).toEqual(expect.arrayContaining([[0, 0], [4, 0], [4, 4], [0, 4]]));
+    const padded = hullOf([[0, 0], [4, 0], [4, 4], [0, 4]], 1);
+    expect(padded.every(([x, y]) => x < 0 || x > 4) && padded.every(([x, y]) => y < 0 || y > 4)).toBe(true);
+  });
+  it("boxes one or two points, and gives nothing for none", () => {
+    expect(hullOf([[2, 3]], 1)).toEqual([[1, 2], [3, 2], [3, 4], [1, 4]]);
+    expect(hullOf([[0, 0], [2, 0]], 1)).toEqual([[-1, -1], [3, -1], [3, 1], [-1, 1]]);
+    expect(hullOf([])).toEqual([]);
   });
 });
 

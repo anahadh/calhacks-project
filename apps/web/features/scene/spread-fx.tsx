@@ -49,7 +49,10 @@ export function SpreadFx({
       })}
       {stops.map((s) => (
         <Html key={s.key} position={arcPoint(s.from, s.to, 0.5)} center zIndexRange={[25, 15]} style={{ pointerEvents: "none" }}>
-          <span className="font-disp text-[15px] font-bold leading-none text-state-cut" aria-label="The infection stopped here">
+          <span
+            className="font-disp grid h-5 w-5 place-items-center rounded-full border border-line2 bg-panel/95 text-[12px] font-bold leading-none text-state-cut"
+            aria-label="The infection stopped here"
+          >
             ✕
           </span>
         </Html>
@@ -92,9 +95,10 @@ function PulseDot({ pulse, from, to }: { pulse: Pulse; from: Vec3; to: Vec3 }) {
     mat.opacity = 0.95 * (1 - fade);
   });
 
+  // A bright bead, a little larger than the path's dots, so the hop reads over the dotted arc it travels.
   return (
     <mesh ref={mesh} visible={false}>
-      <sphereGeometry args={[0.32, 14, 14]} />
+      <sphereGeometry args={[0.26, 14, 14]} />
       <meshBasicMaterial ref={material} color={C.infected} transparent opacity={0.95} depthWrite={false} />
     </mesh>
   );

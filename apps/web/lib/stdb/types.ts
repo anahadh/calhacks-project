@@ -265,6 +265,8 @@ export type AgentMessageRow = {
   diff?: string[];
   tested?: { patientsAffected: number };
   source?: TextSource;
+  /** When the row was written (microseconds since the epoch), for the transcript clock. */
+  createdAt?: number;
   /** The numbers came from fixture files, not the engine. */
   fixture?: boolean;
 };

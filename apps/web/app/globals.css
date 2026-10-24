@@ -120,6 +120,21 @@ html {
   .ctl-on {
     @apply border-select bg-select text-select-on;
   }
+  /* Large transport control (rewind, play, replay) on the timeline row. */
+  .ctl-lg {
+    @apply h-[52px] min-w-[56px];
+  }
+  /* The "service down" tag: orange hairline, dot, mono label. */
+  .chip-down {
+    @apply num inline-flex items-center gap-2 rounded-ctl border border-state-infected/50 px-2.5 py-1 text-[13px] leading-5 text-ink;
+  }
+  /* A run tab on the runs strip; `.tab-on` is the run on screen. */
+  .tab {
+    @apply num flex min-h-[60px] flex-col items-start justify-center gap-1 rounded-ctl border border-line2 bg-panel2 px-4 py-2.5 text-left text-[14px] leading-5 text-ink;
+  }
+  .tab-on {
+    @apply border-select bg-select text-select-on;
+  }
   /* Infected device pulse in 2D views: 60 bpm, breathing. */
   .breathe {
     animation: breathe var(--dur-heartbeat) var(--ease-breath) infinite;

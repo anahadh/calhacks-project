@@ -6,7 +6,7 @@
 import { MOCK_REFUSAL } from "@/features/agents/defend";
 import { finalOf, notFinalYet } from "@/features/flow/final";
 import { controlRefusal, runProgress, solutionRefusal, type PlaybackControl } from "@/lib/stdb/run-status";
-import type { Hospital, RunRow, RunView, ServiceStateRow, SessionSnapshot } from "@/lib/stdb/types";
+import type { DeviceStateRow, Flow, Hospital, Point, RunRow, RunView, ServiceStateRow, SessionSnapshot } from "@/lib/stdb/types";
 
 type ShowInputs = Pick<SessionSnapshot, "source" | "isPresenter" | "activeRun" | "runs" | "roundState" | "recommendations">;
 
@@ -96,27 +96,168 @@ export type Delta = {
   before?: number;
   /** The plan's final value, or undefined until that run is done. */
   after?: number;
-  /** The headline (UX rule 1: patients affected leads). */
-  lead?: boolean;
+  /** A line under the numbers ("Lab results to charts", "4 allow rules"). */
+  note?: string;
 };
 
 /**
- * The before/after strip, from the two run rows' summary columns, plus the
- * plan's rule count. A side's numbers fill in only once its run is done: part
- * way through, a run row holds the numbers at that step, and the two sides
- * finish at different steps, so mid-run columns would compare unlike things.
+ * "What segmentation saved": the 2×2 grid, from the two run rows' summary
+ * columns and the plan's removed flows, plus the plan's rule count. A side's
+ * numbers fill in only once its run is done: part way through, a run row holds
+ * the numbers at that step, and the two sides finish at different steps, so
+ * mid-run columns would compare unlike things. Connections are the hospital's
+ * flows minus the ones the plan removed (a property of the plan, not a step).
  */
-export function beforeAfter(none: RunRow | undefined, plan: RunRow | undefined, rules: number | undefined): Delta[] {
+export function beforeAfter(
+  hospital: Pick<Hospital, "flows">,
+  none: RunRow | undefined,
+  plan: RunRow | undefined,
+  rules: number | undefined,
+): Delta[] {
   const b = finalOf(none);
   const a = finalOf(plan);
+  const purpose = new Map(hospital.flows.map((f) => [f.id, f.purpose]));
+  const cutPurposes = [...new Set((plan?.protectedBroken ?? []).map((id) => purpose.get(id)).filter((p): p is string => !!p))];
+  const total = hospital.flows.length;
   return [
-    { label: "Patients affected", before: b?.patientsAffected, after: a?.patientsAffected, lead: true },
-    { label: "Devices compromised", before: b?.devicesCompromised, after: a?.devicesCompromised },
-    { label: "Services down", before: b?.servicesDown, after: a?.servicesDown },
-    { label: "Delayed procedures", before: b?.delayedProcedures, after: a?.delayedProcedures },
-    { label: "Protected flows broken", before: b?.protectedBroken.length, after: a?.protectedBroken.length },
-    { label: "Rules", before: none ? 0 : undefined, after: plan ? rules : undefined },
+    { label: "Devices infected", before: b?.devicesCompromised, after: a?.devicesCompromised },
+    { label: "Services offline", before: b?.servicesDown, after: a?.servicesDown },
+    {
+      label: "Protected flows cut",
+      before: b?.protectedBroken.length,
+      after: a?.protectedBroken.length,
+      note: cutPurposes.length ? cutPurposes.join(", ") : undefined,
+    },
+    {
+      label: "Connections",
+      before: none ? total : undefined,
+      after: plan ? total - plan.removedFlows.length : undefined,
+      note: rules === undefined ? undefined : `${rules} allow ${rules === 1 ? "rule" : "rules"}`,
+    },
   ];
+}
+
+/**
+ * How many devices the baseline had infected by the plan's step: counted from
+ * the baseline run's device rows (infected_at_tick) when they are subscribed,
+ * else that run's summary column. Undefined until the baseline row exists.
+ */
+export function withoutSegmentation(
+  none: RunRow | undefined,
+  noneDevices: readonly DeviceStateRow[],
+  tick: number,
+): number | undefined {
+  if (!none) return undefined;
+  if (noneDevices.length) return noneDevices.filter((d) => d.infected && (d.infectedAtTick ?? 0) <= tick).length;
+  return none.status === "requested" ? undefined : none.devicesCompromised;
+}
+
+/** The plan's flows, split into the ones it kept and the ones it removed (run.removed_flows_json). */
+export function planFlows(hospital: Pick<Hospital, "flows">, plan: RunRow | undefined): { kept: Flow[]; cut: Flow[] } {
+  const removed = new Set(plan?.removedFlows ?? []);
+  const flows = hospital.flows.filter((f) => f.active !== false);
+  return { kept: flows.filter((f) => !removed.has(f.id)), cut: flows.filter((f) => removed.has(f.id)) };
+}
+
+// --- Segments: the hospital's room zones, as the plan view draws and lists them ---
+
+export type Segment = {
+  zone: string;
+  name: string;
+  color: string;
+  /** "Both floors", or the floor's name. */
+  floors: string;
+  floorIds: string[];
+  deviceIds: string[];
+  total: number;
+  infected: number;
+};
+
+/** State colors are allowed on zones (UX rule 2); chrome stays neutral. */
+export const ZONE_STYLE: Record<string, { name: string; color: string }> = {
+  imaging: { name: "Imaging", color: "#B08CFF" },
+  critical_care: { name: "Critical care", color: "#3ECFB2" },
+  it_core: { name: "IT core", color: "#FFC53D" },
+  clinical_support: { name: "Clinical support", color: "#FF4778" },
+  inpatient: { name: "Inpatient", color: "#8BD346" },
+  business: { name: "Business", color: "#7D858B" },
+  public: { name: "Public", color: "#7D858B" },
+};
+const ZONE_ORDER = Object.keys(ZONE_STYLE);
+
+export function zoneName(zone: string): string {
+  return ZONE_STYLE[zone]?.name ?? zone.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
+/**
+ * One segment per room zone: its devices (the devices in rooms of that zone),
+ * the floors it spans, and how many of its devices a run's rows show infected.
+ * Listed in the design's order, with any other zone after, by name.
+ */
+export function segmentsOf(hospital: Hospital, devices: readonly DeviceStateRow[]): Segment[] {
+  const infected = new Set(devices.filter((d) => d.infected).map((d) => d.deviceId));
+  const room = new Map(hospital.rooms.map((r) => [r.id, r]));
+  const level = new Map(hospital.floors.map((f) => [f.id, f.level]));
+  const by = new Map<string, Segment>();
+  for (const d of hospital.devices) {
+    const r = room.get(d.roomId);
+    if (!r) continue;
+    const s = by.get(r.zone) ?? {
+      zone: r.zone, name: zoneName(r.zone), color: ZONE_STYLE[r.zone]?.color ?? "#7D858B",
+      floors: "", floorIds: [], deviceIds: [], total: 0, infected: 0,
+    };
+    s.deviceIds.push(d.id);
+    s.total += 1;
+    if (infected.has(d.id)) s.infected += 1;
+    if (!s.floorIds.includes(r.floorId)) s.floorIds.push(r.floorId);
+    by.set(r.zone, s);
+  }
+  const rank = (z: string) => (ZONE_ORDER.includes(z) ? ZONE_ORDER.indexOf(z) : ZONE_ORDER.length);
+  return [...by.values()]
+    .map((s) => {
+      s.floorIds.sort((a, b) => (level.get(a) ?? 0) - (level.get(b) ?? 0));
+      const all = hospital.floors.length > 1 && s.floorIds.length === hospital.floors.length;
+      s.floors = all
+        ? hospital.floors.length === 2 ? "Both floors" : "All floors"
+        : s.floorIds.map((id) => hospital.floors.find((f) => f.id === id)?.name ?? id).join(" · ");
+      return s;
+    })
+    .sort((a, b) => rank(a.zone) - rank(b.zone) || a.name.localeCompare(b.name));
+}
+
+/**
+ * The outline drawn around a segment's devices on one floor: their convex hull
+ * (monotone chain), pushed out by `pad` so the line clears the dots. One or
+ * two devices get a padded box instead, so every segment has an outline.
+ */
+export function hullOf(points: readonly Point[], pad = 1.6): Point[] {
+  const pts = [...new Map(points.map((p) => [`${p[0]},${p[1]}`, p])).values()].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length === 0) return [];
+  if (pts.length < 3) {
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const [x0, x1, y0, y1] = [Math.min(...xs) - pad, Math.max(...xs) + pad, Math.min(...ys) - pad, Math.max(...ys) + pad];
+    return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  }
+  const cross = (o: Point, a: Point, b: Point) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: Point[] = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: Point[] = [];
+  for (const p of [...pts].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  if (hull.length < 3) return hullOf(hull, pad);
+  const cx = hull.reduce((a, p) => a + p[0], 0) / hull.length;
+  const cy = hull.reduce((a, p) => a + p[1], 0) / hull.length;
+  return hull.map(([x, y]) => {
+    const d = Math.hypot(x - cx, y - cy) || 1;
+    return [x + ((x - cx) / d) * pad, y + ((y - cy) / d) * pad];
+  });
 }
 
 /** Which side the strip is still waiting for, and where it is ("No segmentation paused at step 5 of 14"), or null. */

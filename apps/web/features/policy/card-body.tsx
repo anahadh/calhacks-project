@@ -1,40 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { RecommendationRow } from "@/lib/stdb/types";
-import { AgentIcon } from "@/features/agents/agent-icon";
-import { SPEAKER_NAME } from "@/features/agents/agents";
 
-// One recommendation card (spec 7.4): rules, the explanation, numbers from
-// the engine, each agent's verdict, the roles that must sign off, and Show the
-// solution, which reruns the same attack with and without this plan. Agent
-// acceptance is shown as the agents' verdict, never as approval (UX rule 8).
+// The recommendation's one control in the Agent Room (spec 7.4): Review
+// recommendation, which reruns the same attack with and without this plan
+// (solution_start) so humans can judge it. The rules, numbers and verdicts
+// are read on the solution screen; here only the action lives. Agent
+// acceptance is never shown as approval (UX rule 8).
 export function RecommendationCard({
   rec,
-  baseline,
-  baselineNote,
-  index,
   blocked,
   onShow,
 }: {
   rec: RecommendationRow;
-  /** Patients affected on the session's baseline run (its run row), once that run is done. */
+  /** Patients affected on the session's baseline run, once that run is done. Kept for callers that pass it. */
   baseline?: number;
-  /** Shown in place of the baseline while it isn't final ("baseline paused at step 5 of 14"). */
+  /** Shown in place of the baseline while it isn't final. Kept for callers that pass it. */
   baselineNote?: string;
-  index: SessionIndex;
+  index?: SessionIndex;
   /** Why Show the solution would be refused now (solution_start's reasons), or null. */
   blocked: string | null;
   onShow: () => Promise<void>;
 }) {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const broken = rec.verified.protectedBroken.map((id) => {
-    const f = index.flow.get(id);
-    return f?.purpose ?? id;
-  });
 
   const show = async () => {
     setError(undefined);
@@ -49,71 +40,20 @@ export function RecommendationCard({
   };
 
   return (
-    <div className="border-b border-line p-3.5 last:border-b-0">
-      <div className="flex items-baseline gap-2">
-        <b className="font-disp text-[14px]">{rec.name}</b>
-        <span className="num ml-auto text-[10px] uppercase tracking-[0.06em] text-ink-faint">round {rec.round}</span>
-      </div>
-
-      {broken.length > 0 && (
-        <p className="num mt-1.5 rounded border border-line2 bg-panel2 px-2 py-1 text-[10.5px] text-ink">
-          ✕ Breaks a protected flow: {broken.join(", ")}
-        </p>
-      )}
-
-      <ul className="mt-2 space-y-1">
-        {rec.rules.map((r, i) => (
-          <li key={i} className="rounded border border-line2 bg-panel2 px-2 py-1 text-[11.5px] text-ink-muted">
-            {r}
-          </li>
-        ))}
-      </ul>
-
-      <p className="mt-2 text-[12px] leading-snug text-ink-muted">
-        {rec.explanation}
-        {rec.source === "template" && <span className="num ml-1 text-[10px] text-ink-faint">(template text)</span>}
-      </p>
-
-      <div className="num mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-muted">
-        <span>
-          Patients affected{" "}
-          {baseline !== undefined && (
-            <>
-              <s className="text-ink-faint">{baseline}</s> →{" "}
-            </>
-          )}
-          <b className="font-disp text-[15px] font-light text-ink">{rec.verified.patientsAffected}</b>
-          {baseline === undefined && baselineNote && <span className="ml-1 text-ink-faint">({baselineNote})</span>}
-        </span>
-        <span>Devices compromised {rec.verified.devicesCompromised}</span>
-        <span>Connections cut {rec.verified.removedFlows.length}</span>
-        {rec.fixture && <span className="text-ink-faint">fixture results, not the engine</span>}
-      </div>
-
-      <ul className="mt-2 space-y-1">
-        {rec.verdicts.map((v) => (
-          <li key={v.agent} className="flex items-start gap-2 text-[11px] text-ink-muted">
-            <AgentIcon who={v.agent} size={16} />
-            <span>
-              <span className="num text-ink">{v.decision === "accept" ? "● accepts" : "✕ rejects"}</span> · {SPEAKER_NAME[v.agent]}: {v.reason}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="num mt-2 text-[10.5px] text-ink-faint">
-        Sign-off needed from {rec.requiredRoles.map((r) => ROLE_LABEL[r]).join(", ")} · {rec.status === "ready" ? "Ready" : "not reviewed"}
-      </div>
-
+    <div className="flex flex-col items-end gap-1.5">
       <button
+        type="button"
         onClick={show}
         disabled={!!blocked || busy}
-        title={blocked ?? undefined}
-        className="num mt-3 w-full rounded-[7px] border border-accent px-3 py-2.5 text-[11.5px] font-semibold text-accent transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:border-line2 disabled:text-ink-faint disabled:hover:bg-transparent"
+        title={blocked ?? rec.name}
+        className="num inline-flex min-h-[52px] items-center gap-3 rounded-ctl border border-ink bg-ink px-5 text-[15px] font-medium text-bg transition-[filter] duration-fade enabled:hover:brightness-90 disabled:cursor-not-allowed disabled:border-line2 disabled:bg-transparent disabled:text-ink-faint"
       >
-        Show the solution →
+        {busy ? "Opening…" : "Review recommendation"}
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+          <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
-      {(error || blocked) && <p className="num mt-1.5 text-[10.5px] leading-snug text-ink-faint">{error ?? blocked}</p>}
+      {(error || blocked) && <p className="num max-w-[360px] text-right text-[11px] leading-snug text-ink-faint">{error ?? blocked}</p>}
     </div>
   );
 }
