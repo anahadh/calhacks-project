@@ -50,8 +50,8 @@ Updated Friday, Oct 23, 2026.
 
 ## Setup
 
-1. Run `pnpm install`, then `cp .env.example .env.local`, then fill in the keys.
-2. Run `spacetime publish hippocratech` (or `spacetime start` for local), `pnpm --filter web dev`, and `pnpm --filter watcher dev`. Start the agents with `cd agents && python run_all.py`.
+1. Run `npm install`, then `cp .env.example .env.local`, then fill in the keys.
+2. Run `spacetime publish hippocratech` (or `spacetime start` for local), `npm run dev -w web`, and `npm run dev -w watcher`. Start the agents with `cd agents && python run_all.py`.
 3. Read [`../AGENTS.md`](../AGENTS.md) before pointing a coding agent at the repo.
 
 ## If you change the plan

@@ -11,11 +11,11 @@ Built at Cal Hacks 13.0. All hospital data is synthetic. Sponsor tracks: **Fetch
 ## Run it
 
 ```bash
-pnpm install
+npm install
 cp .env.example .env.local           # fill in keys; see the comments
 spacetime publish hippocratech        # terminal 1: the SpacetimeDB module (simulation + shared state)
-pnpm --filter web dev                 # terminal 2: the app, memo and export routes
-pnpm --filter watcher dev             # terminal 3: watchers connecting SpacetimeDB to the agents
+npm run dev -w web                    # terminal 2: the app, memo and export routes
+npm run dev -w watcher                # terminal 3: watchers connecting SpacetimeDB to the agents
 cd agents && python run_all.py        # terminal 4: the four uAgents
 ```
 
