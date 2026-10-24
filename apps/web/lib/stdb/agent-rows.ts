@@ -17,7 +17,7 @@ type Counts = { ok: number; delayed: number; disrupted: number; diverted: number
 type RunResult = { infectedCount: number; patientCounts: Counts; protectedBroken: string[]; removedFlows: string[] };
 type Rule = { id: string; plain: string };
 
-/** The same "patients affected" sim-core reports: everyone not ok. */
+/** "Patients affected" as the run row carries it: everyone the engine's RunResult counts as not ok. */
 const affected = (r: RunResult) => r.patientCounts.delayed + r.patientCounts.disrupted + r.patientCounts.diverted;
 
 const source = (s: string): TextSource | undefined => (s === "claude" || s === "template" ? s : undefined);

@@ -2,21 +2,13 @@
 
 import { useState } from "react";
 import type { SessionSnapshot } from "@/lib/stdb/types";
+import { defendBlocker } from "./defend";
 
-/** Why Create aggregate fix can't be pressed right now, or null when it can (spec 7.4). */
-export function defendBlocker(session: SessionSnapshot): string | null {
-  const run = session.runs.find((r) => r.id === session.activeRunId);
-  if (session.source === "mock") return "Connect to SpacetimeDB to create an aggregate fix.";
-  if (!session.me) return "Join the session first.";
-  if (!run) return "Run the attack first.";
-  if (run.status === "running") return "Agents wait until the run finishes or is paused.";
-  const { state } = session.roundState;
-  if (state === "running" || state === "waiting_for_human") return "An aggregate fix is being negotiated.";
-  return null;
-}
+export { defendBlocker } from "./defend";
 
 // Create aggregate fix: writes defend_request, and the round watcher wakes the
-// Sign-off Coordinator. Disabled while a visible run is running (rule 5).
+// Sign-off Coordinator. Disabled with the reducer's reason while it would be
+// refused, e.g. while any session run is computing or playing (rule 5).
 export function DefendButton({ session, onDone }: { session: SessionSnapshot; onDone?: () => void }) {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);

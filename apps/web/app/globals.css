@@ -96,6 +96,49 @@ h3 {
   }
 }
 
+/* A service "down" chip arriving (motion budget: service "down" pops). Played
+   once, only for a service_state row this tab saw go down. */
+.fx-pop {
+  animation: fx-pop var(--dur-fade) var(--ease-settle) both;
+}
+
+@keyframes fx-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* An event toast from a sim_event row: in, readable for over 2 s (UX rule 5), out.
+   Length matches TOAST_MS in features/scene/spread-timing.ts. */
+.fx-toast {
+  animation: fx-toast 2600ms linear both;
+}
+
+@keyframes fx-toast {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  6%,
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 .scroll-quiet {
   scrollbar-width: thin;
   scrollbar-color: #3e4448 transparent;

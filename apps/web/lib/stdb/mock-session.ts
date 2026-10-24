@@ -1,10 +1,14 @@
-// A fixed mid-run snapshot of the demo hospital, shaped like the rows the
-// session subscribes to. It stands in for SpacetimeDB until the module and
-// bindings exist. Nothing here is computed: every value is written out by hand.
-// All data is synthetic.
+// The explicit mock: shown only with NEXT_PUBLIC_MOCK=1, with source "mock" so
+// the header labels it "Mock data". A finished baseline run of the demo
+// hospital, its entry points and a sample agent round, shaped like the rows the
+// session subscribes to. Nothing here comes from the engine or is computed:
+// every value is written out by hand. All data is synthetic.
+//
+// Type imports only: agents/scripts/export_fixture.mjs imports this file with
+// Node's type stripping, which can't resolve extensionless value imports.
 
 import type {
-  Device, DeviceType, Flow, Hospital, Point, Room, SessionSnapshot,
+  Device, DeviceType, Flow, Hospital, Point, Room, RunRow, RunSubscription, SessionActions, SessionSnapshot,
 } from "./types";
 
 const rect = (x: number, y: number, w: number, d: number): Point[] => [
@@ -169,10 +173,29 @@ const infectedMap = new Map(infected.map(([id, at, by]) => [id, { at, by }]));
 const flowId = (from: string, to: string) =>
   flows.find((x) => (x.from === from && x.to === to) || (x.from === to && x.to === from))?.id ?? "";
 
+const baseline: RunRow = {
+  id: "run_baseline", label: "Baseline", patientZero: "mri_2", seed: 1337, tick: 9, status: "done", speed: 1,
+  pairId: "", policyJson: "", finalTick: 9, detail: "", stepPending: false,
+  removedFlows: [], protectedBroken: [], recommendationId: "",
+  assumptions: ["[S] Mock data: these rows are written by hand, not computed by the engine."],
+  patientsAffected: 82, devicesCompromised: 11, servicesDown: 4, delayedProcedures: 34,
+};
+
+const refuse = (): SessionActions => {
+  const no = async () => {
+    throw new Error("Mock data: set NEXT_PUBLIC_STDB_URI (and unset NEXT_PUBLIC_MOCK) to use a live session.");
+  };
+  return {
+    startRun: no, play: no, pause: no, step: no, reset: no, setSpeed: no, join: no, addFocus: no, clearFocus: no,
+    defend: no, answerQuestion: no, showSolution: no, closeSolution: no,
+  };
+};
+
 export const mockSession: SessionSnapshot = {
   hospital,
-  runs: [{ id: "run_baseline", label: "Baseline", patientZero: "mri_2", seed: 1337, tick: 9, status: "running", speed: 1 }],
-  activeRunId: "run_baseline",
+  runs: [baseline],
+  activeRunId: baseline.id,
+  activeRun: baseline,
   presenterName: "Ana",
   devices: devices.map((d) => {
     const hit = infectedMap.get(d.id);
@@ -198,8 +221,6 @@ export const mockSession: SessionSnapshot = {
   attempts: [
     { tick: 9, from: "srv_file", to: "ws_reg", flowId: flowId("srv_file", "ws_reg"), success: true },
     { tick: 9, from: "srv_file", to: "ws_ward", flowId: flowId("srv_file", "ws_ward"), success: true },
-    { tick: 9, from: "srv_file", to: "ws_pharm", flowId: flowId("srv_file", "ws_pharm"), success: false },
-    { tick: 9, from: "srv_dc", to: "badge_admin", flowId: flowId("srv_dc", "badge_admin"), success: false },
   ],
   events: [
     { tick: 0, kind: "patient_zero", targetId: "mri_2", text: "MRI 2 infected (patient zero)" },
@@ -219,18 +240,24 @@ export const mockSession: SessionSnapshot = {
     { deviceId: "srv_dc", share: 0.18 },
     { deviceId: "ws_img_1", share: 0.09 },
   ],
-  delayedProcedures: 31,
+  totals: { patientsAffected: 82, devicesCompromised: 11, servicesDown: 4, delayedProcedures: 34 },
+  delayedProcedures: 34,
+  entryPoints: [
+    "mri_2", "ws_img_1", "ws_img_2", "ws_rad_1", "ws_rad_2", "ws_rad_3", "ws_er_1", "ws_reg", "ws_or", "ws_ward",
+    "ws_lab", "ws_pharm", "ws_admin_1", "ws_admin_2", "ws_admin_3",
+  ],
+  solutionPairId: "",
   presence: [
     { name: "Ana", role: "security", following: false },
     { name: "Dev", role: "clinical_engineering", following: true },
     { name: "Kai", role: "operations", following: true },
   ],
-  roundState: { state: "running", round: 2, maxRounds: 4 },
+  roundState: { state: "done", round: 2, maxRounds: 4 },
   agentStatus: [
     { agent: "inventory", status: "idle" },
     { agent: "flow", status: "idle" },
-    { agent: "clinical_workflow", status: "thinking" },
-    { agent: "coordinator", status: "waiting" },
+    { agent: "clinical_workflow", status: "idle" },
+    { agent: "coordinator", status: "idle" },
   ],
   messages: [
     {
@@ -262,19 +289,59 @@ export const mockSession: SessionSnapshot = {
       diff: ["+ Lab WS may reach the EHR engine on HL7 2575."],
       tested: { patientsAffected: 21 },
     },
+    {
+      round: 2, seq: 6, from: "clinical_workflow", to: "flow", type: "accept",
+      reason: "The revision keeps lab results flowing to charts and scans flowing to PACS.",
+    },
+    {
+      round: 2, seq: 7, from: "coordinator", to: "all", type: "recommendation",
+      reason: "Both guardians accept the revision. It goes to Security and Clinical engineering for review.",
+    },
   ],
   annotations: [
     { id: "1", targetId: "srv_file", note: "This file server is feeding the ER", authorName: "Dev", role: "clinical_engineering", active: true, mine: false },
   ],
   questions: [],
-  recommendations: [],
+  recommendations: [
+    {
+      id: "mock:2", round: 2, name: "No SMB between zones, keep lab results",
+      rules: [
+        "Scanners may send images to PACS on DICOM 104. Nothing else.",
+        "Workstations may reach the EHR engine on HTTPS 443.",
+        "No SMB between zones.",
+        "Lab WS may reach the EHR engine on HL7 2575.",
+      ],
+      explanation: "Cutting SMB between zones keeps the file server from carrying the attack out of Imaging. Lab results still reach charts.",
+      source: "template",
+      verified: {
+        patientsAffected: 21, devicesCompromised: 3, protectedBroken: [],
+        removedFlows: ["fl_9", "fl_10", "fl_21", "fl_22", "fl_23", "fl_24", "fl_25", "fl_26", "fl_27"],
+      },
+      verdicts: [
+        { agent: "inventory", decision: "accept", reason: "The plan only touches identified devices." },
+        { agent: "clinical_workflow", decision: "accept", reason: "Every protected flow stays open." },
+      ],
+      requiredRoles: ["security", "clinical_engineering"],
+      status: "draft",
+      fixture: true,
+    },
+  ],
   source: "mock",
   isPresenter: false,
-  actions: (() => {
-    const noop = async () => {};
-    return {
-      startRun: noop, play: noop, pause: noop, step: noop, reset: noop, setSpeed: noop, join: noop, addFocus: noop,
-      clearFocus: noop, defend: noop, answerQuestion: noop,
-    };
-  })(),
+  actions: refuse(),
 };
+
+/** useRunRows in the mock: the baseline's rows, and no other run. */
+export function mockRunRows(runId: string): RunSubscription {
+  const s = mockSession;
+  if (runId !== baseline.id) {
+    return {
+      devices: [], services: [], patients: [], attempts: [], events: [], snapshots: [], chokePoints: [],
+      totals: { patientsAffected: 0, devicesCompromised: 0, servicesDown: 0, delayedProcedures: 0 }, source: "missing",
+    };
+  }
+  return {
+    run: baseline, devices: s.devices, services: s.services, patients: s.patients, attempts: s.attempts, events: s.events,
+    snapshots: s.snapshots, chokePoints: s.chokePoints, totals: s.totals, source: "mock",
+  };
+}

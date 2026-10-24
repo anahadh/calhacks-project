@@ -4,6 +4,7 @@ import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
 import { RecommendationCard } from "@/features/policy/card-body";
+import { showBlocker } from "@/features/solution/pair";
 import { AgentIcon } from "./agent-icon";
 import { AGENTS, MESSAGE_SHAPE, SPEAKER_NAME } from "./agents";
 import { DefendButton } from "./defend-button";
@@ -19,13 +20,6 @@ export function AgentRoom({ session, index }: { session: SessionSnapshot; index:
       <Recommendations session={session} index={index} />
     </div>
   );
-}
-
-/** Patients affected on the active visible run right now. Read from patient_state rows. */
-function currentAffected(session: SessionSnapshot, index: SessionIndex): number {
-  return session.hospital.patients
-    .filter((g) => (index.patientState.get(g.id) ?? "ok") !== "ok")
-    .reduce((a, g) => a + g.count, 0);
 }
 
 const STATUS: Record<AgentStatusRow["status"], { label: string; cls: string }> = {
@@ -71,8 +65,8 @@ function AgentList({ session }: { session: SessionSnapshot }) {
       <div className="border-t border-line px-3.5 py-3">
         <div className="eyebrow">Humans in the session</div>
         <ul className="mt-2 space-y-1.5">
-          {session.presence.map((p) => (
-            <li key={p.name} className="flex items-center gap-2 text-[12px]">
+          {session.presence.map((p, i) => (
+            <li key={`${p.name}:${i}`} className="flex items-center gap-2 text-[12px]">
               <span className="grid h-5 w-5 place-items-center rounded-full bg-panel2 font-disp text-[10px] font-bold text-ink-muted">
                 {p.name[0]}
               </span>
@@ -84,9 +78,6 @@ function AgentList({ session }: { session: SessionSnapshot }) {
         <div className="mt-3">
           <DefendButton session={session} />
         </div>
-        <button className="num mt-2 w-full rounded-[7px] border border-accent px-3 py-2.5 text-[11.5px] font-semibold text-accent transition hover:bg-accent/10">
-          Skip to result
-        </button>
       </div>
     </div>
   );
@@ -98,7 +89,8 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
   const rounds = [...new Set(messages.map((m) => m.round))];
   const lastTest = [...messages].reverse().find((m) => m.tested)?.tested;
   const constraints = messages.filter((m) => m.constraint).length;
-  const baseline = currentAffected(session, index);
+  // The baseline run's own column (the run row), never summed in the browser.
+  const baseline = session.totals.patientsAffected;
 
   return (
     <div className="panel">
@@ -115,7 +107,7 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
       )}
       {messages.some((m) => m.fixture) && (
         <p className="num border-b border-line px-3.5 py-1.5 text-[10px] text-ink-faint">
-          Test numbers in this round come from fixture files, not hippo-sim.
+          Test numbers in this round come from fixture files, not the engine.
         </p>
       )}
 
@@ -228,23 +220,22 @@ function Recommendations({ session, index }: { session: SessionSnapshot; index: 
         </span>
       </div>
       {recs.map((rec) => (
-        <RecommendationCard key={rec.id} rec={rec} baseline={currentAffected(session, index)} index={index} />
+        <RecommendationCard
+          key={rec.id}
+          rec={rec}
+          baseline={session.totals.patientsAffected}
+          index={index}
+          blocked={showBlocker(session, rec.id)}
+          onShow={() => session.actions.showSolution(rec.id)}
+        />
       ))}
-      <div className="p-3.5">
-        {!recs.length && (
-          <p className="num text-[11.5px] leading-relaxed text-ink-faint">
-            {session.roundState.state === "done"
-              ? "No recommendation came out of this round."
-              : "Up to three recommendations appear here when a round ends, each with its rules, tested numbers, every agent's verdict, and the roles that must sign off."}
-          </p>
-        )}
-        <button
-          disabled
-          className="num mt-3 w-full cursor-not-allowed rounded-[7px] border border-line2 px-3 py-2.5 text-[11.5px] font-semibold text-ink-faint"
-        >
-          Show the solution →
-        </button>
-      </div>
+      {!recs.length && (
+        <p className="num p-3.5 text-[11.5px] leading-relaxed text-ink-faint">
+          {session.roundState.state === "done"
+            ? "No recommendation came out of this round."
+            : "Up to three recommendations appear here when a round ends, each with its rules, tested numbers, every agent's verdict, the roles that must sign off, and Show the solution."}
+        </p>
+      )}
     </div>
   );
 }

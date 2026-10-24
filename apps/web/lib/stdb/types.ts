@@ -1,6 +1,6 @@
-// Shapes of the hospital file (HOSPITAL_SCHEMA.md) and the subscribed
-// SpacetimeDB rows (spec: Data Model). These are placeholders until
-// `packages/schema` and the generated bindings from `spacetime generate` exist.
+// Shapes of the hospital file (HOSPITAL_SCHEMA.md) and of the subscribed
+// SpacetimeDB rows as the UI renders them. snapshot.ts maps the generated
+// bindings (module_bindings/) onto these; nothing here is computed.
 
 export type Point = [number, number];
 
@@ -83,14 +83,48 @@ export type Hospital = {
 
 export type PatientStateValue = "ok" | "delayed" | "disrupted" | "diverted";
 
-export type RunRow = {
+/**
+ * requested: waiting for the engine ("Computing…"). running/paused: the watcher
+ * is feeding frames. done: the final frame landed. error: see `detail`.
+ */
+export type RunStatus = "requested" | "running" | "paused" | "done" | "error";
+export type Speed = 0.5 | 1 | 2 | 4;
+
+/** The engine's headline numbers for one run, copied from its latest frame (run row summary columns). */
+export type RunTotals = {
+  patientsAffected: number;
+  devicesCompromised: number;
+  servicesDown: number;
+  delayedProcedures: number;
+};
+
+export type RunRow = RunTotals & {
   id: string;
   label: string;
   patientZero: string;
+  /** Accepted and ignored: the engine has no RNG. */
   seed: number;
   tick: number;
-  status: "running" | "paused" | "done";
-  speed: 0.5 | 1 | 2 | 4;
+  status: RunStatus;
+  speed: Speed;
+  /** "" for the session's own runs; the solution pair's id for both sides of a rerun. */
+  pairId: string;
+  /** "" for no segmentation, else the agents' Policy JSON. Opaque to the UI. */
+  policyJson: string;
+  /** The last step the engine computed. 0 until frame 0 lands. */
+  finalTick: number;
+  /** Why the engine or the watcher refused the run. Shown verbatim (rule 14). */
+  detail: string;
+  /** The presenter asked for one step while paused, and the watcher has not applied it yet. */
+  stepPending: boolean;
+  /** Flow ids the plan removed (cut connections). [] with no plan. */
+  removedFlows: string[];
+  /** Protected flow ids the plan removed. [] with no plan. */
+  protectedBroken: string[];
+  /** The engine's "[S]" notes on what it assumed. */
+  assumptions: string[];
+  /** Set on the plan side of a solution rerun. */
+  recommendationId: string;
 };
 
 export type DeviceStateRow = { deviceId: string; infected: boolean; infectedAtTick?: number; infectedBy?: string };
@@ -113,30 +147,69 @@ export type AnnotationRow = {
   role: PresenceRow["role"]; active: boolean; mine: boolean;
 };
 
-/** Where the snapshot came from. "mock" only when no SpacetimeDB host is configured. */
+/**
+ * Where the snapshot came from. "mock" only with NEXT_PUBLIC_MOCK=1, labeled
+ * "Mock data". "error" carries `error`, e.g. when no SpacetimeDB host is set.
+ */
 export type SessionSource = "mock" | "connecting" | "live" | "missing" | "error";
 
-/** Playback and pin controls. Reducers reject anyone who isn't allowed. */
+/**
+ * Playback, solution and pin controls. Each calls one reducer, and reducers
+ * reject anyone who isn't allowed; the rejection's message is rethrown as-is.
+ * Playback acts on `runId` when given (any run of a solution pair moves the
+ * whole pair), else on the session's active run.
+ */
 export type SessionActions = {
-  startRun: (patientZero: string, speed?: 0.5 | 1 | 2 | 4) => Promise<void>;
-  play: () => Promise<void>;
-  pause: () => Promise<void>;
-  step: () => Promise<void>;
-  reset: () => Promise<void>;
-  setSpeed: (speed: 0.5 | 1 | 2 | 4) => Promise<void>;
+  /** Start the attack: run_start with no policy. The watcher computes it through the engine. */
+  startRun: (patientZero: string, speed?: Speed) => Promise<void>;
+  play: (runId?: string) => Promise<void>;
+  pause: (runId?: string) => Promise<void>;
+  /** One step while paused. */
+  step: (runId?: string) => Promise<void>;
+  /** Back to requested with every row cleared; the watcher recomputes the same run. */
+  reset: (runId?: string) => Promise<void>;
+  setSpeed: (speed: Speed, runId?: string) => Promise<void>;
   join: (name: string, role: PresenceRow["role"]) => Promise<void>;
   addFocus: (deviceId: string, note?: string) => Promise<void>;
   clearFocus: (annotationId: string) => Promise<void>;
-  /** Create aggregate fix: writes defend_request. Refused while the active run is running. */
+  /** Create aggregate fix: writes defend_request. Refused while any session run is requested or running. */
   defend: () => Promise<void>;
   answerQuestion: (questionId: string, choice: string) => Promise<void>;
+  /** Show the solution: solution_start reruns the attack as a pair, no segmentation vs the plan. Every tab follows. */
+  showSolution: (recommendationId: string, speed?: Speed) => Promise<void>;
+  /** Back to the session: solution_close. The pair's runs are kept. */
+  closeSolution: () => Promise<void>;
 };
+
+/** One run's rows, as subscribed by run id (the active run, or either side of a solution pair). */
+export type RunView = {
+  /** Undefined until the run row arrives, or when no such run exists. */
+  run?: RunRow;
+  devices: DeviceStateRow[];
+  services: ServiceStateRow[];
+  patients: PatientStateRow[];
+  /** Only the last few ticks' attempts: the module prunes older ones. */
+  attempts: SpreadAttemptRow[];
+  events: SimEventRow[];
+  snapshots: TickSnapshotRow[];
+  chokePoints: ChokePoint[];
+  /** The run row's summary columns, or zeros without a run. Never sum rows for these. */
+  totals: RunTotals;
+};
+
+/** useRunRows(runId): one run's rows, and where they came from ("missing" once subscribed with no such run). */
+export type RunSubscription = RunView & { source: SessionSource; error?: string };
 
 export type SessionSnapshot = {
   hospital: Hospital;
+  /** Every run in the session, oldest first, including solution pair runs (pairId !== ""). */
   runs: RunRow[];
+  /** "" until the presenter starts an attack. */
   activeRunId: string;
+  /** The session's baseline run (session.active_run_id), when one exists. */
+  activeRun?: RunRow;
   presenterName: string;
+  // The active run's rows (RunView, flattened for the session view).
   devices: DeviceStateRow[];
   services: ServiceStateRow[];
   patients: PatientStateRow[];
@@ -144,7 +217,14 @@ export type SessionSnapshot = {
   events: SimEventRow[];
   snapshots: TickSnapshotRow[];
   chokePoints: ChokePoint[];
+  /** The active run's summary columns. Read these instead of summing rows in the browser. */
+  totals: RunTotals;
+  /** Same as totals.delayedProcedures. */
   delayedProcedures: number;
+  /** Devices the engine accepts as patient zero, in hospital order. [] until the watcher writes them. */
+  entryPoints: string[];
+  /** The solution pair every tab is showing, or "" for the session view. */
+  solutionPairId: string;
   presence: PresenceRow[];
   roundState: RoundState;
   agentStatus: AgentStatusRow[];
@@ -179,13 +259,13 @@ export type AgentMessageRow = {
   type: MessageType;
   reason: string;
   // Rejections carry the constraint they add; proposals and revisions carry
-  // rules or a diff, plus the hippo-sim test result.
+  // rules or a diff, plus the engine's test result.
   constraint?: { kind: "keep_flow" | "keep_service" | "confirm_device" | "max_rules"; targetIds: string[] };
   rules?: string[];
   diff?: string[];
   tested?: { patientsAffected: number };
   source?: TextSource;
-  /** The numbers came from fixture files, not hippo-sim. */
+  /** The numbers came from fixture files, not the engine. */
   fixture?: boolean;
 };
 
@@ -219,7 +299,7 @@ export type RecommendationRow = {
   rules: string[];
   explanation: string;
   source?: TextSource;
-  /** From hippo-sim's RunResult for this plan, on the same attack. */
+  /** From the engine's RunResult for this plan (hippo-sim), on the same attack. */
   verified: { patientsAffected: number; devicesCompromised: number; protectedBroken: string[]; removedFlows: string[] };
   verdicts: { agent: AgentId; decision: "accept" | "reject"; reason: string }[];
   requiredRoles: ReviewRole[];

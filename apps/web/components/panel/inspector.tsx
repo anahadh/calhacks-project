@@ -1,6 +1,6 @@
 "use client";
 
-import { tickClock } from "@/lib/format";
+import { stepLabel } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
@@ -61,7 +61,7 @@ function DeviceRecord({ session, index, deviceId }: { session: SessionSnapshot; 
       </div>
 
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 text-[12.5px]">
-        <Row k="Infected">{st?.infected ? `${tickClock(st.infectedAtTick ?? 0)}${via ? ` via ${via}` : " (patient zero)"}` : "No"}</Row>
+        <Row k="Infected">{st?.infected ? `${stepLabel(st.infectedAtTick ?? 0)}${via ? ` via ${via}` : " (patient zero)"}` : "No"}</Row>
         <Row k="OS">{d.os}</Row>
         <Row k="VLAN">{d.vlan}</Row>
         <Row k="Criticality">{d.criticality.replace("_", " ")}</Row>
@@ -105,6 +105,7 @@ function Empty({ session, index }: { session: SessionSnapshot; index: SessionInd
       <p className="num text-[11.5px] leading-relaxed text-ink-faint">Hover a device in the building for its record.</p>
       <div className="mt-3 border-t border-line pt-2.5">
         <div className="eyebrow !tracking-[0.08em]">Choke points · share of downstream infections</div>
+        {!session.chokePoints.length && <p className="num mt-2 text-[11px] text-ink-faint">None yet.</p>}
         <ul className="mt-2 space-y-2">
           {session.chokePoints.map((c) => (
             <li key={c.deviceId} className="grid grid-cols-[1fr_80px_36px] items-center gap-3 text-[12.5px]">

@@ -2,7 +2,7 @@ import type { AgentId, MessageType, Speaker } from "@/lib/stdb/types";
 
 export const AGENTS: { id: AgentId; name: string; objective: string }[] = [
   { id: "inventory", name: "Inventory", objective: "Never act on a device nobody can name. Asks a human when unsure." },
-  { id: "flow", name: "Flow", objective: "Minimize spread. Proposes cuts and tests each one with hippo-sim." },
+  { id: "flow", name: "Flow", objective: "Minimize spread. Proposes cuts and tests each one with the engine." },
   { id: "clinical_workflow", name: "Clinical Workflow", objective: "Keep care running. Rejects anything that breaks a protected flow." },
   { id: "coordinator", name: "Sign-off Coordinator", objective: "Runs rounds and routes the plan to the right humans. Cannot approve." },
 ];

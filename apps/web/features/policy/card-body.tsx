@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { RecommendationRow } from "@/lib/stdb/types";
@@ -7,13 +8,42 @@ import { AgentIcon } from "@/features/agents/agent-icon";
 import { SPEAKER_NAME } from "@/features/agents/agents";
 
 // One recommendation card (spec 7.4): rules, the explanation, numbers from
-// hippo-sim, each agent's verdict, and the roles that must sign off. Agent
+// the engine, each agent's verdict, the roles that must sign off, and Show the
+// solution, which reruns the same attack with and without this plan. Agent
 // acceptance is shown as the agents' verdict, never as approval (UX rule 8).
-export function RecommendationCard({ rec, baseline, index }: { rec: RecommendationRow; baseline: number; index: SessionIndex }) {
+export function RecommendationCard({
+  rec,
+  baseline,
+  index,
+  blocked,
+  onShow,
+}: {
+  rec: RecommendationRow;
+  /** Patients affected on the session's baseline run (its run row). */
+  baseline: number;
+  index: SessionIndex;
+  /** Why Show the solution would be refused now (solution_start's reasons), or null. */
+  blocked: string | null;
+  onShow: () => Promise<void>;
+}) {
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
   const broken = rec.verified.protectedBroken.map((id) => {
     const f = index.flow.get(id);
     return f?.purpose ?? id;
   });
+
+  const show = async () => {
+    setError(undefined);
+    setBusy(true);
+    try {
+      await onShow();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="border-b border-line p-3.5 last:border-b-0">
@@ -47,7 +77,7 @@ export function RecommendationCard({ rec, baseline, index }: { rec: Recommendati
         </span>
         <span>Devices compromised {rec.verified.devicesCompromised}</span>
         <span>Connections cut {rec.verified.removedFlows.length}</span>
-        {rec.fixture && <span className="text-ink-faint">fixture results, not hippo-sim</span>}
+        {rec.fixture && <span className="text-ink-faint">fixture results, not the engine</span>}
       </div>
 
       <ul className="mt-2 space-y-1">
@@ -64,6 +94,16 @@ export function RecommendationCard({ rec, baseline, index }: { rec: Recommendati
       <div className="num mt-2 text-[10.5px] text-ink-faint">
         Sign-off needed from {rec.requiredRoles.map((r) => ROLE_LABEL[r]).join(", ")} · {rec.status === "ready" ? "Ready" : "not reviewed"}
       </div>
+
+      <button
+        onClick={show}
+        disabled={!!blocked || busy}
+        title={blocked ?? undefined}
+        className="num mt-3 w-full rounded-[7px] border border-accent px-3 py-2.5 text-[11.5px] font-semibold text-accent transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:border-line2 disabled:text-ink-faint disabled:hover:bg-transparent"
+      >
+        Show the solution →
+      </button>
+      {(error || blocked) && <p className="num mt-1.5 text-[10.5px] leading-snug text-ink-faint">{error ?? blocked}</p>}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Html } from "@react-three/drei";
 import { PatientBadge } from "@/components/shell/badges";
 import type { PatientStateValue, Service } from "@/lib/stdb/types";
@@ -14,6 +15,7 @@ export function RoomChip({
   total,
   patients,
   servicesDown,
+  downAt,
 }: {
   position: Pos;
   name: string;
@@ -21,16 +23,15 @@ export function RoomChip({
   total: number;
   patients?: { count: number; state: PatientStateValue };
   servicesDown: Service[];
+  /** serviceId → when this tab saw it go down (spread-timing.ts). Those chips pop in; the rest just show. */
+  downAt?: ReadonlyMap<string, number>;
 }) {
   return (
     <Html position={position} center zIndexRange={[20, 10]} style={{ pointerEvents: "none" }}>
       <div className="flex flex-col items-center gap-1">
       {/* A service that goes down shows over the room that broke it. */}
       {servicesDown.map((svc) => (
-        <div key={svc.id} className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-line2 bg-panel/95 px-2 py-0.5 text-[11px]">
-          <span className="rounded bg-ink px-1 text-[10px] font-semibold uppercase tracking-wide text-bg">Down</span>
-          <span className="text-ink">{svc.name} offline</span>
-        </div>
+        <DownChip key={svc.id} service={svc} at={downAt?.get(svc.id)} />
       ))}
       <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-line2 bg-bg/90 px-2.5 py-0.5 text-[11px]">
         <span className="font-disp font-semibold text-ink">{name}</span>
@@ -45,5 +46,21 @@ export function RoomChip({
       </div>
       </div>
     </Html>
+  );
+}
+
+function DownChip({ service, at }: { service: Service; at?: number }) {
+  // Fixed when the chip mounts, so a re-render never restarts the pop.
+  const [delay] = useState(() => (at === undefined ? undefined : at - performance.now()));
+  return (
+    <div
+      className={`flex items-center gap-1.5 whitespace-nowrap rounded-md border border-line2 bg-panel/95 px-2 py-0.5 text-[11px] ${
+        delay === undefined ? "" : "fx-pop"
+      }`}
+      style={delay === undefined ? undefined : { animationDelay: `${Math.round(delay)}ms` }}
+    >
+      <span className="rounded bg-ink px-1 text-[10px] font-semibold uppercase tracking-wide text-bg">Down</span>
+      <span className="text-ink">{service.name} offline</span>
+    </div>
   );
 }

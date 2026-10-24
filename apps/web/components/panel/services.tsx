@@ -1,6 +1,6 @@
 "use client";
 
-import { tickClock } from "@/lib/format";
+import { stepLabel } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
@@ -8,7 +8,8 @@ import type { SessionSnapshot } from "@/lib/stdb/types";
 // with words and an inverted badge rather than a state color.
 export function ServicesPanel({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   const services = session.hospital.services;
-  const down = services.filter((s) => index.serviceState.get(s.id)?.down).length;
+  // The run row's count, copied (never summed in the browser).
+  const down = session.totals.servicesDown;
 
   return (
     <div className="panel">
@@ -41,7 +42,7 @@ export function ServicesPanel({ session, index }: { session: SessionSnapshot; in
                   {svc.name}
                 </b>
                 <span className={`num text-[10px] font-bold uppercase tracking-[0.08em] ${isDown ? "text-ink" : "text-ink-faint"}`}>
-                  {isDown ? `Down · ${tickClock(st?.downSinceTick ?? 0)}` : "Running"}
+                  {isDown ? `Down · ${stepLabel(st?.downSinceTick ?? 0)}` : "Running"}
                 </span>
               </div>
             </div>
