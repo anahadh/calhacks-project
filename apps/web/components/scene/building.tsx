@@ -18,8 +18,8 @@ export function FloorSlab({ floor }: { floor: Floor }) {
         <boxGeometry args={[41, 0.4, 25]} />
         <meshStandardMaterial color={C.slab} roughness={0.95} />
       </mesh>
-      <Html position={[-21.5, y, 12.5]} center={false} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
-        <div className="-translate-x-full whitespace-nowrap pr-2 text-[11px] font-medium uppercase tracking-wider text-ink-faint">
+      <Html position={[-20, y + 0.1, 13.2]} center={false} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
+        <div className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wider text-ink-faint">
           {floor.name}
         </div>
       </Html>
@@ -63,7 +63,7 @@ export function RoomShell({ room, level, infectedShare }: { room: Room; level: n
         <meshBasicMaterial
           color={infectedShare > 0 ? C.infected : C.slab}
           transparent
-          opacity={infectedShare > 0 ? 0.08 + infectedShare * 0.3 : 0}
+          opacity={infectedShare > 0 ? 0.04 + infectedShare * 0.32 : 0}
           side={THREE.DoubleSide}
           depthWrite={false}
         />

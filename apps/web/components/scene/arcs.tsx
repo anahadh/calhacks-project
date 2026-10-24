@@ -16,7 +16,7 @@ export function NetworkArc({ arc }: { arc: Arc }) {
   const [ax, ay, az] = arc.from;
   const [bx, by, bz] = arc.to;
   const dist = Math.hypot(bx - ax, by - ay, bz - az);
-  const mid: [number, number, number] = [(ax + bx) / 2, Math.max(ay, by) + 1.5 + dist * 0.18, (az + bz) / 2];
+  const mid: [number, number, number] = [(ax + bx) / 2, Math.max(ay, by) + 1.2 + dist * 0.1, (az + bz) / 2];
   const color = arc.kind === "infection" ? C.infected : C.healthy;
   return (
     <QuadraticBezierLine

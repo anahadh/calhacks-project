@@ -9,9 +9,9 @@ import type { SessionSnapshot } from "@/lib/stdb/types";
 import { NetworkArc, type Arc } from "./arcs";
 import { FloorSlab, RoomShell } from "./building";
 import { DeviceBox } from "./devices";
-import { RoomChip, ServiceMarker } from "./labels";
+import { RoomChip } from "./labels";
 import { PatientFigures } from "./patients";
-import { bounds, centroid, to3 } from "./space";
+import { bounds, to3 } from "./space";
 
 export function HospitalScene({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   const { hospital } = session;
@@ -55,29 +55,29 @@ export function HospitalScene({ session, index }: { session: SessionSnapshot; in
     // devicePoint only reads from index and floorLevel.
   }, [session.devices, hospital.flows, hovered, index, floorLevel]);
 
-  // Each service floats over the room of its first device, stacked if several share a room.
-  const serviceMarkers = useMemo(() => {
-    const perRoom = new Map<string, number>();
-    return hospital.services.map((svc) => {
-      const room = index.room.get(index.device.get(svc.dependsOnDevices[0])!.roomId)!;
-      const n = perRoom.get(room.id) ?? 0;
-      perRoom.set(room.id, n + 1);
-      return { svc, position: to3(centroid(room.polygon), floorLevel.get(room.floorId) ?? 0, 3.4 + n * 1.6) };
-    });
-  }, [hospital.services, index, floorLevel]);
+  // Down services, keyed by the room of their first device.
+  const downByRoom = useMemo(() => {
+    const m = new Map<string, typeof hospital.services>();
+    for (const svc of hospital.services) {
+      if (!index.serviceState.get(svc.id)?.down) continue;
+      const roomId = index.device.get(svc.dependsOnDevices[0])!.roomId;
+      m.set(roomId, [...(m.get(roomId) ?? []), svc]);
+    }
+    return m;
+  }, [hospital.services, index]);
 
   return (
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [10, 22, 50], fov: 36, near: 0.5, far: 400 }}
+      camera={{ position: [6, 33, 70], fov: 34, near: 0.5, far: 400 }}
       onPointerMissed={() => setHovered(null)}
     >
       <color attach="background" args={[C.bg]} />
       <fog attach="fog" args={[C.bg, 70, 140]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[20, 40, 25]} intensity={0.9} castShadow />
-      <OrbitControls target={[0, 4, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
+      <OrbitControls target={[0, 6, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
 
       {hospital.floors.map((f) => (
         <FloorSlab key={f.id} floor={f} />
@@ -99,6 +99,7 @@ export function HospitalScene({ session, index }: { session: SessionSnapshot; in
               infected={c.infected}
               total={c.total}
               patients={group && groupState ? { count: group.count, state: groupState } : undefined}
+              servicesDown={downByRoom.get(room.id) ?? []}
             />
           </group>
         );
@@ -123,9 +124,6 @@ export function HospitalScene({ session, index }: { session: SessionSnapshot; in
         <NetworkArc key={a.key} arc={a} />
       ))}
 
-      {serviceMarkers.map(({ svc, position }) => (
-        <ServiceMarker key={svc.id} position={position} service={svc} state={index.serviceState.get(svc.id)} />
-      ))}
     </Canvas>
   );
 }

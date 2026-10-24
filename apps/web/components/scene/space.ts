@@ -2,7 +2,7 @@ import type { Point, Room } from "@/lib/stdb/types";
 
 // Floor plan meters → scene units. Floors stack along y with a gap wide enough
 // that, from the default camera, the ground floor is not hidden by the one above.
-export const FLOOR_GAP = 10;
+export const FLOOR_GAP = 13;
 const OFFSET_X = -20;
 const OFFSET_Z = -12;
 
