@@ -1,4 +1,4 @@
-"""``hippo-sim`` command line: deterministic replay and sensitivity generation.
+"""``hippo-backtest`` command line: deterministic replay and sensitivity generation.
 
 Only the result JSON is written to stdout; every diagnostic and validation error
 goes to stderr with a nonzero exit. The ``replay`` subcommand has no seed — replay
@@ -94,7 +94,7 @@ def _cmd_sensitivity(args: argparse.Namespace) -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="hippo-sim", description="Deterministic propagation replay and sensitivity generation.")
+    parser = argparse.ArgumentParser(prog="hippo-backtest", description="Deterministic propagation replay and sensitivity generation.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     replay_cmd = sub.add_parser("replay", help="Replay a campaign against a scenario, or replay a frozen bundle.")

@@ -2,7 +2,7 @@
 
 Writes one ReplayResult JSON per run into apps/web/public/propagation-runs/ plus an
 index.json. Each run is the deterministic output of the frozen engine (the same
-bytes a `hippo-sim freeze` bundle's result holds); the UI renders them with no
+bytes a `hippo-backtest freeze` bundle's result holds); the UI renders them with no
 server. Re-run this whenever the rules or the example inputs change.
 
     uv run python scripts/build_runs.py

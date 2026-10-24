@@ -1,9 +1,10 @@
 # Implemented research decisions
 
 Authority: the user's current request and `claude_instructions/IMPLEMENTATION.md`.
-The earlier Rust/stochastic/SpacetimeDB design is historical context; the requested
-standalone Python engine lives in `engine/sim_core`. There is no second production
-spread implementation and the browser still contains no simulation.
+The live product's spread engine is the TypeScript `packages/sim-core` (hard rule 3);
+this `engine/sim_core` is a **separate, standalone causal backtest/validation tool**
+(CLI `hippo-backtest`). It does not compute visible runs and is not wired into
+SpacetimeDB or the browser; it exists to backtest a plan against the real campaign.
 
 ## Causality before calibration
 
@@ -236,7 +237,7 @@ campaign. Writes are temp-file + `os.replace`; reads validate the bytes as a who
 foreign or stale-schema file is a miss, not a corrupt replay. The complete result
 is stored.
 
-**CLI.** `hippo-sim replay` prints only the result JSON to stdout; diagnostics and
+**CLI.** `hippo-backtest replay` prints only the result JSON to stdout; diagnostics and
 validation errors go to stderr with a nonzero exit. It has no seed — replay is
 deterministic — and seeds live only on the separate `sensitivity` command. A
 canonical scenario is parsed by the strict models (which reject an embedded

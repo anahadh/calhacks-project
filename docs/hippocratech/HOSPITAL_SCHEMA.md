@@ -37,9 +37,9 @@ them.
 The adapters serialize the contract above; none of them computes a transition, and
 all export the same deterministic replay (`ReplayResult.model_dump_json()`).
 
-- **CLI.** `hippo-sim replay --scenario S --campaign C [--plan P] [--compare] [--cache-dir D]`
+- **CLI.** `hippo-backtest replay --scenario S --campaign C [--plan P] [--compare] [--cache-dir D]`
   prints the `ReplayResult` JSON (or, with `--compare`, a `compare_plan` bundle via a Pydantic
-  encoder) to stdout; validation errors go to stderr with a nonzero exit. `hippo-sim sensitivity
+  encoder) to stdout; validation errors go to stderr with a nonzero exit. `hippo-backtest sensitivity
   --scenario S --seed N` is the only seeded command. The CUH dialect loads via `load_cuh`; a
   canonical scenario via the strict models, which reject an embedded `campaign`/`expected`.
 - **HTTP.** `POST /replay` takes a strict `{scenario, campaign, plan?}` (or server-owned
@@ -52,7 +52,7 @@ all export the same deterministic replay (`ReplayResult.model_dump_json()`).
 - **Planner boundary.** A planner receives only the canonical `Scenario` and
   `Plan.model_json_schema()`; a scenario upload embedding `campaign`/`expected` is rejected, not
   stripped, so a held-out answer cannot ride in through the planner surface.
-- **Console adapter** (`apps/web/lib/propagation/`). Maps level→colour (controlled = amber,
+- **Console adapter** (render contract; files land on the UI branch, see `engine/HANDOFF.md`). Maps level→colour (controlled = amber,
   encrypted = red), device `dependency_outage` = violet, and service up/paper/down, keeping
   labels. It renders bundled replay output only; it never coerces the five-level state into the
   live `infected`/`down` booleans and never ticks in the browser.

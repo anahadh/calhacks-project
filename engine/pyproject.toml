@@ -16,7 +16,7 @@ api = ["fastapi>=0.115,<0.116", "uvicorn[standard]>=0.30,<0.35"]
 research = ["pyyaml>=6,<7"]
 
 [project.scripts]
-hippo-sim = "sim_core.cli:main"
+hippo-backtest = "sim_core.cli:main"
 
 [dependency-groups]
 # Dev installs the API stack too, so the full test suite (including the HTTP and

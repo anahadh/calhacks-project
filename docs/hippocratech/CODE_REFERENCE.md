@@ -6,10 +6,16 @@ A map of the repo and who owns each part. Update the matching row in the same ch
 
 ## Repo shape
 
-**Current propagation-engine implementation:** the user-requested
-`claude_instructions/IMPLEMENTATION.md` supersedes the older planned stochastic
-Rust engine for this standalone backtest. Implemented code is in `engine/`;
-transport and UI integration remain a handoff task. See
+**Backtest/validation engine (`engine/`):** a standalone, deterministic Python
+implementation of `claude_instructions/IMPLEMENTATION.md` — a causal
+credential/reach/trust replay that backtests a segmentation plan against the real
+2021 campaign and scores it. It is **separate from the live run engine** (the
+TypeScript `packages/sim-core`, which stays authoritative per hard rule 3): it does
+not compute visible runs and is not wired into SpacetimeDB. Its CLI is
+`hippo-backtest`, distinct from the agents' `hippo-sim`. Run from `engine/`
+(`uv sync --python 3.11 --group dev && uv run pytest -q`); see
+[`engine/README.md`](../../engine/README.md),
+[`engine/RESEARCH_DECISIONS.md`](../../engine/RESEARCH_DECISIONS.md) and
 [`engine/HANDOFF.md`](../../engine/HANDOFF.md).
 
 | Path | Owner | Role |
@@ -26,7 +32,7 @@ transport and UI integration remain a handoff task. See
 | `engine/sim_core/serialize.py` | Base | One canonical JSON form (`model_dump_json`) shared by every transport |
 | `engine/sim_core/bundle.py` | Base | Freeze an attack (scenario+campaign+plan) into a deterministic, tamper-evident, replayable bundle; `verify` re-runs the frozen inputs |
 | `engine/sim_core/cache.py` | Base | Content-addressed result store keyed by the replay fingerprint; atomic writes, validate-on-read |
-| `engine/sim_core/cli.py` | Base | `hippo-sim` CLI: deterministic `replay` and separate `sensitivity` command |
+| `engine/sim_core/cli.py` | Base | `hippo-backtest` CLI: deterministic `replay` and separate `sensitivity` command |
 | `engine/sim_core/planner.py` | Base | Planner input boundary: exposes only Scenario + Plan schema; rejects embedded campaign/expected |
 | `engine/sim_core/api.py` | Base | FastAPI `POST /replay` + WebSocket trace stream; optional CUH demo registry (`demo=True`) and CORS for the dev origin; no transport computes a transition |
 | `engine/sim_core/research_runner.py` | Base | Runs `calibration.yaml` checks; CUH exploratory, HSE/BL reported unsupported (never fitted) |
@@ -36,8 +42,8 @@ transport and UI integration remain a handoff task. See
 | `engine/examples/` | Base | Disclosed exploratory CUH campaign and local illustrative plan |
 | `engine/README.md`, `RESEARCH_DECISIONS.md`, `HANDOFF.md` | Base | Usage, research rationale/evidence limits and remaining adapter work |
 
-The tree and Rust paths below describe the earlier product plan, not an existing
-second simulation backend.
+The tree below is the live product (TypeScript `sim-core` is its engine). The
+`engine/` package above is the separate Python backtest tool and is not part of it.
 
 ```
 spacetime/               SpacetimeDB module (TypeScript, spacetimedb 2.13): tables, reducers, the live simulation

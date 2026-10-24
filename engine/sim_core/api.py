@@ -88,7 +88,7 @@ def create_app(
         demo_scenarios, demo_campaigns = _demo_registry()
         scenarios = {**demo_scenarios, **scenarios}
         campaigns = {**demo_campaigns, **campaigns}
-    app = FastAPI(title="hippo-sim replay", version=RULES_VERSION)
+    app = FastAPI(title="hippo-backtest replay", version=RULES_VERSION)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allow_origins or DEFAULT_ALLOW_ORIGINS,

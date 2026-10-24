@@ -26,7 +26,7 @@ FastAPI server, trace cache storage or browser integration has been implemented.
 
 ## Straightforward remaining implementation
 
-1. **File I/O and CLI.** Add `sim_core/cli.py` and a `hippo-sim` project script.
+1. **File I/O and CLI.** Add `sim_core/cli.py` and a `hippo-backtest` project script.
    Load canonical JSON via the Pydantic models; accept the supplied CUH dialect
    only through `load_cuh`. Flags: `--scenario`, `--campaign`, optional `--plan`,
    optional `--output`. Print only `ReplayResult.model_dump_json()` to stdout;
@@ -130,9 +130,13 @@ All eight items are implemented around the frozen core; no rule, threshold or
 mapping was changed to fit a hold-out. Design decisions are in
 [RESEARCH_DECISIONS.md](RESEARCH_DECISIONS.md) ("Adapter decisions").
 
+> Scope note: this engine branch is backend-only. Item 5 (the console adapter and
+> `/replay` UI under `apps/web/`) lands on a separate UI branch, not in this PR. The
+> CLI is `hippo-backtest`, separate from the agents' `hippo-sim`.
+
 | Item | Module(s) | Notes |
 |---|---|---|
-| 1 File I/O and CLI | `sim_core/cli.py`, `serialize.py`, `hippo-sim` script | JSON-only stdout; no seed on replay; CUH via `load_cuh`; `--compare` via a Pydantic encoder |
+| 1 File I/O and CLI | `sim_core/cli.py`, `serialize.py`, `hippo-backtest` script | JSON-only stdout; no seed on replay; CUH via `load_cuh`; `--compare` via a Pydantic encoder |
 | 2 Trace cache | `sim_core/cache.py` | keyed on `fingerprint`; temp-file + atomic replace; validate-on-read; complete result stored |
 | 3 FastAPI/WebSocket | `sim_core/api.py` | `POST /replay`, WS trace stream; worker-thread replay; bounds; 4xx vs rule-blocker 200 |
 | 4 Planner boundary | `sim_core/planner.py` | only Scenario + `Plan` schema out; embedded campaign/expected rejected, not stripped |

@@ -7,7 +7,7 @@ and evaluation/freeze protocols. Python 3.11; NetworkX; Pydantic.
 
 Research judgment lives here; transport, UI integration and routine runners were
 the handoff, and are now implemented as thin adapters around this frozen core:
-a `hippo-sim` CLI, a content-addressed cache, a FastAPI/WebSocket server, the
+a `hippo-backtest` CLI, a content-addressed cache, a FastAPI/WebSocket server, the
 planner input boundary, the research and freeze runners, and a render-only browser
 adapter. No adapter computes a transition. See [HANDOFF.md](HANDOFF.md) for the
 item list and status, and [RESEARCH_DECISIONS.md](RESEARCH_DECISIONS.md) for every
@@ -43,7 +43,7 @@ local illustrative plan, not a recommendation or deployment artifact.
 
 ## Command line and server
 
-The `hippo-sim` CLI and the FastAPI transport export the same deterministic
+The `hippo-backtest` CLI and the FastAPI transport export the same deterministic
 replay as the Python API: the CLI, a direct call, the cache file, and the cached
 and uncached WebSocket streams all produce byte-identical `ReplayResult` JSON.
 
@@ -51,18 +51,18 @@ and uncached WebSocket streams all produce byte-identical `ReplayResult` JSON.
 # One replay to stdout (JSON only; errors go to stderr with a nonzero exit).
 # The CUH inventory dialect is auto-detected; a canonical scenario is parsed by
 # the strict Pydantic models, which reject an embedded campaign or expected block.
-uv run hippo-sim replay \
+uv run hippo-backtest replay \
   --scenario ../claude_instructions/data/scenarios/cuh_hospital.json \
   --campaign examples/cuh_campaign.json --plan examples/cuh_plan.json
 
-uv run hippo-sim replay --scenario SCN --campaign CMP --plan PLN --compare      # leave-one-lever-out
-uv run hippo-sim replay --scenario SCN --campaign CMP --cache-dir .hippo_cache  # served from cache
-uv run hippo-sim sensitivity --scenario SCN --seed 17  # separate command; the seed is the generator's only
+uv run hippo-backtest replay --scenario SCN --campaign CMP --plan PLN --compare      # leave-one-lever-out
+uv run hippo-backtest replay --scenario SCN --campaign CMP --cache-dir .hippo_cache  # served from cache
+uv run hippo-backtest sensitivity --scenario SCN --seed 17  # separate command; the seed is the generator's only
 
 # Freeze an attack into a self-contained, deterministic, tamper-evident bundle, then
 # replay it offline; --verify re-runs the frozen inputs and refuses an edited bundle.
-uv run hippo-sim freeze --scenario SCN --campaign CMP --plan PLN --output attack.json
-uv run hippo-sim replay --bundle attack.json --verify
+uv run hippo-backtest freeze --scenario SCN --campaign CMP --plan PLN --output attack.json
+uv run hippo-backtest replay --bundle attack.json --verify
 
 # HTTP + WebSocket transport (the `api` extra is installed by the dev group):
 uv run uvicorn sim_core.api:app

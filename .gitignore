@@ -11,3 +11,4 @@ __pycache__/
 .research-ledger/
 .gstack/
 agents/logs/
+.hippo_cache/
