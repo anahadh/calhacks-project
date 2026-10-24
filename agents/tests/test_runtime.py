@@ -99,7 +99,9 @@ def test_optimize_falls_back_to_fixture_candidates():
 
 
 def test_runtime_fixtures_are_consistent():
-    """Every runtime result: a service is down while any device it depends on is infected."""
+    """Every runtime result, in the engine's semantics (scripts/refresh_fixtures.py records
+    them from hippo-sim): one entry per infected device, patient zero alone at tick 0, and
+    a service that goes down stays down from downSinceTick to the last tick, inclusive."""
     from logic import hospital as hospital_mod
 
     H = hospital_mod.load()
@@ -107,14 +109,15 @@ def test_runtime_fixtures_are_consistent():
     for path in sorted((tools.FIXTURES / "results").glob("*.json")):
         r = RunResult.parse_file(path)
         infected = {d.id: d.tick for d in r.infectedDevices}
-        assert r.infectedCount == len(infected), path.name
+        assert r.infectedCount == len(r.infectedDevices) == len(infected), path.name
+        assert set(infected) <= set(H.devices) and max(infected.values(), default=0) <= r.ticks, path.name
+        # logic.clinical reads the device infected at tick 0 as patient zero.
+        assert [d for d, t in infected.items() if t == 0] == [tools.FIXTURE_PATIENT_ZERO], path.name
         assert sum(r.patientCounts.dict().values()) == total, path.name
         down = {s.id: s for s in r.servicesDown}
-        for sid, svc in H.services.items():
-            ticks = [infected[d] for d in svc["dependsOnDevices"] if d in infected]
-            assert (sid in down) == bool(ticks), (path.name, sid)
-            if ticks:
-                assert down[sid].downSinceTick == min(ticks) and down[sid].ticksDown == r.ticks - min(ticks), (path.name, sid)
+        assert len(down) == len(r.servicesDown) and set(down) <= set(H.services), path.name
+        for s in r.servicesDown:
+            assert s.downSinceTick <= r.ticks and s.ticksDown == r.ticks - s.downSinceTick + 1, (path.name, s.id)
         assert set(r.protectedBroken) <= set(r.removedFlows), path.name
         if "@unknown_device_imaging" not in path.name:  # inactive flows aren't on the network to remove
             assert all(H.flows[f].get("active", True) for f in r.removedFlows), path.name

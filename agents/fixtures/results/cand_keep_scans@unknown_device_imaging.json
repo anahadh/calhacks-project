@@ -1,5 +1,5 @@
 {
-  "ticks": 48,
+  "ticks": 1,
   "infectedCount": 1,
   "infectedDevices": [
     {
@@ -10,8 +10,8 @@
   "servicesDown": [
     {
       "id": "svc_mri",
-      "downSinceTick": 0,
-      "ticksDown": 48
+      "downSinceTick": 1,
+      "ticksDown": 1
     }
   ],
   "patientCounts": {

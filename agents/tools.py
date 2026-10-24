@@ -1,8 +1,9 @@
 """The agents' tools: test runs (hippo-sim), candidates (hippo-opt), and the relay.
 
-No spread logic here (AGENTS.md rule 3): numbers come from hippo-sim or, with
-HIPPO_SIM_FIXTURES=1, from hand-written files in fixtures/results/, and every
-relay line then says "fixture": true.
+No spread logic here (AGENTS.md rule 3): numbers come from hippo-sim, the CLI of
+the Python engine in engine/ (HIPPO_SIM_BIN, e.g. engine/.venv/bin/hippo-sim), or,
+with HIPPO_SIM_FIXTURES=1, from fixtures/results/, which scripts/refresh_fixtures.py
+records from that same CLI. In fixture mode every relay line says "fixture": true.
 """
 
 import fcntl
