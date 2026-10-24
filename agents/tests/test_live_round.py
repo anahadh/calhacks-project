@@ -10,10 +10,14 @@ import time
 import urllib.request
 from pathlib import Path
 
+from contextlib import contextmanager
+
 import httpx
 import pytest
+from uagents.crypto import Identity
 
 from config import PORTS, SEED_VARS
+from llm import FORBIDDEN
 
 AGENTS_DIR = Path(__file__).parent.parent
 SESSION = "live-test"
@@ -44,21 +48,32 @@ def messages(log: Path) -> list[dict]:
     return [json.loads(line) for line in log.read_text().splitlines()]
 
 
-@pytest.fixture
-def agents(tmp_path):
-    busy = [p for p in PORTS.values() if listening(p)]
-    if busy:
-        pytest.fail(f"ports {busy} are already in use; stop run_all.py first")
-    env = {
+CHAT_SENDER_SEED = "live test seed for the chat sender"
+CHAT_SENDER_PORT = 8010
+
+
+def env_for(tmp_path, **extra):
+    return {
         **os.environ,
         **{var: f"live test seed for {agent}" for agent, var in SEED_VARS.items()},
         "LOCAL_RESOLVE": "1", "AGENT_MAILBOX": "0", "HIPPO_SIM_FIXTURES": "1",
         "WATCHER_RELAY_URL": "", "RELAY_TOKEN": "", "HIPPO_SIM_BIN": "", "HIPPO_OPT_BIN": "",
         "RELAY_LOG_DIR": str(tmp_path),
         "ANTHROPIC_API_KEY": "",  # never call the real API from tests: llm.py uses its templates
+        "AGENTVERSE_API_KEY": "",  # nor Agentverse
+        # The fake ASI:One user (tests/chat_sender.py), so the Coordinator can reply to it.
+        "LOCAL_PEERS": f"{Identity.from_seed(CHAT_SENDER_SEED, 0).address}=http://127.0.0.1:{CHAT_SENDER_PORT}/submit",
+        **extra,
     }
+
+
+@contextmanager
+def running_agents(tmp_path, **extra_env):
+    busy = [p for p in [*PORTS.values(), CHAT_SENDER_PORT] if listening(p)]
+    if busy:
+        pytest.fail(f"ports {busy} are already in use; stop run_all.py first")
     out = open(tmp_path / "run_all.out", "w")
-    proc = subprocess.Popen([sys.executable, "-u", "run_all.py"], cwd=AGENTS_DIR, env=env,
+    proc = subprocess.Popen([sys.executable, "-u", "run_all.py"], cwd=AGENTS_DIR, env=env_for(tmp_path, **extra_env),
                             stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
     try:
         wait_until(lambda: all(listening(p) for p in PORTS.values()) or proc.poll() is not None, 30, "the agents to listen")
@@ -78,6 +93,12 @@ def agents(tmp_path):
         proc.wait()
         out.close()
         print((tmp_path / "run_all.out").read_text()[-4000:])
+
+
+@pytest.fixture
+def agents(tmp_path):
+    with running_agents(tmp_path) as d:
+        yield d
 
 
 def start_round(session, challenges=()):
@@ -181,3 +202,69 @@ def assert_worded(rows):
             text = m["payload"][WORDED[m["type"]]]
             assert text and not text.startswith("["), m
             assert m["reason"] == text and m["reasonSource"] == "template", m
+
+
+def health(port):
+    r = httpx.get(f"http://127.0.0.1:{port}/health", timeout=5)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_live_mailbox_mode_keeps_local_delivery(tmp_path):
+    """AGENT_MAILBOX=1 with LOCAL_RESOLVE=1: each agent has an Agentverse mailbox client
+    (which can't connect here) and still serves /health and /submit at 127.0.0.1, so a
+    whole round runs over direct local messages."""
+    with running_agents(tmp_path, AGENT_MAILBOX="1") as d:
+        for agent, port in PORTS.items():
+            h = health(port)
+            assert h["agent"] == agent and h["mailbox"] is True and h["localResolve"] is True
+        log = d / f"{SESSION}.jsonl"
+        start_round(SESSION)
+        wait_until(round_state(log, "done"), TIMEOUT_S, "the mailbox-mode round to finish")
+        sent = [m for m in messages(log) if m["table"] == "agent_message" and m["direction"] == "sent"]
+        (rec,) = [m["payload"] for m in sent if m["type"] == "recommendation"]
+        assert rec["requiredRoles"] == ["security", "clinical_engineering"]
+        received = [m for m in messages(log) if m["table"] == "agent_message" and m["direction"] == "received"]
+        assert {m["to"] for m in received} == {"inventory", "flow", "clinical_workflow", "coordinator"}
+
+
+def chat_replies(out: Path) -> list[dict]:
+    return [json.loads(line) for line in out.read_text().splitlines()] if out.exists() else []
+
+
+def test_live_chat_starts_a_round_and_sends_the_summary(agents):
+    out = agents / "chat_replies.jsonl"
+    texts = ["hello", "simulate ransomware from Toaster 9", "simulate ransomware from MRI 2"]
+    sender = subprocess.Popen(
+        [sys.executable, "-u", "tests/chat_sender.py", "--out", str(out), *[x for t in texts for x in ("--text", t)]],
+        cwd=AGENTS_DIR, env=env_for(agents), stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, start_new_session=True,
+    )
+    try:
+        chats = lambda: [r for r in chat_replies(out) if r["type"] == "chat"]
+        wait_until(lambda: len(chats()) >= 4, TIMEOUT_S, "4 chat replies (help, unknown device, started, summary)")
+        rows = chat_replies(out)
+        assert [r["status"] for r in rows if r["type"] == "sent"] == ["delivered"] * 3
+        acked = {r["acknowledged"] for r in rows if r["type"] == "ack"}
+        assert {r["msg_id"] for r in rows if r["type"] == "sent"} <= acked  # every message acknowledged
+        help_, unknown, started, summary = [r["text"] for r in chats()]
+        assert all(r["from_coordinator"] for r in chats())
+        assert "simulate ransomware from MRI 2" in help_ and "status" in help_
+        assert 'I don\'t know a device called "Toaster 9"' in unknown and "MRI 2" in unknown
+        assert started.startswith("Started a round from MRI 2") and "fixture" in started
+        assert "the Flow Agent proposed \"Isolate imaging\"" in summary
+        assert "✕ Clinical Workflow Agent rejected" in summary and "keep flow fl_1, fl_2, fl_3, fl_4" in summary
+        assert "Result: the agents agree on \"Contain imaging, keep scans flowing\"" in summary
+        assert "Security, Clinical engineering must sign off" in summary
+        assert "(template)" in summary and "fixture files" in summary
+        for text in (help_, unknown, started, summary):
+            assert not FORBIDDEN.search(text), text
+        # The chat round went through the same code path as /start_round, and was relayed.
+        logs = list(agents.glob("chat-*.jsonl"))
+        assert len(logs) == 1
+        relayed = [m for m in messages(logs[0]) if m.get("type") == "recommendation"]
+        assert relayed and relayed[0]["payload"]["requiredRoles"] == ["security", "clinical_engineering"]
+        chat_rows = [m for m in messages(agents / "asi1-chat.jsonl") if m.get("type") == "chat"]
+        assert [m["payload"]["text"] for m in chat_rows if m["direction"] == "received"] == texts
+    finally:
+        os.killpg(sender.pid, signal.SIGKILL)
+        sender.wait()

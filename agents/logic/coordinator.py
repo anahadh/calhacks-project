@@ -113,6 +113,10 @@ class Round:
     def baseline(self) -> RunResult | None:
         return self._baseline
 
+    @property
+    def patient_zero(self) -> str:
+        return self._patient_zero
+
     # --- events ---
 
     def start(

@@ -5,12 +5,16 @@ reports its status (thinking → speaking → idle/waiting).
 Decisions live in logic/; nothing here decides anything.
 """
 
+import asyncio
 import logging
 import os
+from dataclasses import dataclass
+from pathlib import Path
 
 os.environ.setdefault("GRPC_VERBOSITY", "NONE")  # the ledger client's gRPC noise when offline
 
-from uagents import Agent, Context, Protocol  # noqa: E402
+import httpx  # noqa: E402
+from uagents import Agent, Context, Model, Protocol  # noqa: E402
 from uagents_core.registration import AgentRegistrationPolicy  # noqa: E402
 from uagents_core.types import DeliveryStatus  # noqa: E402
 
@@ -48,25 +52,118 @@ class LocalAgent(Agent):
         return None
 
 
+PROFILES_DIR = Path(__file__).parent / "profiles"
+
+
+@dataclass(frozen=True)
+class Profile:
+    """What Agentverse shows for an agent. Published only through /connect (the Inspector's
+    Connect → Mailbox, or AGENTVERSE_API_KEY), and only because publish_agent_details=True."""
+
+    name: str
+    handle: str
+    description: str
+
+    def readme_path(self, agent: str) -> str:
+        return str(PROFILES_DIR / f"{agent}.md")  # absolute: uAgents joins a relative path onto the cwd
+
+
+PROFILES = {
+    "inventory": Profile(
+        "Hippocratech Inventory Agent", "hippocratech-inventory",
+        "Blocks any network change to a hospital device nobody can name, and asks a human what it is. Simulation only.",
+    ),
+    "flow": Profile(
+        "Hippocratech Flow Agent", "hippocratech-flow",
+        "Proposes and revises hospital network-segmentation plans, each tested against the same simulated attack.",
+    ),
+    "clinical_workflow": Profile(
+        "Hippocratech Clinical Workflow Agent", "hippocratech-clinical-workflow",
+        "Rejects any segmentation plan that breaks a protected clinical flow or keeps a critical service down.",
+    ),
+    "coordinator": Profile(
+        "Hippocratech Sign-off Coordinator", "hippocratech-coordinator",
+        "Runs the agents' negotiation and routes the plan to the humans who must sign off. Chat: 'simulate ransomware from MRI 2'.",
+    ),
+}
+
+
+class Health(Model):
+    agent: str
+    address: str
+    mailbox: bool
+    localResolve: bool
+
+
 def make_agent(name: str) -> tuple[Agent, Protocol]:
+    """Build an agent for the mode in settings() (AGENT_NOTES.md, "Modes"):
+
+    | AGENT_MAILBOX | LOCAL_RESOLVE | Reaches the other three  | Registers on Agentverse/Almanac |
+    |---------------|---------------|--------------------------|---------------------------------|
+    | 0             | 1 (default)   | 127.0.0.1:<port>/submit  | no                              |
+    | 1             | 1             | 127.0.0.1:<port>/submit  | yes, with a mailbox             |
+    | 0             | 0             | Almanac lookup           | yes, with the local endpoint    |
+    | 1             | 0             | through their mailboxes  | yes, with a mailbox             |
+
+    Every agent also serves GET /health, so its local HTTP server (and /submit) stays up
+    in mailbox mode whatever the inspector setting.
+    """
     s = settings()
-    kwargs = dict(name=name, seed=seed(name), port=PORTS[name], mailbox=s.mailbox)
+    p = PROFILES[name]
+    kwargs = dict(
+        name=p.name, seed=seed(name), port=PORTS[name], mailbox=s.mailbox,
+        handle=p.handle, description=p.description, readme_path=p.readme_path(name),
+        publish_agent_details=True,
+    )
     if not s.mailbox:
-        kwargs["endpoint"] = [addresses.endpoint(name)]
+        kwargs["endpoint"] = [addresses.endpoint(name)]  # an endpoint would override the mailbox
     if s.local_resolve:
-        # The ledger client is unused locally; its "Ledger unavailable" warnings are noise.
+        kwargs["resolve"] = addresses.local_resolver()
+    if s.local_resolve and not s.mailbox:
+        # Nothing to register with. The ledger client is unused; its warnings are noise.
         logging.getLogger("network").setLevel(logging.ERROR)
-        agent = LocalAgent(
-            **kwargs,
-            resolve=addresses.local_resolver(),
-            registration_policy=NoRegistration(),
-            report_events=False,
-            mark_inactive_on_shutdown=False,
-        )
+        agent = LocalAgent(**kwargs, registration_policy=NoRegistration(), report_events=False,
+                           mark_inactive_on_shutdown=False)
     else:
         agent = Agent(**kwargs)
     assert agent.address == addresses.address(name)
+
+    @agent.on_rest_get("/health", Health)
+    async def health(_ctx: Context) -> Health:
+        return Health(agent=name, address=agent.address, mailbox=s.mailbox, localResolve=s.local_resolve)
+
+    if s.mailbox and s.agentverse_api_key:
+        @agent.on_event("startup")
+        async def connect(ctx: Context):
+            await connect_mailbox(ctx, name, s.agentverse_api_key)
+
     return agent, Protocol(name=PROTOCOL_NAME, version=PROTOCOL_VERSION)
+
+
+async def connect_mailbox(ctx: Context, name: str, api_key: str, attempts: int = 20) -> bool:
+    """AGENTVERSE_API_KEY: do what the Inspector's Connect → Mailbox does, from code.
+
+    The Inspector POSTs {"user_token", "agent_type": "mailbox"} to the agent's own
+    /connect endpoint (uAgents' inspector handler), which registers the agent and its
+    profile in Agentverse. uagents_core's register_agent() sends an Agentverse API key
+    as that same user_token, so we POST it to our own /connect. The key is never logged.
+    """
+    url = f"http://127.0.0.1:{PORTS[name]}/connect"
+    body = {"user_token": api_key, "agent_type": "mailbox"}
+    for attempt in range(attempts):
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                r = await client.post(url, json=body)
+            result = r.json()
+            if r.status_code == 200 and result.get("success"):
+                ctx.logger.info("Agentverse: connected the mailbox with AGENTVERSE_API_KEY")
+                return True
+            ctx.logger.error(f"Agentverse: mailbox connect failed: {result.get('detail') or r.text[:200]}")
+            return False
+        except httpx.HTTPError:
+            await asyncio.sleep(1)  # our server may not be listening yet
+    ctx.logger.error("Agentverse: our own /connect never answered")
+    return False
 
 
 def round_of(msg: Strict) -> int:

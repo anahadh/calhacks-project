@@ -22,6 +22,7 @@ from protocol import Candidate, Constraint, RunResult, Strict
 
 FIXTURES = AGENTS_DIR / "fixtures"
 SIM_TIMEOUT_S = 60
+FIXTURE_PATIENT_ZERO = "mri_2"  # every file in fixtures/results/ is for this patient zero
 
 
 class ToolError(RuntimeError):
@@ -42,6 +43,9 @@ def run_sim(candidate: Candidate | None, patient_zero: str, seed: int, challenge
     s = settings()
     challenges = sorted(challenges)
     if s.hippo_sim_fixtures:
+        if patient_zero != FIXTURE_PATIENT_ZERO:
+            raise ToolError(f"fixture results exist only for an attack starting at MRI 2 ({FIXTURE_PATIENT_ZERO}); "
+                            f"connect hippo-sim (HIPPO_SIM_BIN) to start from {patient_zero}")
         path = FIXTURES / "results" / fixture_name(candidate.id if candidate else None, challenges)
         if not path.exists():
             raise ToolError(f"HIPPO_SIM_FIXTURES=1 but there is no fixture {path.relative_to(AGENTS_DIR)}")
@@ -140,6 +144,9 @@ def summary(type: str, p: dict) -> str:
     if type == "recommendation":
         return (f"'{p['policy']['name']}', {len(p['policy']['rules'])} rules; {numbers(p['testResult'])}; "
                 f"required roles {p['requiredRoles']}")
+    if type == "chat":
+        text = " ".join(p["text"].split())
+        return f"“{text[:150]}{'…' if len(text) > 150 else ''}”"
     if type == "round_state":
         return f"round {p['round']}: {p['state']}" + (f" ({p['detail']})" if p.get("detail") else "")
     return json.dumps(p)[:200]

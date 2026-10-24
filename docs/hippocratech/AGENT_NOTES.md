@@ -88,7 +88,8 @@ if __name__ == "__main__":
 
 - `mailbox=True` makes the agent receive messages through its Agentverse mailbox (polled every second, `MAILBOX_POLL_INTERVAL_SECONDS`), so it needs no public endpoint.
 - On start, the agent logs `Agent inspector available at https://agentverse.ai/inspect/?uri=http%3A//127.0.0.1:<port>&address=<address>`. Open that link, signed in to Agentverse, and choose **Connect → Mailbox**. The inspector calls the agent's local `/connect` REST endpoint, which registers it in Agentverse through a signed challenge. **Not run here** (no network); this flow is read from `agent.py` and `mailbox.py` and is the step to verify first on a laptop.
-- **The local HTTP server still runs.** In `run_async()`, a mailbox agent drops its local server only when it has no REST handlers. The inspector endpoints (`/agent_info`, `/connect`, `/messages`, on by default) and our own `on_rest_post` handlers keep it up. So the Coordinator can be a mailbox agent and still serve `start_round`, `reassess` and `resume` locally for the watchers.
+- **The local HTTP server still runs.** In `run_async()`, a mailbox agent drops its local server only when it has no REST handlers. In 0.26.1 that never happens by default: `enable_agent_inspector=True` registers `/agent_info`, `/messages`, `/connect` and `/disconnect` on *every* agent, including Inventory, Flow and Clinical Workflow. To make it independent of the inspector setting, every agent also serves `GET /health` (`runtime.make_agent`). `tests/test_runtime.py` builds each agent with `mailbox=True` and checks `/health`, and `test_live_mailbox_mode_keeps_local_delivery` runs a whole round over local `/submit` with all four in mailbox mode.
+- An `endpoint=` argument overrides `mailbox=True` (`parse_endpoint_config` logs "Endpoint configuration overrides mailbox setting"), so mailbox agents get no endpoint.
 - Give each agent its own `port`.
 
 ### 4. REST handlers (`on_rest_post`)
@@ -159,6 +160,51 @@ By default an agent finds another agent's endpoint through the Almanac and Agent
 Proof: `tests/test_runtime.py` checks the resolver maps all four addresses to their ports and that `make_agent` wires it in. `tests/test_live_round.py` runs a whole round between four separate processes this way, with every message delivered (`ctx.send` returns `delivered` only after the receiver's `/submit` accepted it).
 
 Not tested here: `LOCAL_RESOLVE=0` (Almanac registration) and `AGENT_MAILBOX=1`, both blocked by this environment's network policy. Try them on a laptop.
+
+### 7b. Modes (`AGENT_MAILBOX` × `LOCAL_RESOLVE`)
+
+| `AGENT_MAILBOX` | `LOCAL_RESOLVE` | The other three reached at | Strangers (ASI:One users) reached through | Registers on Agentverse/Almanac | Tested here |
+|---|---|---|---|---|---|
+| 0 | 1 (default) | `127.0.0.1:<port>/submit` | can't (rules only) | no (`NoRegistration`, `LocalAgent`) | yes, the live rounds |
+| **1** | **1** | `127.0.0.1:<port>/submit` | Almanac/Agentverse (`LocalFirstResolver`) | yes: mailbox, Almanac, manifest | local delivery yes (`test_live_mailbox_mode_keeps_local_delivery`); Agentverse side only on a laptop |
+| 0 | 0 | Almanac lookup of the local endpoint | Almanac | yes, with `http://127.0.0.1:<port>/submit` | no (blocked) |
+| 1 | 0 | their mailboxes (slow, about a 1 s poll) | Almanac/Agentverse | yes | no (blocked) |
+
+- **Mailbox + local (the demo mode)** uses a plain `Agent`, not `LocalAgent`. It needs its real Almanac registration loop, its startup status update and the manifest publish, so that ASI:One can find it.
+  - `LocalFirstResolver` sends to our four agents through the local rules, and anyone else through `GlobalResolver`. Without the fallback, the Coordinator couldn't reply to an ASI:One user.
+- In this environment, mailbox mode logs `Failed to connect to mailbox server` about once a second per agent, plus "Ledger unavailable" and "Unable to publish manifest". On a connected laptop those go away once the mailbox is connected.
+  - Shutdown is slower in mailbox mode, because each agent marks itself inactive in the Almanac.
+- `LOCAL_PEERS` (`agent1q...=http://127.0.0.1:<port>/submit`, comma-separated) adds addresses to the local rules. It's for tests and dev, so the fake chat sender (`tests/chat_sender.py`) can be replied to without Agentverse.
+
+### 7c. Profiles (`readme_path`, `description`, `handle`, `publish_agent_details`)
+
+From `agent.py` 0.26.1:
+- `readme_path` is read once, in `__init__`: `os.path.join(os.getcwd(), readme_path)`, or `<dir>/README.md` if it's a directory. An absolute path is used as is, so `runtime.PROFILES` passes absolute paths to `agents/profiles/<agent>.md`.
+- `description`, the readme, `avatar_url` and `banner_url` go into `AgentProfile` **only if `publish_agent_details=True`**. They're sent only through the inspector's `/connect` handler (`_build_registration_profile`): connecting is when the profile is published, so reconnect after editing a profile.
+- `handle` goes into the same `/connect` `RegistrationRequest`. Whether Agentverse accepts hyphenated handles (`hippocratech-clinical-workflow`) can only be seen on a laptop.
+- `name` is the display name (`Hippocratech Inventory Agent`, …) and also the name in log lines. It doesn't affect the address. The code's own names (`inventory`, …) stay the keys for seeds and ports.
+
+### 7d. Connecting the mailbox from code (`AGENTVERSE_API_KEY`)
+
+- **Supported, using what the Inspector already uses.** The Inspector's Connect → Mailbox POSTs `{"user_token": <the signed-in user's token>, "agent_type": "mailbox"}` to the agent's own `/connect`. The inspector handler builds the registration (name, handle, profile, endpoints, protocols) and calls `uagents.mailbox.register_in_agentverse`: a signed identity challenge, then `POST /v2/agents`.
+- `uagents_core.utils.registration.register_agent()` puts an **Agentverse API key** into that same `AgentverseConnectRequest.user_token` field. So with `AGENT_MAILBOX=1` and `AGENTVERSE_API_KEY` set, `runtime.connect_mailbox()` POSTs `{"user_token": $AGENTVERSE_API_KEY, "agent_type": "mailbox"}` to our own `http://127.0.0.1:<port>/connect` at startup. It retries until our server listens, and never logs the key.
+- `register_chat_agent()` / `register_agent()` themselves don't fit: they register a **webhook** agent with a public `https://` endpoint, not a mailbox.
+- Unverified here: that Agentverse accepts an API key as `user_token` for a mailbox connect. On a laptop, look for `Agentverse: connected the mailbox with AGENTVERSE_API_KEY`; if it fails, fall back to the Inspector.
+
+### 7e. Chat protocol on the Coordinator
+
+- `Protocol(spec=chat_protocol_spec)`, included with `publish_manifest=True` when the agent registers (mailbox mode or `LOCAL_RESOLVE=0`). In local-only mode the manifest has nowhere to go, so it's included without publishing.
+- Every `ChatMessage` gets a `ChatAcknowledgement`. `chat.py` reads the text in code (no language model) and builds every reply.
+  - `simulate ransomware from <device>` (also `start/run … from/on`, `infect <device>`, `patient zero: <device>`) starts a round.
+  - `status` reports the last round.
+  - Anything else gets the help text.
+  - Devices resolve by id or name, ignoring case, spaces and punctuation (`mri2` = MRI 2). A device that's off the network until its challenge (`dev_unknown_7`) doesn't count.
+- A chat round goes through the same `begin()` as `/start_round`, with session `chat-<8 hex>`, seed 1337 and no challenges.
+  - The "Started a round…" reply goes out before the round can move on, because the Coordinator handles one message at a time.
+  - When the round reaches `done`, the sender gets a summary built from the messages the Coordinator saw, with their Claude or template text. It labels templates and fixtures, and ends with who must sign off and "Nothing is applied to any real network."
+- Chat replies sent later (the summary goes out from the handler of the round's last verdict) use `ctx.send_raw(..., protocol_digest=chat_protocol.digest)`, so they carry the chat protocol's digest, not the handler's.
+- Chat text is relayed as `type: "chat"` rows: received with `from: "humans"`, replies with `to: "humans"`. Rows that belong to a round use its session; the rest go under `asi1-chat`. The sender's address isn't stored, and acks aren't relayed.
+- **Fixture mode refuses other patient zeros.** Every fixture result is for MRI 2, so `tools.run_sim` now raises "fixture results exist only for an attack starting at MRI 2", rather than returning MRI 2's numbers for "simulate from CT 1". The chat reply passes that on.
 
 ### 8. Message order and delivery
 

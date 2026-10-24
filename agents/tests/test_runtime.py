@@ -144,3 +144,129 @@ def test_relay_writes_jsonl_rows(tmp_path, capsys):
     assert "“[reason]” (template)" in out[1]  # the worded reason, labeled with who wrote it
     with pytest.raises(AssertionError):
         run(tools.relay.status("s1", "flow", "approved"))
+
+
+# --- mailbox mode, profiles, /health, AGENTVERSE_API_KEY ---
+
+
+def _asgi_get(agent, path):
+    """GET a path from the agent's own ASGI server, the way uAgents' tests do."""
+    from unittest.mock import AsyncMock, patch
+
+    send = AsyncMock()
+    with patch("uagents.asgi._read_asgi_body", return_value=b""):
+        agent._loop.run_until_complete(agent._server(
+            scope={"type": "http", "method": "GET", "path": path, "client": ("127.0.0.1", 1)}, receive=None, send=send))
+    start, payload = (c.args[0] for c in send.call_args_list)
+    return start["status"], json.loads(payload["body"])
+
+
+@pytest.mark.parametrize("name", config.AGENTS)
+def test_mailbox_agents_keep_their_local_server(monkeypatch, name):
+    import runtime
+
+    monkeypatch.setenv("AGENT_MAILBOX", "1")
+    agent, _ = runtime.make_agent(name)
+    assert agent.mailbox_client is not None  # an Agentverse mailbox...
+    assert type(agent) is runtime.Agent and not isinstance(agent, runtime.LocalAgent)  # ...and real registration
+    assert isinstance(agent._resolver, addresses.LocalFirstResolver)  # ...but the other three stay local
+    # run_async() drops the local server only for a mailbox agent with no REST handlers.
+    assert ("GET", "/health") in agent._rest_handlers
+    # uAgents dispatches REST by address through one process-wide dispatcher, so an earlier
+    # test's agent with the same seed could answer the ASGI call: ask this agent directly.
+    body = agent._loop.run_until_complete(agent.handle_rest("GET", "/health", None))
+    assert body.dict() == {"agent": name, "address": agent.address, "mailbox": True, "localResolve": True}
+    status, _ = _asgi_get(agent, "/health")  # and the local server routes /health
+    assert status == 200
+
+
+@pytest.mark.parametrize("name", config.AGENTS)
+def test_profiles(name):
+    import runtime
+
+    agent, _ = runtime.make_agent(name)
+    p = runtime.PROFILES[name]
+    assert agent.name == p.name and p.handle == f"hippocratech-{name.replace('_', '-')}"
+    assert agent._handle == p.handle and agent._description == p.description and agent._publish_agent_details
+    readme = agent._readme
+    for must in ("## Messages", "Code decides", "Claude (Anthropic) writes only", "## Humans decide", "synthetic"):
+        assert must in readme, (name, must)
+    assert not llm_forbidden(readme)
+    if name == "coordinator":
+        assert "ASI:One" in readme and "simulate ransomware from MRI 2" in readme
+
+
+def llm_forbidden(text):
+    import llm
+
+    return llm.FORBIDDEN.findall(text.replace("not approval", "").replace("cannot approve", ""))
+
+
+def test_local_first_resolver_falls_back_for_strangers():
+    class Fallback(addresses.Resolver):
+        async def resolve(self, destination):
+            return destination, ["https://agentverse.example/mailbox"]
+
+    r = addresses.LocalFirstResolver(addresses.local_rules(), Fallback())
+    flow = addresses.address("flow")
+    assert run(r.resolve(flow)) == (flow, ["http://127.0.0.1:8002/submit"])
+    assert run(r.resolve("agent1qsomeoneonasione"))[1] == ["https://agentverse.example/mailbox"]
+
+
+def test_local_peers(monkeypatch):
+    monkeypatch.setenv("LOCAL_PEERS", "agent1qpeer=http://127.0.0.1:8010/submit")
+    assert addresses.local_rules()["agent1qpeer"] == "http://127.0.0.1:8010/submit"
+    monkeypatch.setenv("LOCAL_PEERS", "nonsense")
+    with pytest.raises(config.ConfigError, match="LOCAL_PEERS"):
+        config.settings()
+
+
+def test_agentverse_api_key_connects_through_our_own_connect_endpoint(monkeypatch, caplog):
+    import logging
+
+    import runtime
+
+    posts = []
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {"success": True, "detail": None}
+
+    class FakeClient:
+        def __init__(self, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json):
+            posts.append((url, json))
+            return FakeResponse()
+
+    monkeypatch.setattr(runtime.httpx, "AsyncClient", FakeClient)
+    ctx = type("Ctx", (), {"logger": logging.getLogger("test-connect")})()
+    with caplog.at_level(logging.INFO):
+        assert run(runtime.connect_mailbox(ctx, "inventory", "av-secret-key")) is True
+    assert posts == [("http://127.0.0.1:8001/connect", {"user_token": "av-secret-key", "agent_type": "mailbox"})]
+    assert "av-secret-key" not in caplog.text
+
+
+def test_api_key_hook_only_in_mailbox_mode(monkeypatch):
+    import runtime
+
+    monkeypatch.setenv("AGENTVERSE_API_KEY", "av-secret-key")
+    local, _ = runtime.make_agent("flow")
+    assert local._on_startup == []  # no mailbox: nothing to connect
+    monkeypatch.setenv("AGENT_MAILBOX", "1")
+    boxed, _ = runtime.make_agent("flow")
+    assert [f.__name__ for f in boxed._on_startup] == ["connect"]
+
+
+def test_fixtures_refuse_another_patient_zero():
+    with pytest.raises(tools.ToolError, match="only for an attack starting at MRI 2"):
+        tools.run_sim(None, "ct_1", 1337)

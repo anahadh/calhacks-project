@@ -49,6 +49,8 @@ class Settings:
     relay_token: str | None  # RELAY_TOKEN
     hospital_path: Path  # HOSPITAL_PATH, default fixtures/hospital.json
     log_dir: Path  # RELAY_LOG_DIR, default agents/logs; used when WATCHER_RELAY_URL is unset
+    agentverse_api_key: str | None  # AGENTVERSE_API_KEY: with AGENT_MAILBOX=1, agents connect their own mailbox
+    local_peers: dict[str, str]  # LOCAL_PEERS: extra "address=url" pairs for the local resolver (tests, dev)
 
 
 def settings() -> Settings:
@@ -62,10 +64,23 @@ def settings() -> Settings:
         relay_token=_str("RELAY_TOKEN"),
         hospital_path=Path(_str("HOSPITAL_PATH") or AGENTS_DIR / "fixtures" / "hospital.json"),
         log_dir=Path(_str("RELAY_LOG_DIR") or AGENTS_DIR / "logs"),
+        agentverse_api_key=_str("AGENTVERSE_API_KEY"),
+        local_peers=_peers(_str("LOCAL_PEERS")),
     )
     if s.relay_url and not s.relay_token:
         raise ConfigError("WATCHER_RELAY_URL is set but RELAY_TOKEN is not")
     return s
+
+
+def _peers(value: str | None) -> dict[str, str]:
+    out = {}
+    for pair in (value or "").split(","):
+        if pair.strip():
+            addr, sep, url = pair.strip().partition("=")
+            if not sep or not url.startswith("http"):
+                raise ConfigError(f"LOCAL_PEERS entries look like agent1q...=http://127.0.0.1:8010/submit, not {pair!r}")
+            out[addr] = url
+    return out
 
 
 def seed(agent: str) -> str:
