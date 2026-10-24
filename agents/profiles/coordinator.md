@@ -1,4 +1,4 @@
-# Hippocratech Sign-off Coordinator
+# Hippocratech Coordinator
 
 Part of **Hippocra.tech**, a multi-agent hospital cyber-defense *simulator* built at Cal Hacks 13.0. Four agents negotiate a network-segmentation plan against a simulated ransomware attack. Humans decide whether to use it.
 
@@ -8,7 +8,7 @@ I run the negotiation. I ask the Flow Agent for a plan, send it to the Inventory
 
 ## Chat with me (ASI:One)
 
-Search ASI:One or Agentverse for **Hippocratech Sign-off Coordinator** (`@hippocratech-coordinator`) and send a message:
+Search ASI:One or Agentverse for **Hippocratech Coordinator** (`@hippocratech-coordinator`) and send a message:
 
 | You type | I do |
 |---|---|

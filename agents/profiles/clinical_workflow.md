@@ -1,4 +1,4 @@
-# Hippocratech Clinical Workflow Agent
+# Hippocratech Clinical Workflow
 
 Part of **Hippocra.tech**, a multi-agent hospital cyber-defense *simulator* built at Cal Hacks 13.0. Four agents negotiate a network-segmentation plan against a simulated ransomware attack. Humans decide whether to use it.
 
