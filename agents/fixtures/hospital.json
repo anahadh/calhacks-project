@@ -1,0 +1,1580 @@
+{
+  "schemaVersion": 1,
+  "hospital": {
+    "id": "demo_general",
+    "name": "Bayview General (demo)",
+    "floors": [
+      {
+        "id": "fl_0",
+        "name": "Ground",
+        "level": 0
+      },
+      {
+        "id": "fl_1",
+        "name": "Level 1",
+        "level": 1
+      }
+    ],
+    "rooms": [
+      {
+        "id": "rm_er",
+        "floorId": "fl_0",
+        "name": "Emergency",
+        "type": "er",
+        "zone": "critical_care",
+        "polygon": [
+          [
+            0,
+            0
+          ],
+          [
+            14,
+            0
+          ],
+          [
+            14,
+            10
+          ],
+          [
+            0,
+            10
+          ]
+        ]
+      },
+      {
+        "id": "rm_waiting",
+        "floorId": "fl_0",
+        "name": "ER waiting",
+        "type": "waiting",
+        "zone": "public",
+        "polygon": [
+          [
+            14,
+            0
+          ],
+          [
+            22,
+            0
+          ],
+          [
+            22,
+            10
+          ],
+          [
+            14,
+            10
+          ]
+        ]
+      },
+      {
+        "id": "rm_imaging",
+        "floorId": "fl_0",
+        "name": "Imaging",
+        "type": "imaging",
+        "zone": "imaging",
+        "polygon": [
+          [
+            22,
+            0
+          ],
+          [
+            40,
+            0
+          ],
+          [
+            40,
+            12
+          ],
+          [
+            22,
+            12
+          ]
+        ]
+      },
+      {
+        "id": "rm_lab",
+        "floorId": "fl_0",
+        "name": "Lab",
+        "type": "lab",
+        "zone": "clinical_support",
+        "polygon": [
+          [
+            0,
+            10
+          ],
+          [
+            12,
+            10
+          ],
+          [
+            12,
+            24
+          ],
+          [
+            0,
+            24
+          ]
+        ]
+      },
+      {
+        "id": "rm_pharmacy",
+        "floorId": "fl_0",
+        "name": "Pharmacy",
+        "type": "pharmacy",
+        "zone": "clinical_support",
+        "polygon": [
+          [
+            12,
+            10
+          ],
+          [
+            22,
+            10
+          ],
+          [
+            22,
+            24
+          ],
+          [
+            12,
+            24
+          ]
+        ]
+      },
+      {
+        "id": "rm_admin",
+        "floorId": "fl_0",
+        "name": "Admin",
+        "type": "admin",
+        "zone": "business",
+        "polygon": [
+          [
+            22,
+            12
+          ],
+          [
+            40,
+            12
+          ],
+          [
+            40,
+            24
+          ],
+          [
+            22,
+            24
+          ]
+        ]
+      },
+      {
+        "id": "rm_icu",
+        "floorId": "fl_1",
+        "name": "ICU",
+        "type": "icu",
+        "zone": "critical_care",
+        "polygon": [
+          [
+            0,
+            0
+          ],
+          [
+            16,
+            0
+          ],
+          [
+            16,
+            12
+          ],
+          [
+            0,
+            12
+          ]
+        ]
+      },
+      {
+        "id": "rm_or",
+        "floorId": "fl_1",
+        "name": "Operating rooms",
+        "type": "or",
+        "zone": "critical_care",
+        "polygon": [
+          [
+            16,
+            0
+          ],
+          [
+            30,
+            0
+          ],
+          [
+            30,
+            12
+          ],
+          [
+            16,
+            12
+          ]
+        ]
+      },
+      {
+        "id": "rm_server",
+        "floorId": "fl_1",
+        "name": "Server room",
+        "type": "server",
+        "zone": "it_core",
+        "polygon": [
+          [
+            30,
+            0
+          ],
+          [
+            40,
+            0
+          ],
+          [
+            40,
+            12
+          ],
+          [
+            30,
+            12
+          ]
+        ]
+      },
+      {
+        "id": "rm_ward",
+        "floorId": "fl_1",
+        "name": "Ward 3B",
+        "type": "ward",
+        "zone": "inpatient",
+        "polygon": [
+          [
+            0,
+            12
+          ],
+          [
+            24,
+            12
+          ],
+          [
+            24,
+            24
+          ],
+          [
+            0,
+            24
+          ]
+        ]
+      },
+      {
+        "id": "rm_reading",
+        "floorId": "fl_1",
+        "name": "Radiology reading",
+        "type": "imaging",
+        "zone": "imaging",
+        "polygon": [
+          [
+            24,
+            12
+          ],
+          [
+            40,
+            12
+          ],
+          [
+            40,
+            24
+          ],
+          [
+            24,
+            24
+          ]
+        ]
+      }
+    ],
+    "devices": [
+      {
+        "id": "ns_er",
+        "roomId": "rm_er",
+        "type": "nurse_station",
+        "name": "ER nurse station",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          2.3333333333333335,
+          3.25
+        ]
+      },
+      {
+        "id": "pm_er_1",
+        "roomId": "rm_er",
+        "type": "patient_monitor",
+        "name": "ER monitor 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          7,
+          3.25
+        ]
+      },
+      {
+        "id": "pm_er_2",
+        "roomId": "rm_er",
+        "type": "patient_monitor",
+        "name": "ER monitor 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          11.666666666666666,
+          3.25
+        ]
+      },
+      {
+        "id": "pm_er_3",
+        "roomId": "rm_er",
+        "type": "patient_monitor",
+        "name": "ER monitor 3",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          2.3333333333333335,
+          6.75
+        ]
+      },
+      {
+        "id": "ws_er_1",
+        "roomId": "rm_er",
+        "type": "workstation",
+        "name": "ER WS 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          7,
+          6.75
+        ]
+      },
+      {
+        "id": "ip_er_1",
+        "roomId": "rm_er",
+        "type": "infusion_pump",
+        "name": "ER pump 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          11.666666666666666,
+          6.75
+        ]
+      },
+      {
+        "id": "ws_reg",
+        "roomId": "rm_waiting",
+        "type": "workstation",
+        "name": "Registration WS",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          16,
+          5
+        ]
+      },
+      {
+        "id": "badge_er",
+        "roomId": "rm_waiting",
+        "type": "badge_reader",
+        "name": "ER badge reader",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          20,
+          5
+        ]
+      },
+      {
+        "id": "mri_1",
+        "roomId": "rm_imaging",
+        "type": "mri",
+        "name": "MRI 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          25,
+          3.75
+        ]
+      },
+      {
+        "id": "mri_2",
+        "roomId": "rm_imaging",
+        "type": "mri",
+        "name": "MRI 2",
+        "os": "windows_7",
+        "vulnerable": true,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          31,
+          3.75
+        ]
+      },
+      {
+        "id": "mri_3",
+        "roomId": "rm_imaging",
+        "type": "mri",
+        "name": "MRI 3",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          37,
+          3.75
+        ]
+      },
+      {
+        "id": "ct_1",
+        "roomId": "rm_imaging",
+        "type": "ct",
+        "name": "CT 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          25,
+          8.25
+        ]
+      },
+      {
+        "id": "ws_img_1",
+        "roomId": "rm_imaging",
+        "type": "workstation",
+        "name": "Imaging WS 1",
+        "os": "windows_7",
+        "vulnerable": true,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          31,
+          8.25
+        ]
+      },
+      {
+        "id": "ws_img_2",
+        "roomId": "rm_imaging",
+        "type": "workstation",
+        "name": "Imaging WS 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          37,
+          8.25
+        ]
+      },
+      {
+        "id": "la_1",
+        "roomId": "rm_lab",
+        "type": "lab_analyzer",
+        "name": "Analyzer 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          3,
+          14.25
+        ]
+      },
+      {
+        "id": "la_2",
+        "roomId": "rm_lab",
+        "type": "lab_analyzer",
+        "name": "Analyzer 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          9,
+          14.25
+        ]
+      },
+      {
+        "id": "ws_lab",
+        "roomId": "rm_lab",
+        "type": "workstation",
+        "name": "Lab WS",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          3,
+          19.75
+        ]
+      },
+      {
+        "id": "pc_1",
+        "roomId": "rm_pharmacy",
+        "type": "pharmacy_cabinet",
+        "name": "Dispensing cabinet",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          14.5,
+          17
+        ]
+      },
+      {
+        "id": "ws_pharm",
+        "roomId": "rm_pharmacy",
+        "type": "workstation",
+        "name": "Pharmacy WS",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          19.5,
+          17
+        ]
+      },
+      {
+        "id": "ws_admin_1",
+        "roomId": "rm_admin",
+        "type": "workstation",
+        "name": "Admin WS 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          25,
+          15.75
+        ]
+      },
+      {
+        "id": "ws_admin_2",
+        "roomId": "rm_admin",
+        "type": "workstation",
+        "name": "Admin WS 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          31,
+          15.75
+        ]
+      },
+      {
+        "id": "ws_admin_3",
+        "roomId": "rm_admin",
+        "type": "workstation",
+        "name": "Admin WS 3",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          37,
+          15.75
+        ]
+      },
+      {
+        "id": "hvac_1",
+        "roomId": "rm_admin",
+        "type": "hvac",
+        "name": "HVAC controller",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          25,
+          20.25
+        ]
+      },
+      {
+        "id": "badge_admin",
+        "roomId": "rm_admin",
+        "type": "badge_reader",
+        "name": "Admin badge reader",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          31,
+          20.25
+        ]
+      },
+      {
+        "id": "ns_icu",
+        "roomId": "rm_icu",
+        "type": "nurse_station",
+        "name": "ICU nurse station",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "life_support",
+        "vlan": 10,
+        "position": [
+          2,
+          3.75
+        ]
+      },
+      {
+        "id": "pm_icu_1",
+        "roomId": "rm_icu",
+        "type": "patient_monitor",
+        "name": "ICU monitor 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          6,
+          3.75
+        ]
+      },
+      {
+        "id": "pm_icu_2",
+        "roomId": "rm_icu",
+        "type": "patient_monitor",
+        "name": "ICU monitor 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          10,
+          3.75
+        ]
+      },
+      {
+        "id": "pm_icu_3",
+        "roomId": "rm_icu",
+        "type": "patient_monitor",
+        "name": "ICU monitor 3",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          14,
+          3.75
+        ]
+      },
+      {
+        "id": "pm_icu_4",
+        "roomId": "rm_icu",
+        "type": "patient_monitor",
+        "name": "ICU monitor 4",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          2,
+          8.25
+        ]
+      },
+      {
+        "id": "ip_icu_1",
+        "roomId": "rm_icu",
+        "type": "infusion_pump",
+        "name": "ICU pump 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          6,
+          8.25
+        ]
+      },
+      {
+        "id": "ip_icu_2",
+        "roomId": "rm_icu",
+        "type": "infusion_pump",
+        "name": "ICU pump 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          10,
+          8.25
+        ]
+      },
+      {
+        "id": "am_or_1",
+        "roomId": "rm_or",
+        "type": "anesthesia_machine",
+        "name": "Anesthesia 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          18.333333333333332,
+          3.75
+        ]
+      },
+      {
+        "id": "am_or_2",
+        "roomId": "rm_or",
+        "type": "anesthesia_machine",
+        "name": "Anesthesia 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          23,
+          3.75
+        ]
+      },
+      {
+        "id": "pm_or_1",
+        "roomId": "rm_or",
+        "type": "patient_monitor",
+        "name": "OR monitor 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          27.666666666666664,
+          3.75
+        ]
+      },
+      {
+        "id": "pm_or_2",
+        "roomId": "rm_or",
+        "type": "patient_monitor",
+        "name": "OR monitor 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          18.333333333333332,
+          8.25
+        ]
+      },
+      {
+        "id": "ws_or",
+        "roomId": "rm_or",
+        "type": "workstation",
+        "name": "OR WS",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          23,
+          8.25
+        ]
+      },
+      {
+        "id": "srv_pacs",
+        "roomId": "rm_server",
+        "type": "server_rack",
+        "name": "PACS",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "high",
+        "vlan": 10,
+        "position": [
+          32.5,
+          3.75
+        ],
+        "role": "pacs"
+      },
+      {
+        "id": "srv_ehr",
+        "roomId": "rm_server",
+        "type": "server_rack",
+        "name": "EHR engine",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "high",
+        "vlan": 10,
+        "position": [
+          37.5,
+          3.75
+        ],
+        "role": "ehr_engine"
+      },
+      {
+        "id": "srv_file",
+        "roomId": "rm_server",
+        "type": "server_rack",
+        "name": "File server",
+        "os": "linux",
+        "vulnerable": true,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          32.5,
+          8.25
+        ],
+        "role": "file_server"
+      },
+      {
+        "id": "srv_dc",
+        "roomId": "rm_server",
+        "type": "server_rack",
+        "name": "Domain controller",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "high",
+        "vlan": 10,
+        "position": [
+          37.5,
+          8.25
+        ],
+        "role": "domain_controller"
+      },
+      {
+        "id": "ns_ward",
+        "roomId": "rm_ward",
+        "type": "nurse_station",
+        "name": "Ward nurse station",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          3,
+          15.75
+        ]
+      },
+      {
+        "id": "pm_ward_1",
+        "roomId": "rm_ward",
+        "type": "patient_monitor",
+        "name": "Ward monitor 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          9,
+          15.75
+        ]
+      },
+      {
+        "id": "pm_ward_2",
+        "roomId": "rm_ward",
+        "type": "patient_monitor",
+        "name": "Ward monitor 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          15,
+          15.75
+        ]
+      },
+      {
+        "id": "ip_ward_1",
+        "roomId": "rm_ward",
+        "type": "infusion_pump",
+        "name": "Ward pump 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          21,
+          15.75
+        ]
+      },
+      {
+        "id": "ws_ward",
+        "roomId": "rm_ward",
+        "type": "workstation",
+        "name": "Ward WS",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          3,
+          20.25
+        ]
+      },
+      {
+        "id": "ws_rad_1",
+        "roomId": "rm_reading",
+        "type": "workstation",
+        "name": "Reading WS 1",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          28,
+          15.75
+        ]
+      },
+      {
+        "id": "ws_rad_2",
+        "roomId": "rm_reading",
+        "type": "workstation",
+        "name": "Reading WS 2",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          36,
+          15.75
+        ]
+      },
+      {
+        "id": "ws_rad_3",
+        "roomId": "rm_reading",
+        "type": "workstation",
+        "name": "Reading WS 3",
+        "os": "linux",
+        "vulnerable": false,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          28,
+          20.25
+        ]
+      },
+      {
+        "id": "dev_unknown_7",
+        "roomId": "rm_imaging",
+        "type": "unknown",
+        "name": "Unidentified device",
+        "os": "unknown",
+        "vulnerable": true,
+        "criticality": "medium",
+        "vlan": 10,
+        "position": [
+          38.5,
+          10.8
+        ]
+      }
+    ],
+    "flows": [
+      {
+        "id": "fl_1",
+        "from": "mri_1",
+        "to": "srv_pacs",
+        "protocol": "dicom",
+        "port": 104,
+        "protected": true,
+        "purpose": "Scans to radiologists"
+      },
+      {
+        "id": "fl_2",
+        "from": "mri_2",
+        "to": "srv_pacs",
+        "protocol": "dicom",
+        "port": 104,
+        "protected": true,
+        "purpose": "Scans to radiologists"
+      },
+      {
+        "id": "fl_3",
+        "from": "mri_3",
+        "to": "srv_pacs",
+        "protocol": "dicom",
+        "port": 104,
+        "protected": true,
+        "purpose": "Scans to radiologists"
+      },
+      {
+        "id": "fl_4",
+        "from": "ct_1",
+        "to": "srv_pacs",
+        "protocol": "dicom",
+        "port": 104,
+        "protected": true,
+        "purpose": "Scans to radiologists"
+      },
+      {
+        "id": "fl_5",
+        "from": "ws_rad_1",
+        "to": "srv_pacs",
+        "protocol": "https",
+        "port": 443,
+        "protected": true,
+        "purpose": "Radiologists view images"
+      },
+      {
+        "id": "fl_6",
+        "from": "ws_rad_2",
+        "to": "srv_pacs",
+        "protocol": "https",
+        "port": 443,
+        "protected": true,
+        "purpose": "Radiologists view images"
+      },
+      {
+        "id": "fl_7",
+        "from": "ws_rad_3",
+        "to": "srv_pacs",
+        "protocol": "https",
+        "port": 443,
+        "protected": true,
+        "purpose": "Radiologists view images"
+      },
+      {
+        "id": "fl_8",
+        "from": "ws_img_1",
+        "to": "mri_2",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_9",
+        "from": "ws_img_1",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_10",
+        "from": "ws_img_2",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_11",
+        "from": "srv_file",
+        "to": "srv_dc",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_12",
+        "from": "srv_ehr",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_13",
+        "from": "ws_er_1",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_14",
+        "from": "ws_reg",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_15",
+        "from": "ws_ward",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_16",
+        "from": "ws_or",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_17",
+        "from": "ws_lab",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_18",
+        "from": "ws_pharm",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_19",
+        "from": "ws_admin_1",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_20",
+        "from": "ws_admin_2",
+        "to": "srv_ehr",
+        "protocol": "https",
+        "port": 443,
+        "protected": false
+      },
+      {
+        "id": "fl_21",
+        "from": "ws_er_1",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_22",
+        "from": "ws_reg",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_23",
+        "from": "ws_ward",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_24",
+        "from": "ws_lab",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_25",
+        "from": "ws_pharm",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_26",
+        "from": "ws_admin_2",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_27",
+        "from": "ws_admin_3",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_28",
+        "from": "ns_er",
+        "to": "srv_ehr",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": true,
+        "purpose": "Vitals to charts"
+      },
+      {
+        "id": "fl_29",
+        "from": "ns_icu",
+        "to": "srv_ehr",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": true,
+        "purpose": "Vitals to charts"
+      },
+      {
+        "id": "fl_30",
+        "from": "ns_ward",
+        "to": "srv_ehr",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": true,
+        "purpose": "Vitals to charts"
+      },
+      {
+        "id": "fl_31",
+        "from": "pm_er_1",
+        "to": "ns_er",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_32",
+        "from": "pm_er_2",
+        "to": "ns_er",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_33",
+        "from": "pm_er_3",
+        "to": "ns_er",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_34",
+        "from": "ip_er_1",
+        "to": "ns_er",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_35",
+        "from": "pm_icu_1",
+        "to": "ns_icu",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_36",
+        "from": "pm_icu_2",
+        "to": "ns_icu",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_37",
+        "from": "pm_icu_3",
+        "to": "ns_icu",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_38",
+        "from": "pm_icu_4",
+        "to": "ns_icu",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_39",
+        "from": "ip_icu_1",
+        "to": "ns_icu",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_40",
+        "from": "ip_icu_2",
+        "to": "ns_icu",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_41",
+        "from": "pm_ward_1",
+        "to": "ns_ward",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_42",
+        "from": "pm_ward_2",
+        "to": "ns_ward",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_43",
+        "from": "ip_ward_1",
+        "to": "ns_ward",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_44",
+        "from": "am_or_1",
+        "to": "ws_or",
+        "protocol": "other",
+        "port": 5000,
+        "protected": false
+      },
+      {
+        "id": "fl_45",
+        "from": "am_or_2",
+        "to": "ws_or",
+        "protocol": "other",
+        "port": 5000,
+        "protected": false
+      },
+      {
+        "id": "fl_46",
+        "from": "pm_or_1",
+        "to": "ws_or",
+        "protocol": "other",
+        "port": 5000,
+        "protected": false
+      },
+      {
+        "id": "fl_47",
+        "from": "pm_or_2",
+        "to": "ws_or",
+        "protocol": "other",
+        "port": 5000,
+        "protected": false
+      },
+      {
+        "id": "fl_48",
+        "from": "la_1",
+        "to": "ws_lab",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_49",
+        "from": "la_2",
+        "to": "ws_lab",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": false
+      },
+      {
+        "id": "fl_50",
+        "from": "ws_lab",
+        "to": "srv_ehr",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": true,
+        "purpose": "Lab results to charts"
+      },
+      {
+        "id": "fl_51",
+        "from": "pc_1",
+        "to": "ws_pharm",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      },
+      {
+        "id": "fl_52",
+        "from": "ws_admin_1",
+        "to": "srv_dc",
+        "protocol": "rdp",
+        "port": 3389,
+        "protected": false
+      },
+      {
+        "id": "fl_53",
+        "from": "hvac_1",
+        "to": "ws_admin_3",
+        "protocol": "http",
+        "port": 80,
+        "protected": false
+      },
+      {
+        "id": "fl_54",
+        "from": "badge_er",
+        "to": "srv_dc",
+        "protocol": "http",
+        "port": 80,
+        "protected": false
+      },
+      {
+        "id": "fl_55",
+        "from": "badge_admin",
+        "to": "srv_dc",
+        "protocol": "http",
+        "port": 80,
+        "protected": false
+      },
+      {
+        "id": "fl_unknown_7_smb",
+        "from": "dev_unknown_7",
+        "to": "ws_img_1",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false
+      }
+    ],
+    "services": [
+      {
+        "id": "svc_mri",
+        "name": "MRI imaging",
+        "dependsOnDevices": [
+          "mri_1",
+          "mri_2",
+          "mri_3"
+        ],
+        "consequence": "Scheduled MRI scans can't run",
+        "critical": true
+      },
+      {
+        "id": "svc_reading",
+        "name": "Radiology reading",
+        "dependsOnDevices": [
+          "srv_pacs"
+        ],
+        "consequence": "Radiologists can't view images",
+        "critical": true
+      },
+      {
+        "id": "svc_ehr",
+        "name": "Health records",
+        "dependsOnDevices": [
+          "srv_ehr"
+        ],
+        "consequence": "Clinicians can't open charts",
+        "critical": true
+      },
+      {
+        "id": "svc_er",
+        "name": "ER intake",
+        "dependsOnDevices": [
+          "ws_reg",
+          "ws_er_1"
+        ],
+        "consequence": "New arrivals can't be registered",
+        "critical": true
+      },
+      {
+        "id": "svc_icu",
+        "name": "ICU monitoring",
+        "dependsOnDevices": [
+          "ns_icu"
+        ],
+        "consequence": "Central ICU monitoring offline",
+        "critical": true
+      },
+      {
+        "id": "svc_pharm",
+        "name": "Pharmacy dispensing",
+        "dependsOnDevices": [
+          "pc_1",
+          "ws_pharm"
+        ],
+        "consequence": "Medication orders go to paper"
+      },
+      {
+        "id": "svc_lab",
+        "name": "Lab results",
+        "dependsOnDevices": [
+          "la_1",
+          "la_2",
+          "ws_lab"
+        ],
+        "consequence": "Results are phoned through"
+      }
+    ],
+    "patients": [
+      {
+        "id": "pg_er",
+        "roomId": "rm_er",
+        "type": "er",
+        "count": 14,
+        "dependsOnServices": [
+          "svc_er",
+          "svc_ehr"
+        ]
+      },
+      {
+        "id": "pg_waiting",
+        "roomId": "rm_waiting",
+        "type": "waiting",
+        "count": 22,
+        "dependsOnServices": [
+          "svc_er"
+        ]
+      },
+      {
+        "id": "pg_scan",
+        "roomId": "rm_imaging",
+        "type": "outpatient_scan",
+        "count": 26,
+        "dependsOnServices": [
+          "svc_mri",
+          "svc_reading"
+        ]
+      },
+      {
+        "id": "pg_icu",
+        "roomId": "rm_icu",
+        "type": "icu",
+        "count": 12,
+        "dependsOnServices": [
+          "svc_icu",
+          "svc_ehr",
+          "svc_lab"
+        ]
+      },
+      {
+        "id": "pg_or",
+        "roomId": "rm_or",
+        "type": "surgical",
+        "count": 8,
+        "dependsOnServices": [
+          "svc_ehr",
+          "svc_reading"
+        ]
+      },
+      {
+        "id": "pg_ward",
+        "roomId": "rm_ward",
+        "type": "surgical",
+        "count": 30,
+        "dependsOnServices": [
+          "svc_ehr",
+          "svc_pharm"
+        ]
+      }
+    ]
+  }
+}

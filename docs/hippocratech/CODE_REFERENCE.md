@@ -54,7 +54,7 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 
 | Path | Owner | Role |
 |---|---|---|
-| `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation` |
+| `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation`; `Policy`/`PolicyRule`; draft `RunResult`; REST requests `StartRound`, `Reassess`, `Resume`. All reject extra fields |
 | `agents/inventory.py` | F1 | Unidentified-device check, `confirm_device`, sends `Question`s |
 | `agents/flow.py` | F1 | `hippo-opt` candidates, `llm.propose()` fallback, `hippo-sim` testing and revision |
 | `agents/clinical_workflow.py` | F1 | Protected-flow and service-loss checks, `keep_flow`, `keep_service` |
@@ -63,6 +63,12 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | `agents/llm.py` | F2 | Claude `propose()` and `explain()`, with number and word checks |
 | `agents/cache/demo_round.json` | F1 | Cached demo-seed conversation, question and answer included |
 | `agents/run_all.py` | F1 | Starts all four agents |
+| `agents/requirements.txt`, `agents/pytest.ini` | F1 | Python 3.11 deps (venv in `agents/.venv`, gitignored) and pytest config |
+| `agents/fixtures/hospital.json` | F1 | Test hospital until `data/hospitals/demo.json` exists: the mock hospital plus `dev_unknown_7`. Generated, don't edit |
+| `agents/scripts/export_fixture.mjs` | F1 | Regenerates `fixtures/hospital.json` from `mock-session.ts` |
+| `agents/tests/test_protocol.py` | F1 | Every model round-trips; extra fields and bad values are rejected |
+| `agents/tests/test_fixture.py` | F1 | The fixture loads and its references (flows → devices, etc.) exist |
+| `agents/tests/test_uagents_api.py` | F1 | Runs the uAgents API snippets in `AGENT_NOTES.md` (seed address, mailbox, REST, chat protocol) |
 
 ## Optimizer
 
