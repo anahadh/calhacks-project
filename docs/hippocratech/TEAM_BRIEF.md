@@ -7,7 +7,7 @@ Updated Friday, Oct 23, 2026.
 ## Status right now
 
 - Nothing is built. The spec, the schema, the UX rules, and a design canvas ("Hippocra.tech screens") exist.
-- **Sponsor tracks: Fetch.ai, Armadin, Microsoft, Factory, Anthropic, SpacetimeDB.** Nothing else.
+- **Sponsor tracks: Fetch.ai, Armadin, Microsoft, Anthropic, SpacetimeDB.** Nothing else.
 - **The simulation runs inside SpacetimeDB.** Watchers connect it to the Fetch.ai agents.
 - **Open:** the SpacetimeDB module language (Rust unless TypeScript modules are confirmed); the required-roles rule; `MAX_SERVICE_LOSS`; Live Site criteria; pitch length (the guide says 2:00, our script is 3:00).
 
@@ -29,7 +29,7 @@ Updated Friday, Oct 23, 2026.
 |---|---|---|---|
 | Lead | Base app, F4 Visual simulation and solution view, pitch | SpacetimeDB, Microsoft, Armadin, Anthropic | — |
 | Teammate 1 | F1 Agent network and conversation (uAgents, watchers, Agent Room) | **Fetch.ai**, **SpacetimeDB** | Register a uAgent on Agentverse; build a watcher that subscribes to a test table; write `AGENT_NOTES.md` |
-| Teammate 2 | F2 Policy engine (optimizer, Droid, Claude) | **Factory**, **Anthropic** | Read the Droid starter pack; write `DROID_NOTES.md`; draft the Claude prompts |
+| Teammate 2 | F2 Policy engine (optimizer, Claude) | **Anthropic** | Draft the Claude prompts; sketch the optimizer's zone graph on the demo hospital |
 | Teammate 3 | F3 Review and export (then helps F4) | **SpacetimeDB**, **Microsoft**, **Anthropic** | Read the SpacetimeDB starter pack; memo template and ACL format |
 
 ## Milestones, in order

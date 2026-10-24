@@ -6,7 +6,7 @@ Cal Hacks 13.0 scope. This document is the build target. If a feature is not in 
 
 All hospital data is synthetic. Never use, ask for, or accept real patient data.
 
-**Sponsor tracks: Fetch.ai, Armadin, Microsoft, Factory, Anthropic, SpacetimeDB.** No other sponsor tracks are in scope.
+**Sponsor tracks: Fetch.ai, Armadin, Microsoft, Anthropic, SpacetimeDB.** No other sponsor tracks are in scope.
 
 ---
 
@@ -88,7 +88,7 @@ The loop: **load a hospital → infect a device → watch it spread → watch th
 - A highly visual 3D hospital, with a 2D fallback, and a live dashboard.
 - **The simulation runs inside SpacetimeDB.** A scheduled reducer advances each tick, and every laptop subscribes to the same live state.
 - Four Fetch.ai uAgents on Agentverse, connected to SpacetimeDB through **watchers**. Their whole conversation is stored and animated live.
-- A graph-based policy optimizer, Factory Droid writing and testing policy files in a sandbox, and Claude for proposals, explanations and questions.
+- A graph-based policy optimizer, `hippo-sim` test runs for every candidate, and Claude for proposals, explanations and questions.
 - A solution view: synchronized before/after replay, the zones drawn on the building, and the plan in plain language.
 - **New challenge:** an unidentified device appears, the agents pause to ask a human, then adapt.
 - Human review: role approvals, then a memo and ruleset export.
@@ -173,12 +173,12 @@ Pressing **Defend**, or the end of a run, starts a negotiation round (see [The A
 
 **The Agent Room** (right panel, Agents tab; expands to a large overlay with one click):
 
-- **Agent map:** the four agents as nodes in a diamond, with the Droid and a "Humans" node beside them. Each node shows the agent's name, role icon, and live status: idle, thinking (animated dots), speaking, or waiting for a human.
+- **Agent map:** the four agents as nodes in a diamond, with a "Humans" node beside them. Each node shows the agent's name, role icon, and live status: idle, thinking (animated dots), speaking, or waiting for a human.
 - **Messages in flight:** every message animates as a particle traveling along a line from sender to receiver. Its shape depends on type: proposal, accept, reject, revision, or question.
 - **Conversation thread:** under the map, each message lands as a speech bubble from its sender. A bubble shows:
   - a one- or two-sentence Claude-written reason;
   - the constraint it adds, if it's a rejection;
-  - an expandable payload with the rules, or the Droid's diff.
+  - an expandable payload with the rules, or what a revision changed.
 - **Round header:** "Round 2 of 4 · waiting for Clinical engineering", for example.
 - **Readable pace:** messages are revealed no faster than one every 1.2 seconds, even if the agents work faster. **Skip to result** jumps to the end.
 
@@ -189,7 +189,7 @@ Pressing **Defend**, or the end of a run, starts a negotiation round (see [The A
 | Flow Agent proposal | The connections it would cut flash as purple dashed lines; the zones it would create glow faintly |
 | Clinical Workflow rejection | The protected flow it cites glows blue with a "keep" label (e.g. MRI → PACS: "Scans to radiologists") |
 | Inventory rejection or question | The unidentified device gets a pulsing outline and a "?" marker |
-| Droid test result | A small "tested" check on the candidate, with the patients-affected number for that candidate |
+| Flow Agent test result | A small "tested" check on the candidate, with the patients-affected number for that candidate |
 | Accepted recommendation | The zones settle into solid purple outlines |
 
 **Questions to humans.** When an agent needs a fact it can't compute, a question card appears in the Agents tab and as a banner on every screen. For example: "Is `dev_unknown_7` in Imaging a workstation or a scanner?" Only allowed roles can answer. The round waits, then resumes, and the answer appears in the conversation as a message from the human.
@@ -248,7 +248,7 @@ Agents decide with code and explain with Claude. Every accept, reject, or questi
 | Agent | Stall point | Objective | Decides with | Can |
 |---|---|---|---|---|
 | **Inventory Agent** | Incomplete asset inventory | Never act on a device nobody can name | Code: devices with `type: "unknown"`, missing make or model, no flows, or unclear criticality | Reject with `confirm_device`; send a `Question` to humans |
-| **Flow Agent** | Unclear communication flows | Minimize spread | Rates flows by spread risk and use (`observed`). Gets candidates from the optimizer, with Claude for alternatives. Each candidate goes to the Droid to be written and tested | Propose, revise |
+| **Flow Agent** | Unclear communication flows | Minimize spread | Rates flows by spread risk and use (`observed`). Gets candidates from the optimizer, with Claude for alternatives. Tests each candidate with `hippo-sim` | Propose, revise |
 | **Clinical Workflow Agent** | Fragile clinical workflows | Keep care running | Rejects if a protected flow is removed or a critical service is down past `MAX_SERVICE_LOSS` | Accept; reject with `keep_flow` or `keep_service` |
 | **Sign-off Coordinator** | Slow, unclear sign-off | Reach a plan humans can approve | Runs rounds, merges constraints, pauses for human answers, picks the required roles | Start, pause, resume rounds; publish recommendations. **Cannot approve** |
 
@@ -266,7 +266,7 @@ Agents decide with code and explain with Claude. Every accept, reject, or questi
 
 **Round:**
 1. The Inventory Agent checks the infection path and sends `Question`s for anything unidentified.
-2. The Coordinator asks the Flow Agent for a proposal. The Flow Agent asks the optimizer, and the Droid writes and tests the candidate.
+2. The Coordinator asks the Flow Agent for a proposal. The Flow Agent asks the optimizer and tests the candidate with `hippo-sim`.
 3. The Clinical Workflow and Inventory agents return verdicts.
 4. The Coordinator adds each rejection's constraint and asks the Flow Agent to revise.
 5. If a question is open, the round pauses (`waiting_for_human`) until a human answers, then resumes.
@@ -284,7 +284,7 @@ The simulation is the live, shared world. It runs inside the SpacetimeDB module,
 **One engine, two uses.**
 - The spread logic is one library, `sim-core`.
 - The SpacetimeDB module uses it to run **visible runs** tick by tick: the baseline, "Run this," and both sides of the solution view.
-- The `hippo-sim` command-line tool is built from the same library. The Droid and the agents use it for **test runs**, which are many and fast and are never animated.
+- The `hippo-sim` command-line tool is built from the same library. The agents use it for **test runs**, which are many and fast and are never animated.
 - A candidate's numbers from `hippo-sim` always equal what the visible run shows.
 
 **How a visible run works:**
@@ -361,12 +361,11 @@ The optimizer finds candidates, and `hippo-sim` judges them. The optimizer never
 
 ## Sponsor Plan
 
-Six tracks. Nothing else is in scope.
+Five tracks. Nothing else is in scope.
 
 | Track | What they judge (confirm on Live Site) | How Hippocra.tech meets it | Feature |
 |---|---|---|---|
 | **Fetch.ai** | Meaningful use of uAgents and Agentverse; agents that communicate and act on their own | Four uAgents on Agentverse, each owning a real reason segmentation stalls, with conflicting goals. Watchers wake them from live SpacetimeDB events. Their conversation is animated live, including pauses to ask humans | F1 |
-| **Factory: Best Use of the Droid SDK** | Droid does real work in the running product; a designed trigger; scoped control; visible plans, steps, diffs, and results | The Flow Agent sends each candidate to a Droid. In a sandbox, the Droid writes the policy file, runs `hippo-sim`, and refines it. Its diffs appear as bubbles in the agent conversation | F2 |
 | **Anthropic** | A named community, a real problem, it works, and thoughtful use of Claude, including where it could go wrong | Named community above, plus a quote from a real hospital IT/biomed person. Claude writes the Flow Agent's alternatives, every agent's reasons, the questions to humans, and the memo. Verdicts and numbers come from code. Humans approve | F2, F3 |
 | **SpacetimeDB** | **Confirm**. Earlier criteria: SpacetimeDB must be the **core** real-time backend, not an add-on; they like shared simulations, live dashboards, multi-user planning tools, and AI agents coordinating in persistent shared state | **The simulation itself runs in SpacetimeDB**, as scheduled reducers that advance ticks every laptop subscribes to. Watchers connect the Fetch.ai agents to that world, and the whole agent conversation, the human questions, and the approval gate live there too | Base, F1, F3 |
 | **Microsoft: Built for the Real World** + Customer Impact Award | Customer understanding, measurable usefulness, path to production, responsible design, end-to-end | The solution view shows before and after on the same attack. Upload a real inventory, export a ruleset. Synthetic data, no outcome simulation, human approval, no real-network access | F3, F4 |
@@ -388,23 +387,23 @@ General Cal Hacks prizes we qualify for with no extra build: Best People-First H
             │ reducer calls)                         │
 ┌───────────▼─────────────────────────────┐  ┌──────▼──────────────────────┐
 │ SpacetimeDB module (spacetime/)          │  │ Next.js Node server         │
-│ sim-core inside: run_start, run_tick     │  │ Droid runner (sandbox,      │
-│ (scheduled), device/service/patient      │  │ policies/, hippo-sim)       │
-│ state, spread_attempt, tick_snapshot     │  │ Claude memo · export        │
-│ session, presence, agent_message,        │  └──────▲──────────────────────┘
-│ agent_status, question, recommendation,  │         │ /api/droid
-│ review                                   │         │
-└───────────▲─────────────────────────────┘         │
-            │ subscriptions + server reducers        │
-┌───────────┴─────────────────────────────┐         │
-│ Watchers (apps/watcher, Node)            │         │
-│ round · answer · message relay · status  │         │
-└───────────▲─────────────────────────────┘         │
-            │ REST (wake, resume) / relay            │
-┌───────────┴───────────────────────────────────────┴──────────────────┐
+│ sim-core inside: run_start, run_tick     │  │ Claude memo · export        │
+│ (scheduled), device/service/patient      │  └─────────────────────────────┘
+│ state, spread_attempt, tick_snapshot     │
+│ session, presence, agent_message,        │
+│ agent_status, question, recommendation,  │
+│ review                                   │
+└───────────▲─────────────────────────────┘
+            │ subscriptions + server reducers
+┌───────────┴─────────────────────────────┐
+│ Watchers (apps/watcher, Node)            │
+│ round · answer · message relay · status  │
+└───────────▲─────────────────────────────┘
+            │ REST (wake, resume) / relay
+┌───────────┴──────────────────────────────────────────────────────────┐
 │ Fetch.ai uAgents (Python), registered on Agentverse                   │
 │ Inventory · Flow · Clinical Workflow · Sign-off Coordinator           │
-│ talk over uAgents messaging · call hippo-sim, hippo-opt, Claude, Droid│
+│ talk over uAgents messaging · call hippo-sim, hippo-opt, Claude       │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -427,7 +426,6 @@ General Cal Hacks prizes we qualify for with no extra build: Best People-First H
 | Agents | Fetch.ai uAgents (Python), Agentverse |
 | Optimizer | TypeScript (`packages/optimizer`), `hippo-opt` CLI |
 | Model | Claude (Anthropic SDK) |
-| Policy files | Factory Droid SDK, run from a Next.js Node route |
 | Validation | zod (TS), Pydantic (Python) |
 
 Skip auth, Postgres, Redis, Docker, physics, rigged characters, and PDF libraries.
@@ -503,7 +501,6 @@ review_submit · memo_save_draft (server) · memo_approve
 **Next.js Node routes:**
 
 ```
-POST /api/droid   { sessionId, candidate }  → called by the Flow Agent; Droid writes + tests in the sandbox
 POST /api/memo    { sessionId }             → Claude drafts the memo, checks numbers, calls memo_save_draft
 GET  /api/export/[sessionId]                → approved memo + ruleset
 ```
@@ -529,7 +526,7 @@ When two laptops show the same spreading attack, the shared contracts are frozen
 | Feature | Owner | What it covers | Sponsor(s) |
 |---|---|---|---|
 | **F1 Agent network and conversation** | Teammate 1 | The four uAgents; the watchers; `agent_message` and `agent_status`; the Agent Room (map, particles, thread, scene highlights); questions and answers; challenge reassessment; a cached demo round | **Fetch.ai**, **SpacetimeDB** |
-| **F2 Policy engine** | Teammate 2 | The optimizer, the Droid sandbox and `/api/droid`, Claude's proposals and explanations, recommendation cards | **Factory**, **Anthropic** |
+| **F2 Policy engine** | Teammate 2 | The optimizer, Claude's proposals and explanations, recommendation cards | **Anthropic** |
 | **F3 Review and export** | Teammate 3 | Join and roles, presence, follow presenter, the review row and gate, the memo, the export | **SpacetimeDB**, **Microsoft**, **Anthropic** |
 | **F4 Visual simulation and solution view** | Lead after base (Teammate 3 helps) | Spread pulses and fizzles, device flashes, room tints, service icons, patient badges, ambulances, event toasts, camera follow; the solution view (lockstep split screen, plan on the building, before/after strip); the challenge UI; the 2D fallback | **Microsoft**, **Armadin**, general prizes |
 | **Pitch and integration** | Lead | Merges, the real-person quote, README, Devpost draft by Saturday night, video, rehearsals | **Anthropic**, **Microsoft**, **Armadin** |
@@ -561,7 +558,7 @@ The brief's script runs **3:00**. The official guide says about **2 minutes**. F
 3. **(1:00–1:40) The agents talk.** Open the Agent Room. Messages fly between the agents:
    - the Flow Agent proposes, and the cut lines flash in the building;
    - the Clinical Workflow Agent **rejects** it, and MRI → PACS glows "keep: scans to radiologists";
-   - the Droid's diff lands in the thread, and the Flow Agent revises.
+   - the Flow Agent's test result lands in the thread, and it revises.
 4. **(1:40–2:20) The solution.** Press **Show the solution**. On the split screen, the left side spreads everywhere while the right side stops at the purple zone edge, tick for tick. "212 → 9 patients affected. Every protected flow still working." *(Placeholder.)*
 5. **(2:20–3:00) A new challenge.** An unidentified device drops into Imaging. The Inventory Agent pauses: "Is this a workstation or a scanner?" Clinical engineering answers on the second laptop. The agents resume, update the plan, and route it to Security and Clinical engineering, who both approve. Export. "Agents do the homework. Humans decide."
 
@@ -575,10 +572,10 @@ The brief's script runs **3:00**. The official guide says about **2 minutes**. F
 [Quote.] Segmentation stops ransomware from spreading, but blocking the wrong connection is its own outage, so hospitals stall.
 
 ### What it does
-Hippocra.tech shows ransomware spreading through a 3D hospital in real time, and reports the damage in patients and procedures. Four Fetch.ai agents then argue out a defense on screen, one for each reason real plans stall: inventory, flows, clinical workflows, and sign-off. They stop to ask humans when they hit a device nobody can name. A graph optimizer finds candidates, a Factory Droid writes and tests each one, and Claude explains every move. The solution view replays the same attack side by side, with and without the plan. Humans approve and export the ruleset.
+Hippocra.tech shows ransomware spreading through a 3D hospital in real time, and reports the damage in patients and procedures. Four Fetch.ai agents then argue out a defense on screen, one for each reason real plans stall: inventory, flows, clinical workflows, and sign-off. They stop to ask humans when they hit a device nobody can name. A graph optimizer finds candidates, the Flow Agent tests each one against the same attack, and Claude explains every move. The solution view replays the same attack side by side, with and without the plan. Humans approve and export the ruleset.
 
 ### How we built it
-[The simulation runs inside SpacetimeDB as scheduled reducers, so every laptop watches the same live attack. Watchers connect it to Fetch.ai uAgents on Agentverse. The same engine is compiled to a CLI that the agents and the Droid use for fast tests. Claude handles proposals and explanations. Built with Next.js and React Three Fiber.]
+[The simulation runs inside SpacetimeDB as scheduled reducers, so every laptop watches the same live attack. Watchers connect it to Fetch.ai uAgents on Agentverse. The same engine is compiled to a CLI that the agents use for fast tests. Claude handles proposals and explanations. Built with Next.js and React Three Fiber.]
 
 ### Challenges / What we learned
 [Fill in.]
@@ -604,7 +601,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 
 ## Out of Scope
 
-- Any sponsor track other than Fetch.ai, Armadin, Microsoft, Factory, Anthropic, and SpacetimeDB.
+- Any sponsor track other than Fetch.ai, Armadin, Microsoft, Anthropic, and SpacetimeDB.
 - Real network access, discovery, or enforcement. Agents act only inside the simulation.
 - Real patient data, and simulated deaths or clinical outcomes.
 - Accounts, auth, and game elements.
@@ -620,7 +617,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | SpacetimeDB module language | Rust, unless the starter pack confirms TypeScript modules |
 | How the Coordinator picks required roles | Security always; Clinical engineering for imaging, clinical devices or protected flows; Operations for ER, OR, ICU or pharmacy |
 | `MAX_SERVICE_LOSS` threshold | No critical service (ICU, ER, OR, imaging reading) down for more than 2 ticks |
-| Live Site criteria for Fetch.ai, Armadin, Microsoft, Factory, SpacetimeDB, and Anthropic's prize | Re-check Friday evening and record the results here |
+| Live Site criteria for Fetch.ai, Armadin, Microsoft, SpacetimeDB, and Anthropic's prize | Re-check Friday evening and record the results here |
 | Final pitch length: 2:00 (guide) or 3:00 (our script) | Rehearse both |
 
 ---
@@ -633,10 +630,11 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 23, 2026 | Collaborative review; human approval gate; table judging with the whole team present |
 | Oct 23, 2026 | Sponsor tracks: Fetch.ai, Armadin, Microsoft, Factory, Anthropic, SpacetimeDB. All others dropped |
 | Oct 23, 2026 | Agents mapped to the four places human-led segmentation stalls: Inventory, Flow, Clinical Workflow, Sign-off Coordinator. `Question`/`Answer` messages; per-recommendation required roles |
-| Oct 23, 2026 | Claude powers the Flow Agent's alternatives and all explanations; the Droid writes and tests policy files for the Flow Agent |
-| Oct 23, 2026 | **The simulation runs in SpacetimeDB** (scheduled `run_tick`), replacing the browser-only sim. The browser renders subscribed state. `sim-core` also builds `hippo-sim` for fast agent and Droid tests |
+| Oct 23, 2026 | Claude powers the Flow Agent's alternatives and all explanations |
+| Oct 23, 2026 | **The simulation runs in SpacetimeDB** (scheduled `run_tick`), replacing the browser-only sim. The browser renders subscribed state. `sim-core` also builds `hippo-sim` for fast agent tests |
 | Oct 23, 2026 | **Watchers** (SpacetimeDB subscription clients) connect the Fetch.ai agents to the live world and mirror their conversation into `agent_message` |
 | Oct 23, 2026 | Three must-see moments: the visible spread, the visible agent conversation (Agent Room), and the solution view (lockstep split screen) |
+| Oct 23, 2026 | **Factory Droid dropped.** The Flow Agent tests candidates with `hippo-sim` directly. `/api/droid` and the Factory sponsor track are removed |
 | Oct 23, 2026 | `implementation-steps.md` removed. The build plan lives in this spec, plus the owner and file map in `hippocratech/CODE_REFERENCE.md` |
 
 ---
@@ -646,8 +644,8 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 - **uAgent.** A Fetch.ai agent process; ours are registered on Agentverse.
 - **Watcher.** A long-running SpacetimeDB client that subscribes to tables and acts when rows change.
 - **Reducer.** A SpacetimeDB server function. A **scheduled reducer** runs on a timer; `run_tick` advances the simulation.
-- **Visible run.** A simulation run inside SpacetimeDB that everyone watches. A **test run** is a fast `hippo-sim` run the agents and the Droid use, never animated.
-- **Round.** One cycle of inventory check, proposal, Droid test, verdicts, constraints, and revision, pausing for human answers when needed.
+- **Visible run.** A simulation run inside SpacetimeDB that everyone watches. A **test run** is a fast `hippo-sim` run the agents use, never animated.
+- **Round.** One cycle of inventory check, proposal, test run, verdicts, constraints, and revision, pausing for human answers when needed.
 - **Constraint.** What a rejecting agent requires: keep a flow, keep a service, confirm a device, stay under a rule count.
 - **Question.** An agent asking a human for a fact it can't compute, usually what an unidentified device is.
 - **Agent Room.** The UI that shows the agents as nodes, their messages in flight, and the conversation thread.

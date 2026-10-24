@@ -56,23 +56,20 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 |---|---|---|
 | `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation` |
 | `agents/inventory.py` | F1 | Unidentified-device check, `confirm_device`, sends `Question`s |
-| `agents/flow.py` | F1 | `hippo-opt` candidates, `llm.propose()` fallback, Droid testing |
+| `agents/flow.py` | F1 | `hippo-opt` candidates, `llm.propose()` fallback, `hippo-sim` testing and revision |
 | `agents/clinical_workflow.py` | F1 | Protected-flow and service-loss checks, `keep_flow`, `keep_service` |
 | `agents/coordinator.py` | F1 | Rounds, `waiting_for_human`, required roles; `start_round`, `reassess`, `resume` handlers |
-| `agents/tools.py` | F1 | Wrappers for `hippo-sim`, `hippo-opt`, `/api/droid`, and the watcher relay |
+| `agents/tools.py` | F1 | Wrappers for `hippo-sim`, `hippo-opt`, and the watcher relay |
 | `agents/llm.py` | F2 | Claude `propose()` and `explain()`, with number and word checks |
 | `agents/cache/demo_round.json` | F1 | Cached demo-seed conversation, question and answer included |
 | `agents/run_all.py` | F1 | Starts all four agents |
 
-## Optimizer and Droid
+## Optimizer
 
 | Path | Owner | Role |
 |---|---|---|
 | `packages/optimizer/src/optimize.ts` | F2 | Zone graph, constrained cut, candidate policy |
 | `packages/optimizer/src/cli.ts` | F2 | `hippo-opt` |
-| `apps/web/app/api/droid/route.ts` | F2 | Droid writes and tests a candidate |
-| `apps/web/server/droid/workspace.ts` | F2 | Sandbox |
-| `apps/web/server/droid/run.ts` | F2 | Refinement loop; reports steps and diffs through the watcher relay |
 
 ## Web app
 
@@ -111,7 +108,6 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | `data/hospitals/demo.json` | Base | Demo hospital: critical services, `observed` flags, an inactive unknown device and vendor link for challenges |
 | `data/hospitals/template.json`, `invalid/` | Base | Template and validation fixtures |
 | `hippocratech/AGENT_NOTES.md` | F1 | uAgents, Agentverse, and watcher notes |
-| `hippocratech/DROID_NOTES.md` | F2 | Droid SDK notes |
 
 ## Invariants
 
@@ -119,5 +115,5 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 - Visible runs advance only through `run_tick`. Reducers make no network calls.
 - Every agent message is in `agent_message`. The Agent Room shows only that table.
 - `recommendation.status` is written only by `review_submit`. Agent acceptance never sets it.
-- The Droid writes only to `policies/` and runs only `hippo-sim`. Agents touch no real network.
+- Agents touch no real network.
 - No secret is readable from client code.

@@ -66,16 +66,16 @@ A modal over the live, blurred session scene, so the hospital is visible right a
 
 #### The agents talking (Agent Room)
 
-- **Map:** four agent nodes in a diamond (Inventory, Flow, Clinical Workflow, Sign-off Coordinator), plus Droid and Humans nodes. Each node shows its icon, its name, and a live status from `agent_status`: idle, thinking (animated dots), speaking, or waiting for a human.
+- **Map:** four agent nodes in a diamond (Inventory, Flow, Clinical Workflow, Sign-off Coordinator), plus a Humans node. Each node shows its icon, its name, and a live status from `agent_status`: idle, thinking (animated dots), speaking, or waiting for a human.
 - **Particles:** each message travels sender → receiver as a shaped particle, then lands in the thread.
-- **Thread:** a speech bubble per message, with the sender's icon, a one- or two-sentence reason, the constraint added (for rejections), and an expandable payload (rules, or the Droid's diff as a diff).
+- **Thread:** a speech bubble per message, with the sender's icon, a one- or two-sentence reason, the constraint added (for rejections), and an expandable payload (the rules, or what a revision changed, as a diff).
 - **Round header:** e.g. "Round 2 of 4 · waiting for Clinical engineering."
 - **Expand:** one click turns the Agent Room into a large overlay over the scene, with the scene still visible and highlighting behind it. This is for the demo moment.
 - **Scene highlights while a message is shown:**
   - proposal: the cuts flash as purple dashed lines;
   - Clinical Workflow rejection: the cited flow glows blue with a "keep" label;
   - Inventory rejection or question: the device gets a pulsing outline and "?";
-  - Droid result: a "tested" check with that candidate's patient number.
+  - test result: a "tested" check with that candidate's patient number.
 - **Question card:** the agent, the device (outlined in the scene), the question, and the choices. Only allowed roles can answer; others see who can. The answer posts into the thread as a message from the human.
 
 ### Solution view `/s/[sessionId]/solution/[recommendationId]`
