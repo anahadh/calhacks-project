@@ -78,14 +78,14 @@ export function HospitalScene({
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [6, 33, 70], fov: 34, near: 0.5, far: 400 }}
+      camera={{ position: [4, 36, 76], fov: 34, near: 0.5, far: 400 }}
       onPointerMissed={() => onHover(null)}
     >
       <color attach="background" args={["#14202D"]} />
       <fog attach="fog" args={["#14202D", 80, 150]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[20, 40, 25]} intensity={0.9} castShadow />
-      <OrbitControls target={[0, 6, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
+      <OrbitControls target={[0, 1, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
 
       {hospital.floors.map((f) => (
         <FloorSlab

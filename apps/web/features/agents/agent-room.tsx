@@ -101,7 +101,7 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
         </span>
       </div>
 
-      <div className="scroll-quiet max-h-[460px] overflow-y-auto px-3.5 py-2">
+      <div className="scroll-quiet max-h-[520px] overflow-y-auto px-3.5 py-2">
         {rounds.map((r) => (
           <div key={r}>
             <div className="num pb-1 pt-3 text-[9.5px] uppercase tracking-[0.08em] text-accent">Round {r}</div>
