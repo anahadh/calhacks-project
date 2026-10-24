@@ -6,6 +6,7 @@ import { DeviceCard } from "@/components/panel/device-card";
 import { SpreadStats, SystemsDown } from "@/components/panel/spread";
 import { HospitalScene } from "@/components/scene/hospital-scene";
 import { SceneBoundary } from "@/components/scene/scene-boundary";
+import { SolutionView } from "@/features/solution/solution-view";
 import { PatientBadge } from "@/components/shell/badges";
 import { SessionHeader, type ViewId } from "@/components/shell/header";
 import { Timeline } from "@/components/timeline";
@@ -48,6 +49,9 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       : "Connecting to SpacetimeDB…";
     return <div role="status" className="flex h-screen items-center justify-center p-8 text-sm text-ink-muted">{text}</div>;
   }
+
+  // When the presenter shows a solution, every tab follows into the split-screen rerun.
+  if (session.solutionPairId) return <SolutionView session={session} />;
 
   const { hospital } = session;
   const deviceCount = (fid: string) => hospital.devices.filter((d) => index.room.get(d.roomId)?.floorId === fid).length;
