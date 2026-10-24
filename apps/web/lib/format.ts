@@ -10,9 +10,6 @@ export function stepOf(tick: number, finalTick: number): string {
   return `Step ${tick} of ${finalTick}`;
 }
 
-/** @deprecated Use stepLabel or stepOf. There is no clock any more; this alias only keeps old call sites compiling. */
-export const tickClock = stepLabel;
-
 export const ROLE_LABEL = {
   security: "Security",
   clinical_engineering: "Clinical engineering",

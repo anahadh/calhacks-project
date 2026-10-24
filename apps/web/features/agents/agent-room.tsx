@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
@@ -9,6 +10,7 @@ import { showBlocker } from "@/features/solution/pair";
 import { AgentIcon } from "./agent-icon";
 import { AGENTS, MESSAGE_SHAPE, SPEAKER_NAME } from "./agents";
 import { DefendButton } from "./defend-button";
+import { RevealClock } from "./reveal";
 
 // The Agents tab: who the agents are, what they are saying, and what comes
 // out of the round. Renders agent_message, agent_status, question and
@@ -84,8 +86,37 @@ function AgentList({ session }: { session: SessionSnapshot }) {
   );
 }
 
+/**
+ * The messages this tab shows now, paced no faster than one per 1.2 s (UX rule 5,
+ * reveal.ts), how many are still to come, and a way to show them all at once.
+ */
+function useRevealed(all: readonly AgentMessageRow[]) {
+  const clock = useRef<RevealClock>();
+  if (!clock.current) clock.current = new RevealClock();
+  const [, redraw] = useState(0);
+  const c = clock.current;
+  const now = performance.now();
+  c.observe(all.map((m) => m.seq), now);
+  const next = c.nextAt(now);
+  useEffect(() => {
+    if (next === undefined) return;
+    const id = setTimeout(() => redraw((n) => n + 1), Math.max(0, next - performance.now()) + 16);
+    return () => clearTimeout(id);
+  }, [next]);
+  return {
+    messages: all.filter((m) => c.shown(m.seq, now)),
+    waiting: c.waiting(now),
+    showAll: () => {
+      c.flush(performance.now());
+      redraw((n) => n + 1);
+    },
+  };
+}
+
 function Negotiation({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
-  const { roundState, messages } = session;
+  const { roundState } = session;
+  // Only what has been revealed counts below, so no number runs ahead of the thread.
+  const { messages, waiting, showAll } = useRevealed(session.messages);
   const thinking = session.agentStatus.find((s) => s.status === "thinking");
   const rounds = [...new Set(messages.map((m) => m.round))];
   const lastTest = [...messages].reverse().find((m) => m.tested)?.tested;
@@ -114,7 +145,7 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
       )}
 
       <div className="scroll-quiet max-h-[520px] overflow-y-auto px-3.5 py-2">
-        {!messages.length && (
+        {!session.messages.length && (
           <p className="num py-6 text-center text-[11px] text-ink-faint">
             No agent messages yet. Agents stay idle while the attack runs; press Create aggregate fix when it has finished or is paused.
           </p>
@@ -129,6 +160,16 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
               ))}
           </div>
         ))}
+        {waiting > 0 && (
+          <div className="num flex items-center gap-2 py-2.5 text-[10.5px] text-ink-faint">
+            <span>
+              {waiting} more message{waiting === 1 ? "" : "s"} coming, one at a time
+            </span>
+            <button onClick={showAll} className="ml-auto rounded border border-line2 px-2 py-0.5 text-ink-muted transition hover:border-accent hover:text-ink">
+              Show all now
+            </button>
+          </div>
+        )}
         {thinking && (
           <div className="num flex items-center gap-2 py-3 text-[10.5px] text-ink-faint">
             <AgentIcon who={thinking.agent} size={20} />

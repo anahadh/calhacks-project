@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ViewId } from "@/components/shell/header";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
+import { startNewDemo } from "./new-demo";
 import { stepperOf, type StepAction } from "./stepper";
 
 // The demo steps on both tabs: 1 Run the attack → 2 Create aggregate fix →
@@ -36,6 +37,8 @@ export function StepperBar({
   const act = async (a: StepAction) => {
     setError(undefined);
     setBusy(true);
+    // New demo opens another session: stay busy while the page leaves, so it can't make two.
+    let leaving = false;
     try {
       switch (a.kind) {
         case "start":
@@ -55,11 +58,15 @@ export function StepperBar({
         case "cancel_repick":
           onRepick(false);
           break;
+        case "new_demo":
+          await startNewDemo();
+          leaving = true;
+          break;
       }
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (!leaving) setBusy(false);
     }
   };
 
@@ -85,10 +92,13 @@ export function StepperBar({
               <button
                 key={a.kind}
                 disabled={!!a.blocked || busy}
-                title={a.blocked ?? undefined}
                 onClick={() => act(a)}
+                title={a.blocked ?? (a.kind === "new_demo" ? "Start the next run on a fresh session; every tab here follows." : undefined)}
                 className={`num rounded-[7px] border px-3 py-1.5 text-[11.5px] font-semibold transition disabled:cursor-not-allowed disabled:border-line2 disabled:bg-transparent disabled:text-ink-faint ${
-                  i === 0 ? "border-accent bg-accent text-bg hover:brightness-110" : "border-line2 text-ink-muted hover:border-accent hover:text-ink"
+                  // New demo is never the lit next step: the flow's own action is.
+                  i === 0 && a.kind !== "new_demo"
+                    ? "border-accent bg-accent text-bg hover:brightness-110"
+                    : "border-line2 text-ink-muted hover:border-accent hover:text-ink"
                 }`}
               >
                 {a.label}

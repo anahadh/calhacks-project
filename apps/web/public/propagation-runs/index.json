@@ -1,0 +1,262 @@
+{
+  "rules_version": "causal-v1",
+  "runs": [
+    {
+      "key": "undefended",
+      "label": "Undefended",
+      "description": "No local plan \u2014 the campaign reaches detonation.",
+      "group": "plan",
+      "file": "undefended.json",
+      "cache_key": "7e4cdffe937c1b87bcb66c51cfcdc3a3863a2d47b67c1c6342862d23ea295670",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    },
+    {
+      "key": "full-plan",
+      "label": "Full illustrative plan",
+      "description": "All seven levers together.",
+      "group": "plan",
+      "file": "full-plan.json",
+      "cache_key": "414d2c9e7d978c83b7ecc2c0b0f5106201c50fa8801d928db8b6ce88e803b08b",
+      "encrypted_hosts": 0,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Radiology (X-ray, CT, MRI)"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 2
+    },
+    {
+      "key": "only-segment_departments",
+      "label": "Only: segmentation",
+      "description": "The illustrative plan reduced to the single segmentation lever.",
+      "group": "single-lever",
+      "file": "only-segment_departments.json",
+      "cache_key": "bd6168914c257020a54f92510168b70de4b125f99c08cd96f121bb21efe220de",
+      "encrypted_hosts": 0,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Radiology (X-ray, CT, MRI)"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 1
+    },
+    {
+      "key": "only-cut_hse_trust",
+      "label": "Only: cut HSE trust",
+      "description": "The illustrative plan reduced to the single cut HSE trust lever.",
+      "group": "single-lever",
+      "file": "only-cut_hse_trust.json",
+      "cache_key": "d10c0b0580b0945df99a963f9fcb16328c308b412609cfd569457b0235390cb0",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    },
+    {
+      "key": "only-tier_admin_accounts",
+      "label": "Only: tier admin accounts",
+      "description": "The illustrative plan reduced to the single tier admin accounts lever.",
+      "group": "single-lever",
+      "file": "only-tier_admin_accounts.json",
+      "cache_key": "5f987b49f4a6d24a6636cc55012865755bd0400c05f060d625d9875967b01264",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    },
+    {
+      "key": "only-patch_gateway",
+      "label": "Only: patch gateway",
+      "description": "The illustrative plan reduced to the single patch gateway lever.",
+      "group": "single-lever",
+      "file": "only-patch_gateway.json",
+      "cache_key": "f5781ce1163d3e15e675fe5e4aba23e94963a55d242bd0cc132298ef3ded0ee0",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 1
+    },
+    {
+      "key": "only-mfa_remote",
+      "label": "Only: MFA on remote access",
+      "description": "The illustrative plan reduced to the single MFA on remote access lever.",
+      "group": "single-lever",
+      "file": "only-mfa_remote.json",
+      "cache_key": "48babf0fc58712c8d9f48e6e47d6680288737099b318074757d8fd5e8ff72843",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    },
+    {
+      "key": "only-edr_servers",
+      "label": "Only: EDR on servers",
+      "description": "The illustrative plan reduced to the single EDR on servers lever.",
+      "group": "single-lever",
+      "file": "only-edr_servers.json",
+      "cache_key": "6e0579316043c6bbeceb068167c624d4407fc3fa8ba09aa6432e02858581c68a",
+      "encrypted_hosts": 6,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 8
+    },
+    {
+      "key": "only-offline_backup",
+      "label": "Only: offline backup",
+      "description": "The illustrative plan reduced to the single offline backup lever.",
+      "group": "single-lever",
+      "file": "only-offline_backup.json",
+      "cache_key": "8fe504f8e458fb9572f0228a742e2c951c8ed218ce050be6985b5edc84c9515b",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    },
+    {
+      "key": "seed-0",
+      "label": "Seed 0 (undefended)",
+      "description": "Synthetic-interior variant (seed 0), no plan \u2014 sensitivity, not new validation.",
+      "group": "sensitivity",
+      "file": "seed-0.json",
+      "cache_key": "0622f1f09a3ec68e70fc9288c382cfc7f5fbc7e5be2e4e91d602599c0d2cc0e8",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    },
+    {
+      "key": "seed-1",
+      "label": "Seed 1 (undefended)",
+      "description": "Synthetic-interior variant (seed 1), no plan \u2014 sensitivity, not new validation.",
+      "group": "sensitivity",
+      "file": "seed-1.json",
+      "cache_key": "960540f8dbc370fdb684a8050ab32ebba8e74e3377beae3a7a87872695691d85",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    },
+    {
+      "key": "seed-2",
+      "label": "Seed 2 (undefended)",
+      "description": "Synthetic-interior variant (seed 2), no plan \u2014 sensitivity, not new validation.",
+      "group": "sensitivity",
+      "file": "seed-2.json",
+      "cache_key": "ac7a0f610c83bb4847ba78774216d5a633875b3d8b539bc578ef64b6f68ebc98",
+      "encrypted_hosts": 14,
+      "services_down": [
+        "Email & comms (HSE)",
+        "Laboratory (GP bloods)",
+        "Radiology (X-ray, CT, MRI)",
+        "Radiotherapy"
+      ],
+      "services_on_paper": [
+        "Emergency department",
+        "Outpatients & chemotherapy",
+        "Pharmacy",
+        "Theatres & surgery"
+      ],
+      "blocked_steps": 0
+    }
+  ]
+}

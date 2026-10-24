@@ -25,7 +25,7 @@ export type StepperUi = {
   nameOf: (deviceId: string) => string;
 };
 
-export type StepActionKind = "start" | "cancel_repick" | "repick" | "defend" | "agents";
+export type StepActionKind = "start" | "cancel_repick" | "repick" | "defend" | "agents" | "new_demo";
 /** `blocked` is why the action can't run now (shown, and the button disabled), or null. */
 export type StepAction = { kind: StepActionKind; label: string; blocked: string | null };
 
@@ -48,14 +48,23 @@ export function pickedOf(chosen: string | undefined, entryPoints: readonly strin
 }
 
 /**
- * The presenter may leave the current run for a new patient zero when it failed,
- * or when it finished before any agent round. Once the agents have worked from a
+ * The presenter may leave the current run for a new patient zero when it failed
+ * or finished, before any agent round. Once the agents have worked from a
  * baseline, a new one would change what their recommendations are measured against.
  */
 export function canRepick(s: Pick<StepperInputs, "isPresenter" | "activeRun" | "roundState">): boolean {
   const run = s.activeRun;
-  if (!s.isPresenter || !run) return false;
-  return run.status === "error" || (run.status === "done" && s.roundState.state === "idle");
+  if (!s.isPresenter || !run || s.roundState.state !== "idle") return false;
+  return run.status === "error" || run.status === "done";
+}
+
+/**
+ * Once the agents' round is over (and no solution is open), the presenter can
+ * start the next judge on a fresh session (new-demo.ts). This is the way back to
+ * step 1 after a round: canRepick stays off on this session for the reason above.
+ */
+export function canStartNewDemo(s: Pick<StepperInputs, "isPresenter" | "roundState" | "solutionPairId">): boolean {
+  return s.isPresenter && s.roundState.state === "done" && !s.solutionPairId;
 }
 
 const STEP: Record<FlowStage, 1 | 2 | 3> = {
@@ -68,6 +77,7 @@ export function stepperOf(s: StepperInputs, ui: StepperUi): Stepper {
   const at = (line: string, actions: StepAction[] = []): Stepper => ({ stage, step: STEP[stage], line, actions });
   const repick: StepAction[] = canRepick(s) ? [{ kind: "repick", label: "Pick another device", blocked: mock }] : [];
   const agents: StepAction = { kind: "agents", label: "Open the Agents tab", blocked: null };
+  const newDemo: StepAction[] = canStartNewDemo(s) ? [{ kind: "new_demo", label: "New demo", blocked: mock }] : [];
   const run = s.activeRun;
 
   switch (stage) {
@@ -90,7 +100,7 @@ export function stepperOf(s: StepperInputs, ui: StepperUi): Stepper {
     case "spread": {
       if (!run) return at("Computing the attack…");
       if (run.status === "requested") return at("Computing the attack… The engine works out the whole spread before the first step plays.");
-      if (run.status === "error") return at(runProgress(run), repick);
+      if (run.status === "error") return at(runProgress(run), [...repick, ...newDemo]);
       if (run.status === "paused") {
         return at(`${runProgress(run)}, paused. Play or step to go on, or create an aggregate fix from here.`, [
           { kind: "defend", label: "Create aggregate fix", blocked: defendBlocker(s) },
@@ -101,7 +111,10 @@ export function stepperOf(s: StepperInputs, ui: StepperUi): Stepper {
     case "defend": {
       const defend: StepAction = { kind: "defend", label: "Create aggregate fix", blocked: defendBlocker(s) };
       if (s.roundState.state === "done") {
-        return at("No recommendation came out of the last round. Create an aggregate fix to negotiate again.", [defend]);
+        return at("No recommendation came out of the last round. Create an aggregate fix to negotiate again.", [
+          defend,
+          ...newDemo,
+        ]);
       }
       const line = run
         ? `The attack reached ${run.devicesCompromised} devices and affected ${run.patientsAffected} patients. Create an aggregate fix to let the agents negotiate a plan.`
@@ -119,7 +132,7 @@ export function stepperOf(s: StepperInputs, ui: StepperUi): Stepper {
       const n = s.recommendations.length;
       return at(
         `The agents recommend ${n} plan${n === 1 ? "" : "s"}. Press Show the solution on one to rerun the same attack with it.`,
-        [agents],
+        [agents, ...newDemo],
       );
     }
     case "solution":

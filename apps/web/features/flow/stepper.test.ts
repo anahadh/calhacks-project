@@ -119,7 +119,7 @@ describe("stepperOf: 2 create aggregate fix", () => {
     const s = stepperOf(withRun(done, { roundState: { state: "done", round: 4, maxRounds: 4 } }), ui());
     expect(s.stage).toBe("defend");
     expect(s.line).toMatch(/^No recommendation came out/);
-    expect(kinds(s)).toEqual(["defend"]);
+    expect(kinds(s)).toEqual(["defend", "new_demo"]);
   });
 });
 
@@ -131,7 +131,25 @@ describe("stepperOf: 3 show the solution", () => {
     const s = stepperOf(withRun(done, { roundState: round, recommendations: [recRow()] }), ui());
     expect(s).toMatchObject({ stage: "pick_solution", step: 3 });
     expect(s.line).toMatch(/recommend 1 plan\. Press Show the solution/);
-    expect(kinds(s)).toEqual(["agents"]);
+    expect(kinds(s)).toEqual(["agents", "new_demo"]);
+  });
+
+  it("after a round, the way back to step 1 is New demo, never a repick on this session", () => {
+    const after = withRun(done, { roundState: round, recommendations: [recRow()] });
+    const s = stepperOf(after, ui({ repick: true }));
+    expect(s.stage).toBe("pick_solution");
+    expect(s.actions.find((a) => a.kind === "new_demo")).toEqual({ kind: "new_demo", label: "New demo", blocked: null });
+    expect(kinds(s)).not.toContain("repick");
+    // A failed reset after the round offers New demo too.
+    const failed = stepperOf(withRun(runRow({ status: "error", detail: "x" }), { roundState: round }), ui());
+    expect(kinds(failed)).toEqual(["new_demo"]);
+  });
+
+  it("New demo is the presenter's, not while a solution is open, and refuses in the mock", () => {
+    const after = withRun(done, { roundState: round, recommendations: [recRow()] });
+    expect(kinds(stepperOf({ ...after, isPresenter: false }, ui()))).toEqual(["agents"]);
+    expect(kinds(stepperOf({ ...after, solutionPairId: "pair_1" }, ui()))).toEqual([]);
+    expect(stepperOf({ ...after, source: "mock" }, ui()).actions.find((a) => a.kind === "new_demo")?.blocked).toBe(MOCK_REFUSAL);
   });
 
   it("an open solution pair is the last step, and repick is off", () => {
@@ -153,6 +171,7 @@ describe("canRepick", () => {
     expect(canRepick(withRun(done, { isPresenter: false }))).toBe(false);
     expect(canRepick(withRun(runRow({ status: "running" })))).toBe(false);
     expect(canRepick(withRun(runRow({ status: "error" })))).toBe(true);
+    expect(canRepick(withRun(runRow({ status: "error" }), { roundState: { state: "done", round: 1, maxRounds: 4 } }))).toBe(false);
     expect(canRepick(flow())).toBe(false);
   });
 });

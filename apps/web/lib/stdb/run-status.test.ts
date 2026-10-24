@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { stepLabel, stepOf } from "../format";
 import { BASE, NONE, PAIR, PLAN, VIEWER, tables } from "./fixtures/rows";
 import {
-  busyRunOf, controlRefusal, defendRefusal, flowStage, isBusy, pairOf, runProgress, solutionRefusal,
+  busyRunOf, controlRefusal, defendRefusal, flowStage, isBusy, pairOf, roundRefusal, runProgress, solutionRefusal,
 } from "./run-status";
 import { snapshotOf } from "./snapshot";
 import type { RoundState, RunRow } from "./types";
@@ -100,6 +100,22 @@ describe("solutionRefusal", () => {
     expect(solutionRefusal({ ...presenter, activeRun: undefined }, "s1:2")).toBe(
       "Run the attack first. The solution reruns the baseline's attack.",
     );
+    expect(solutionRefusal({ ...presenter, activeRun: at({ status: "error" }), runs: [at({ status: "error" })] }, "s1:2")).toBe(
+      "The attack run failed, so there is no attack to rerun. Reset it or start a new attack.",
+    );
+  });
+});
+
+describe("roundRefusal", () => {
+  it("mirrors run_resume and run_step while the agents negotiate (rule 5)", () => {
+    for (const state of ["running", "waiting_for_human"] as const) {
+      expect(roundRefusal("play", round(state))).toBe("Wait for the agents to finish negotiating before playing a run.");
+      expect(roundRefusal("step", round(state))).toBe("Wait for the agents to finish negotiating before playing a run.");
+      expect(roundRefusal("pause", round(state))).toBeNull();
+      expect(roundRefusal("reset", round(state))).toBeNull();
+    }
+    expect(roundRefusal("play", round("done"))).toBeNull();
+    expect(roundRefusal("step", round("idle"))).toBeNull();
   });
 });
 

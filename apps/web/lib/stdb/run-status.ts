@@ -98,7 +98,18 @@ export function solutionRefusal(s: SolutionInputs, recommendationId: string): st
   if (state === "running" || state === "waiting_for_human") return "Wait for the agents to finish negotiating before showing a solution.";
   if (busyRunOf(s.runs)) return "Wait for every run in this session to finish, or pause it, before showing a solution.";
   if (!s.activeRun) return "Run the attack first. The solution reruns the baseline's attack.";
+  if (s.activeRun.status === "error") {
+    return "The attack run failed, so there is no attack to rerun. Reset it or start a new attack.";
+  }
+  // The module also refuses a plan tested on a different attack; that needs the
+  // defend request log, which the UI doesn't read, so its message is shown as-is.
   return null;
+}
+
+/** run_resume and run_step refuse while an aggregate-fix round is open (rule 5); pause and reset don't. */
+export function roundRefusal(control: PlaybackControl, round: Pick<SessionSnapshot["roundState"], "state">): string | null {
+  const open = round.state === "running" || round.state === "waiting_for_human";
+  return open && (control === "play" || control === "step") ? "Wait for the agents to finish negotiating before playing a run." : null;
 }
 
 /**

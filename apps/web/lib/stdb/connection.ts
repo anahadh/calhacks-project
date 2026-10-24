@@ -14,6 +14,28 @@ export type Connected = { conn: DbConnection; identity: Identity };
 
 let pending: Promise<Connected> | null = null;
 
+/** Told when this tab's connection drops, with a line to show as-is (rule 14). */
+type LostListener = (reason: string) => void;
+const lostListeners = new Set<LostListener>();
+
+// A page that is leaving (a reload, opening a new demo) closes its socket on purpose.
+let leaving = false;
+if (typeof window !== "undefined") window.addEventListener("pagehide", () => (leaving = true));
+
+/** Calls `listener` if this tab's connection drops after connecting. Returns the unsubscribe. */
+export function onConnectionLost(listener: LostListener): () => void {
+  lostListeners.add(listener);
+  return () => {
+    lostListeners.delete(listener);
+  };
+}
+
+/** The line a dropped connection shows: the screen would otherwise freeze on its last rows. */
+export function lostReason(err?: unknown): string {
+  const why = (err instanceof Error ? err.message : err ? String(err) : "").replace(/\.+$/, "");
+  return `Lost the connection to SpacetimeDB${why ? `: ${why}` : ""}. Reload the page to reconnect.`;
+}
+
 function readToken(): string | undefined {
   try {
     return localStorage.getItem(TOKEN_KEY) ?? undefined;
@@ -46,8 +68,11 @@ export function getConnection(): Promise<Connected> {
           pending = null;
           reject(err);
         })
-        .onDisconnect(() => {
+        .onDisconnect((_ctx, err) => {
           pending = null;
+          if (leaving) return;
+          const reason = lostReason(err);
+          for (const listener of [...lostListeners]) listener(reason);
         })
         .build();
     });

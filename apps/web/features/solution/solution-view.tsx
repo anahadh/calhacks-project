@@ -7,7 +7,7 @@ import { SceneBoundary } from "@/components/scene/scene-boundary";
 import { SessionHeader } from "@/components/shell/header";
 import { Assumptions } from "@/components/timeline";
 import { ROLE_LABEL } from "@/lib/format";
-import { pairOf, runProgress } from "@/lib/stdb/run-status";
+import { pairOf, roundRefusal, runProgress } from "@/lib/stdb/run-status";
 import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
 import type { RecommendationRow, RunRow, SessionSnapshot } from "@/lib/stdb/types";
 import { numbersCaption } from "@/features/flow/final";
@@ -80,7 +80,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
         <section className="mt-3.5 flex flex-wrap items-center gap-3.5 rounded-panel border border-line bg-panel px-4 py-3">
           <PlaybackButtons
             targets={targets}
-            refusal={(c) => pairRefusal(c, sides)}
+            refusal={(c) => roundRefusal(c, session.roundState) ?? pairRefusal(c, sides)}
             actions={session.actions}
             isPresenter={session.isPresenter}
             onError={setErr}

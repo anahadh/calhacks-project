@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Identity } from "spacetimedb";
 import demo from "../../../../data/hospitals/demo.json";
 import { sessionActions } from "./actions";
-import { getConnection } from "./connection";
+import { getConnection, onConnectionLost } from "./connection";
 import type { DbConnection } from "./module_bindings";
 import { EMPTY_TABLES, runViewOf, snapshotOf } from "./snapshot";
 import type { RunSubscription, SessionSnapshot, SessionSource } from "./types";
@@ -47,16 +47,18 @@ function unsubscribe(handle: Handle): void {
   }
 }
 
-/** This tab's connection (one per tab, connection.ts), or why there is none. */
+/** This tab's connection (one per tab, connection.ts), or why there is none, including a dropped one. */
 function useLive(): { live?: Live; error?: string } {
   const [state, setState] = useState<{ live?: Live; error?: string }>({});
   useEffect(() => {
     let cancelled = false;
+    const off = onConnectionLost((reason) => !cancelled && setState({ error: reason }));
     getConnection()
       .then((live) => !cancelled && setState({ live }))
       .catch((e: Error) => !cancelled && setState({ error: `Can't reach SpacetimeDB: ${e?.message ?? e}` }));
     return () => {
       cancelled = true;
+      off();
     };
   }, []);
   return state;

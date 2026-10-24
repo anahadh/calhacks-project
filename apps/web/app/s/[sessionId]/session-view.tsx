@@ -12,6 +12,7 @@ import { SessionHeader, type ViewId } from "@/components/shell/header";
 import { Timeline } from "@/components/timeline";
 import { AgentRoom } from "@/features/agents/agent-room";
 import { QuestionBanner } from "@/features/agents/question-card";
+import { useFollowNewDemo } from "@/features/flow/new-demo";
 import { canRepick, pickedOf } from "@/features/flow/stepper";
 import { StepperBar } from "@/features/flow/stepper-bar";
 import { JoinModal } from "@/features/review/join-modal";
@@ -38,6 +39,8 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   const shown = picking && session.activeRun ? sceneOf(session) : session;
   const index = useSessionIndex(shown);
   const selected = pickedOf(chosen, session.entryPoints);
+  // When the presenter starts a New demo, every tab on this session opens it.
+  useFollowNewDemo(sessionId, session.source === "live");
 
   // ?view=agents opens straight onto the Agents tab.
   useEffect(() => {

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PlaybackButtons, SpeedButtons } from "@/components/playback";
 import { beatOf, markersOf, trackOf } from "@/features/flow/track";
 import { stepLabel, stepOf } from "@/lib/format";
-import { controlRefusal } from "@/lib/stdb/run-status";
+import { controlRefusal, roundRefusal } from "@/lib/stdb/run-status";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { RunRow, SessionSnapshot, SimEventRow } from "@/lib/stdb/types";
 
@@ -52,7 +52,7 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
       <div className="flex flex-wrap items-center gap-3.5">
         <PlaybackButtons
           targets={targets}
-          refusal={(c) => controlRefusal(c, run)}
+          refusal={(c) => roundRefusal(c, session.roundState) ?? controlRefusal(c, run)}
           actions={session.actions}
           isPresenter={session.isPresenter}
           onError={setErr}
