@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PlaybackButtons, SpeedButtons } from "@/components/playback";
 import { HospitalScene } from "@/components/scene/hospital-scene";
+import { SceneBoundary } from "@/components/scene/scene-boundary";
 import { SessionHeader } from "@/components/shell/header";
 import { Assumptions } from "@/components/timeline";
 import { ROLE_LABEL } from "@/lib/format";
@@ -104,7 +105,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
             title="No segmentation"
             sub="the network as it is today"
             run={none}
-            scene={<HospitalScene session={leftScene} index={leftIndex} hovered={hovered} onHover={setHovered} compact />}
+            scene={<SceneBoundary session={leftScene}><HospitalScene session={leftScene} index={leftIndex} hovered={hovered} onHover={setHovered} compact /></SceneBoundary>}
           />
           <Side
             title={rec ? `With plan: ${rec.name}` : plan?.label ?? "With the plan"}
@@ -113,7 +114,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
             warning={
               brokenPurposes.length ? `Breaks a protected flow: ${brokenPurposes.join(", ")}` : undefined
             }
-            scene={<HospitalScene session={rightScene} index={rightIndex} hovered={hovered} onHover={setHovered} compact />}
+            scene={<SceneBoundary session={rightScene}><HospitalScene session={rightScene} index={rightIndex} hovered={hovered} onHover={setHovered} compact /></SceneBoundary>}
           />
         </div>
 

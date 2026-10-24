@@ -6,6 +6,7 @@ import { ImpactPanel } from "@/components/panel/impact";
 import { InspectorPanel } from "@/components/panel/inspector";
 import { ServicesPanel } from "@/components/panel/services";
 import { HospitalScene, type ScenePick } from "@/components/scene/hospital-scene";
+import { SceneBoundary } from "@/components/scene/scene-boundary";
 import { PatientBadge } from "@/components/shell/badges";
 import { SessionHeader, type ViewId } from "@/components/shell/header";
 import { Timeline } from "@/components/timeline";
@@ -148,7 +149,9 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                 </div>
 
                 <div className="relative min-h-[620px] flex-1">
-                  <HospitalScene session={shown} index={index} hovered={hovered} onHover={setHovered} pick={pick} />
+                  <SceneBoundary session={shown}>
+                    <HospitalScene session={shown} index={index} hovered={hovered} onHover={setHovered} pick={pick} />
+                  </SceneBoundary>
                 </div>
 
                 <div className="num flex flex-wrap items-center gap-x-3.5 gap-y-1.5 border-t border-line px-3.5 py-2.5 text-[10.5px] text-ink-muted">
