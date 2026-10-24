@@ -6,7 +6,7 @@
 import { t } from "spacetimedb/server";
 
 import { AGENT_NAMES, AGENT_STATUSES, MESSAGE_TYPES, PAYLOAD_MAX, ROUND_STATES, SPEAKERS, TEXT_SOURCES } from "./constants";
-import spacetimedb, { fail, getSession, requireServer } from "./schema";
+import spacetimedb, { busyRun, fail, getSession, requireServer } from "./schema";
 
 function oneOf<T extends string>(value: string, allowed: readonly T[], what: string): T {
   if (!(allowed as readonly string[]).includes(value)) fail(`${what} must be one of: ${allowed.join(", ")}.`);
@@ -15,8 +15,9 @@ function oneOf<T extends string>(value: string, allowed: readonly T[], what: str
 
 /**
  * Create aggregate fix. Any joined human may ask, once the baseline run has
- * finished or been paused: agents never talk during a running visible run
- * (rule 5). The watcher reads the run's seed and patient zero from this row.
+ * finished or been paused: agents never talk while any run in the session is
+ * being computed or playing (rule 5). The watcher reads the run's seed,
+ * patient zero and challenges from this row.
  */
 export const defend_request = spacetimedb.reducer({ session_id: t.string() }, (ctx, { session_id }) => {
   const s = getSession(ctx, session_id);
@@ -24,12 +25,15 @@ export const defend_request = spacetimedb.reducer({ session_id: t.string() }, (c
   if (!p || p.session_id !== session_id) fail("Join the session before creating an aggregate fix.");
   const r = s.active_run_id ? ctx.db.run.id.find(s.active_run_id) : undefined;
   if (!r) fail("Run the attack first. The agents work from a baseline run.");
+  if (r.status === "requested") fail("The attack is still being computed. Wait for it before creating an aggregate fix.");
+  if (r.status === "error") fail("The attack run failed, so there is no baseline for the agents. Reset it or start a new attack.");
   if (r.status === "running") fail("Wait for the run to finish, or pause it, before creating an aggregate fix.");
+  if (busyRun(ctx, session_id)) fail("Wait for every run in this session to finish, or pause it, before creating an aggregate fix.");
   if (s.round_state === "running" || s.round_state === "waiting_for_human") {
     fail("An aggregate fix is already being negotiated for this session.");
   }
   ctx.db.defend_request_log.insert({
-    id: 0n, session_id, run_id: r.id, patient_zero: r.patient_zero, seed: r.seed, challenges_json: "[]",
+    id: 0n, session_id, run_id: r.id, patient_zero: r.patient_zero, seed: r.seed, challenges_json: r.challenges_json,
     requested_by: ctx.sender, requester_name: p.name, created_at: ctx.timestamp,
   });
 });

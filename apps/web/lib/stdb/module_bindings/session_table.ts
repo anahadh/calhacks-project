@@ -20,4 +20,6 @@ export default __t.row({
   roundState: __t.string().name("round_state"),
   round: __t.u32(),
   roundDetail: __t.string().name("round_detail"),
+  entryPointsJson: __t.string().name("entry_points_json"),
+  solutionPairId: __t.string().name("solution_pair_id"),
 });

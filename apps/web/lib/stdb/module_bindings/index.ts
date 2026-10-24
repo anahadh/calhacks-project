@@ -46,6 +46,8 @@ import QuestionAddReducer from "./question_add_reducer";
 import QuestionAnswerReducer from "./question_answer_reducer";
 import RecommendationUpsertReducer from "./recommendation_upsert_reducer";
 import RoundStateSetReducer from "./round_state_set_reducer";
+import RunFailReducer from "./run_fail_reducer";
+import RunFramesApplyReducer from "./run_frames_apply_reducer";
 import RunPauseReducer from "./run_pause_reducer";
 import RunResetReducer from "./run_reset_reducer";
 import RunResumeReducer from "./run_resume_reducer";
@@ -53,7 +55,10 @@ import RunSetSpeedReducer from "./run_set_speed_reducer";
 import RunStartReducer from "./run_start_reducer";
 import RunStepReducer from "./run_step_reducer";
 import SessionCreateReducer from "./session_create_reducer";
+import SessionEntryPointsSetReducer from "./session_entry_points_set_reducer";
 import SetPresenterReducer from "./set_presenter_reducer";
+import SolutionCloseReducer from "./solution_close_reducer";
+import SolutionStartReducer from "./solution_start_reducer";
 
 // Import all procedure arg schemas
 
@@ -301,6 +306,8 @@ const reducersSchema = __reducers(
   __reducerSchema("question_answer", QuestionAnswerReducer),
   __reducerSchema("recommendation_upsert", RecommendationUpsertReducer),
   __reducerSchema("round_state_set", RoundStateSetReducer),
+  __reducerSchema("run_fail", RunFailReducer),
+  __reducerSchema("run_frames_apply", RunFramesApplyReducer),
   __reducerSchema("run_pause", RunPauseReducer),
   __reducerSchema("run_reset", RunResetReducer),
   __reducerSchema("run_resume", RunResumeReducer),
@@ -308,7 +315,10 @@ const reducersSchema = __reducers(
   __reducerSchema("run_start", RunStartReducer),
   __reducerSchema("run_step", RunStepReducer),
   __reducerSchema("session_create", SessionCreateReducer),
+  __reducerSchema("session_entry_points_set", SessionEntryPointsSetReducer),
   __reducerSchema("set_presenter", SetPresenterReducer),
+  __reducerSchema("solution_close", SolutionCloseReducer),
+  __reducerSchema("solution_start", SolutionStartReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

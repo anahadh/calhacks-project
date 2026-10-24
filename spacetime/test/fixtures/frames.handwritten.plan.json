@@ -1,0 +1,56 @@
+{
+  "patientZero": "ws_admin",
+  "finalTick": 1,
+  "removedFlows": ["fl_1"],
+  "protectedBroken": [],
+  "frames": [
+    {
+      "tick": 0,
+      "final": false,
+      "devices": [
+        { "deviceId": "ws_admin", "infected": true, "infectedAtTick": 0, "infectedBy": "" },
+        { "deviceId": "srv_file", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "srv_ehr", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "ws_img", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "mri_1", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "ws_er", "infected": false, "infectedAtTick": -1, "infectedBy": "" }
+      ],
+      "services": [
+        { "serviceId": "svc_ehr", "down": false, "downSinceTick": -1 },
+        { "serviceId": "svc_imaging", "down": false, "downSinceTick": -1 }
+      ],
+      "patients": [
+        { "groupId": "pg_er", "state": "ok" },
+        { "groupId": "pg_scan", "state": "ok" }
+      ],
+      "attempts": [
+        { "from": "ws_admin", "to": "srv_file", "flowId": "fl_1", "success": false }
+      ],
+      "events": [
+        { "kind": "patient_zero", "targetId": "ws_admin", "text": "Admin workstation infected (patient zero)" }
+      ],
+      "snapshot": { "infectedCount": 1, "patientsAffected": 0, "infectedIds": ["ws_admin"], "servicesDown": [], "patients": { "pg_er": "ok", "pg_scan": "ok" } },
+      "summary": { "patientsAffected": 0, "devicesCompromised": 1, "servicesDown": 0, "delayedProcedures": 0, "chokePoints": [] },
+      "run": {
+        "finalTick": 1,
+        "removedFlows": ["fl_1"],
+        "protectedBroken": [],
+        "assumptions": [
+          "[S] Hand-written fixture: every service fails at detonation, on the final step.",
+          "[S] A blocked attempt marks a connection the plan removed, out of a compromised device."
+        ]
+      }
+    },
+    {
+      "tick": 1,
+      "final": true,
+      "devices": [],
+      "services": [],
+      "patients": [],
+      "attempts": [],
+      "events": [],
+      "snapshot": { "infectedCount": 1, "patientsAffected": 0, "infectedIds": ["ws_admin"], "servicesDown": [], "patients": { "pg_er": "ok", "pg_scan": "ok" } },
+      "summary": { "patientsAffected": 0, "devicesCompromised": 1, "servicesDown": 0, "delayedProcedures": 0, "chokePoints": [] }
+    }
+  ]
+}

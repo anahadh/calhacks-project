@@ -1,13 +1,15 @@
 // Every table of the Hippocra.tech module, plus helpers shared by the reducer
 // files. Reducers live in index.ts (base) and in one file per feature
-// (agents.ts, question.ts, recommendation.ts), all re-exported from index.ts.
+// (ingest.ts, solution.ts, agents.ts, question.ts, recommendation.ts), all
+// re-exported from index.ts.
+//
+// The module is the live state bus, not the compute: run rows arrive as engine
+// frames through run_frames_apply (ingest.ts), and every client subscribes.
 //
 // All data is synthetic. Patient groups are counts.
 
 import { schema, table, t, SenderError } from "spacetimedb/server";
-import type { Identity } from "spacetimedb";
-// Resolved lazily by the schema, after every module has loaded.
-import { run_tick } from "./index";
+import type { Identity, Timestamp } from "spacetimedb";
 
 // ---------------------------------------------------------------- tables
 
@@ -30,9 +32,14 @@ const session = table(
     round_state: t.string().default("idle"), // idle | running | waiting_for_human | done
     round: t.u32().default(0),
     round_detail: t.string().default(""), // the Coordinator's detail, or the watcher's error
+    // Device ids the engine accepts as patient zero, written by the watcher
+    // (session_entry_points_set). "[]" = not known yet; run_start then accepts any device.
+    entry_points_json: t.string().default("[]"),
+    solution_pair_id: t.string().default(""), // the pair the solution view shows; every tab follows it
   },
 );
 
+/** One visible run. Engine columns start empty and fill from frame 0 (ingest.ts). */
 const run = table(
   { name: "run", public: true },
   {
@@ -40,11 +47,11 @@ const run = table(
     session_id: t.string().index("btree"),
     pair_id: t.string(), // "" unless part of a solution-view pair
     label: t.string(),
-    seed: t.u32(),
+    seed: t.u32(), // accepted and ignored: the engine has no RNG
     patient_zero: t.string(),
-    policy_json: t.string(), // "" = no segmentation
+    policy_json: t.string(), // "" = no segmentation; otherwise the agents' Policy, opaque here
     tick: t.u32(),
-    status: t.string(), // running | paused | done
+    status: t.string(), // requested | running | paused | done | error
     speed: t.f64(),
     patients_affected: t.u32(),
     devices_compromised: t.u32(),
@@ -53,22 +60,15 @@ const run = table(
     choke_points_json: t.string(),
     protected_broken_json: t.string(),
     started_at: t.timestamp(),
-  },
-);
-
-/** The engine's full state per run. Private: clients read the public rows. */
-const run_state = table(
-  { name: "run_state" },
-  { run_id: t.string().primaryKey(), state_json: t.string() },
-);
-
-/** One row per ticking run or pair. Deleting it pauses the run. */
-export const tick_timer = table(
-  { name: "tick_timer", scheduled: (): any => run_tick },
-  {
-    scheduled_id: t.u64().primaryKey().autoInc(),
-    scheduled_at: t.scheduleAt(),
-    key: t.string(), // run id, or pair id for lockstep runs
+    // Defaults let an existing database migrate.
+    final_tick: t.u32().default(0), // from frame 0
+    detail: t.string().default(""), // the engine's or the watcher's error (rule 14); never session.round_detail
+    autoplay: t.bool().default(false), // frame 0 leaves the run running (true) or paused
+    step_pending: t.bool().default(false), // the presenter asked for one step while paused
+    challenges_json: t.string().default("[]"),
+    removed_flows_json: t.string().default("[]"), // from frame 0
+    assumptions_json: t.string().default("[]"), // the engine's [S] notes, from frame 0
+    recommendation_id: t.string().default(""), // set on a solution rerun's plan side
   },
 );
 
@@ -186,7 +186,7 @@ const defend_request_log = table(
     run_id: t.string(), // the baseline run the agents read
     patient_zero: t.string(),
     seed: t.u32(),
-    challenges_json: t.string(), // ChallengeId[]; "[]" until challenge_add exists
+    challenges_json: t.string(), // ChallengeId[], copied from the run ("[]" until challenge_add exists)
     requested_by: t.identity(),
     requester_name: t.string(),
     created_at: t.timestamp(),
@@ -208,7 +208,7 @@ const agent_message = table(
     reason: t.string(),
     reason_source: t.string(), // claude | template | ""
     direction: t.string(), // sent | received
-    fixture: t.bool(), // numbers came from fixture files, not hippo-sim
+    fixture: t.bool(), // numbers came from fixture files, not the engine
     created_at: t.timestamp(),
   },
 );
@@ -257,7 +257,7 @@ const recommendation = table(
     policy_json: t.string(),
     explanation: t.string(),
     explanation_source: t.string(),
-    verified_json: t.string(), // the RunResult from hippo-sim
+    verified_json: t.string(), // the RunResult from the engine (hippo-sim)
     verdicts_json: t.string(),
     required_roles_json: t.string(),
     fixture: t.bool(),
@@ -267,8 +267,8 @@ const recommendation = table(
 );
 
 const spacetimedb = schema({
-  config, session, run, run_state, tick_timer, device_state, service_state,
-  patient_state, spread_attempt, sim_event, tick_snapshot, presence, annotation,
+  config, session, run, device_state, service_state, patient_state,
+  spread_attempt, sim_event, tick_snapshot, presence, annotation,
   defend_request_log, agent_message, agent_status, question, recommendation,
 });
 export default spacetimedb;
@@ -295,4 +295,69 @@ export function getSession(ctx: any, sessionId: string) {
 /** Server-only reducers (AGENTS.md rule 11): watchers and the Node server. */
 export function requireServer(ctx: any): void {
   if (!isServer(ctx)) fail("Only the server identity can call this reducer.");
+}
+
+/** Run controls: the presenter (spec 7.3) or the server identity. */
+export function requirePresenter(ctx: any, sessionId: string): void {
+  const s = getSession(ctx, sessionId);
+  if (!same(s.presenter, ctx.sender) && !isServer(ctx)) fail("Only the presenter can control playback.");
+}
+
+// ---------------------------------------------------------------- run helpers
+
+export type RunRow = {
+  id: string; session_id: string; pair_id: string; label: string; seed: number; patient_zero: string;
+  policy_json: string; tick: number; status: string; speed: number; patients_affected: number;
+  devices_compromised: number; services_down: number; delayed_procedures: number;
+  choke_points_json: string; protected_broken_json: string; started_at: Timestamp;
+  final_tick: number; detail: string; autoplay: boolean; step_pending: boolean; challenges_json: string;
+  removed_flows_json: string; assumptions_json: string; recommendation_id: string;
+};
+
+/** The public rows a run's frames write, besides the run row itself. */
+export const RUN_ROW_TABLES = ["device_state", "service_state", "patient_state", "spread_attempt", "sim_event", "tick_snapshot"] as const;
+
+/** A run's columns before frame 0 arrives: run_start, solution_start and run_reset write these. */
+export const BEFORE_FRAME_0 = {
+  tick: 0, status: "requested", step_pending: false, detail: "", final_tick: 0,
+  patients_affected: 0, devices_compromised: 0, services_down: 0, delayed_procedures: 0,
+  choke_points_json: "[]", protected_broken_json: "[]", removed_flows_json: "[]", assumptions_json: "[]",
+} as const;
+
+export function rowKey(...parts: (string | number)[]): string {
+  return parts.join(":");
+}
+
+export function readRun(ctx: any, runId: string): RunRow {
+  return (ctx.db.run.id.find(runId) as RunRow | undefined) ?? fail(`Run "${runId}" does not exist.`);
+}
+
+/** Playback key: a solution pair moves together. */
+export function playbackKey(r: { id: string; pair_id: string }): string {
+  return r.pair_id || r.id;
+}
+
+/** Every run under this run's playback key (itself, or its whole pair). */
+export function runsForKey(ctx: any, r: RunRow): RunRow[] {
+  const k = playbackKey(r);
+  return [...ctx.db.run.session_id.filter(r.session_id)].filter((x: RunRow) => playbackKey(x) === k);
+}
+
+export function deleteRunRows(ctx: any, runId: string): void {
+  for (const tbl of RUN_ROW_TABLES) {
+    for (const row of [...ctx.db[tbl].run_id.filter(runId)]) ctx.db[tbl].delete(row);
+  }
+}
+
+/** A run in the session that is being computed or played (rule 5: agents wait for it). */
+export function busyRun(ctx: any, sessionId: string): RunRow | undefined {
+  return [...ctx.db.run.session_id.filter(sessionId)].find((r: RunRow) => r.status === "requested" || r.status === "running");
+}
+
+/** Why a playback control can't act on a run in this status. */
+export function statusRefusal(status: string): string {
+  if (status === "requested") return "This run is still being computed.";
+  if (status === "done") return "This run has finished. Reset it to play again.";
+  if (status === "error") return "This run failed. Reset it to try again.";
+  return "";
 }

@@ -1,209 +1,29 @@
 // Hippocra.tech SpacetimeDB module (TypeScript).
 //
-// The simulation runs here. `run_tick` is a scheduled reducer that advances
-// visible runs one tick at a time with sim-core, the same engine hippo-sim
-// uses, and writes the rows every laptop subscribes to. Clients never compute
-// ticks (AGENTS.md rules 3-5). Reducers make no network calls (rule 6).
+// The live state bus, not the compute. The Python engine (engine/sim_core)
+// computes every visible run; the run watcher feeds its frames in through the
+// server-only run_frames_apply (ingest.ts), paced at the run's speed, and every
+// laptop subscribes to the rows (AGENTS.md rules 3, 4). The playback reducers
+// here only change flags the watcher obeys. Reducers make no network calls (rule 7).
 //
 // All data is synthetic. Patient groups are counts.
 
-import { t, ScheduleAt } from "spacetimedb/server";
-import type { Timestamp } from "spacetimedb";
-import {
-  initialState, isSettled, protectedBroken, step, summarize,
-  type Hospital, type HospitalFile, type Policy, type SimState, type StepResult,
-} from "@hippo/sim-core";
+import { t } from "spacetimedb/server";
 
-import { ANNOTATING_ROLES, KEEP_ATTEMPT_TICKS, NOTE_MAX, ROLES, SPEEDS, TICK_MS } from "./constants";
-import spacetimedb, { fail, getSession, isServer, same, tick_timer } from "./schema";
+import { ANNOTATING_ROLES, NOTE_MAX, ROLES, SPEEDS } from "./constants";
+import { hospitalOf, validateHospital } from "./hospital";
+import spacetimedb, {
+  BEFORE_FRAME_0, deleteRunRows, fail, getSession, isServer, readRun, requirePresenter, requireServer, runsForKey, same,
+  statusRefusal, type RunRow,
+} from "./schema";
 
 // Tables live in schema.ts; feature reducers in their own files, re-exported here.
 export default spacetimedb;
+export * from "./ingest";
+export * from "./solution";
 export * from "./agents";
 export * from "./question";
 export * from "./recommendation";
-
-type RunRow = ReturnType<typeof readRun>;
-
-// ---------------------------------------------------------------- helpers
-
-function readRun(ctx: any, runId: string) {
-  const r = ctx.db.run.id.find(runId);
-  if (!r) fail(`Run "${runId}" does not exist.`);
-  return r as {
-    id: string; session_id: string; pair_id: string; label: string; seed: number; patient_zero: string;
-    policy_json: string; tick: number; status: string; speed: number; patients_affected: number;
-    devices_compromised: number; services_down: number; delayed_procedures: number;
-    choke_points_json: string; protected_broken_json: string; started_at: Timestamp;
-  };
-}
-
-/** Run controls: the presenter (spec 7.3) or the server identity. */
-function requirePresenter(ctx: any, sessionId: string): void {
-  const s = getSession(ctx, sessionId);
-  if (!same(s.presenter, ctx.sender) && !isServer(ctx)) fail("Only the presenter can control playback.");
-}
-
-function hospitalOf(ctx: any, sessionId: string): Hospital {
-  return (JSON.parse(getSession(ctx, sessionId).hospital_json) as HospitalFile).hospital;
-}
-
-function policyOf(r: { policy_json: string }): Policy | null {
-  return r.policy_json ? (JSON.parse(r.policy_json) as Policy) : null;
-}
-
-function key(...parts: (string | number)[]): string {
-  return parts.join(":");
-}
-
-function intervalMicros(speed: number): bigint {
-  return BigInt(Math.round((TICK_MS / speed) * 1000));
-}
-
-function timerKey(r: { id: string; pair_id: string }): string {
-  return r.pair_id || r.id;
-}
-
-function stopTimer(ctx: any, k: string): void {
-  for (const row of [...ctx.db.tick_timer.iter()]) if (row.key === k) ctx.db.tick_timer.delete(row);
-}
-
-function startTimer(ctx: any, k: string, speed: number): void {
-  stopTimer(ctx, k);
-  ctx.db.tick_timer.insert({ scheduled_id: 0n, scheduled_at: ScheduleAt.interval(intervalMicros(speed)), key: k });
-}
-
-function deleteRunRows(ctx: any, runId: string): void {
-  for (const tbl of ["device_state", "service_state", "patient_state", "spread_attempt", "sim_event", "tick_snapshot"]) {
-    for (const row of [...ctx.db[tbl].run_id.filter(runId)]) ctx.db[tbl].delete(row);
-  }
-  const st = ctx.db.run_state.run_id.find(runId);
-  if (st) ctx.db.run_state.delete(st);
-}
-
-/** Writes tick 0 for a run: every device, service and patient row, plus history. */
-function writeInitial(ctx: any, h: Hospital, r: RunRow): void {
-  const res = initialState(h, r.patient_zero, r.seed);
-  const s = res.state;
-  for (const d of h.devices) {
-    const inf = s.infected[d.id];
-    ctx.db.device_state.insert({
-      id: key(r.id, d.id), run_id: r.id, device_id: d.id, infected: !!inf,
-      infected_at_tick: inf ? inf.atTick : -1, infected_by: inf?.by ?? "",
-    });
-  }
-  for (const svc of h.services) {
-    const since = s.serviceDownSince[svc.id];
-    ctx.db.service_state.insert({
-      id: key(r.id, svc.id), run_id: r.id, service_id: svc.id,
-      down: since !== undefined, down_since_tick: since ?? -1,
-    });
-  }
-  for (const g of h.patients) {
-    ctx.db.patient_state.insert({ id: key(r.id, g.id), run_id: r.id, group_id: g.id, state: s.patients[g.id] ?? "ok" });
-  }
-  ctx.db.run_state.insert({ run_id: r.id, state_json: JSON.stringify(s) });
-  writeTickOutputs(ctx, h, r, res, null);
-}
-
-/** Writes what one tick changed, plus events, attempts, snapshot and the run's summary. */
-function writeTickOutputs(ctx: any, h: Hospital, r: RunRow, res: StepResult, prev: SimState | null): void {
-  const s = res.state;
-  if (prev) {
-    for (const [id, inf] of Object.entries(s.infected)) {
-      if (prev.infected[id]) continue;
-      const row = ctx.db.device_state.id.find(key(r.id, id));
-      if (row) ctx.db.device_state.id.update({ ...row, infected: true, infected_at_tick: inf.atTick, infected_by: inf.by ?? "" });
-    }
-    for (const [id, since] of Object.entries(s.serviceDownSince)) {
-      if (prev.serviceDownSince[id] !== undefined) continue;
-      const row = ctx.db.service_state.id.find(key(r.id, id));
-      if (row) ctx.db.service_state.id.update({ ...row, down: true, down_since_tick: since });
-    }
-    for (const [id, st] of Object.entries(s.patients)) {
-      if (prev.patients[id] === st) continue;
-      const row = ctx.db.patient_state.id.find(key(r.id, id));
-      if (row) ctx.db.patient_state.id.update({ ...row, state: st });
-    }
-    const st = ctx.db.run_state.run_id.find(r.id);
-    ctx.db.run_state.run_id.update({ ...st, state_json: JSON.stringify(s) });
-  }
-
-  for (const old of [...ctx.db.spread_attempt.run_id.filter(r.id)]) {
-    if (old.tick + KEEP_ATTEMPT_TICKS <= s.tick) ctx.db.spread_attempt.delete(old);
-  }
-  for (const a of res.attempts) {
-    ctx.db.spread_attempt.insert({
-      id: 0n, run_id: r.id, tick: a.tick, from_device: a.from, to_device: a.to, flow_id: a.flowId, success: a.success,
-    });
-  }
-  for (const e of res.events) {
-    ctx.db.sim_event.insert({ id: 0n, run_id: r.id, tick: e.tick, kind: e.kind, target_id: e.targetId, text: e.text });
-  }
-
-  const sum = summarize(h, s);
-  ctx.db.tick_snapshot.insert({
-    id: key(r.id, s.tick), run_id: r.id, tick: s.tick,
-    infected_count: sum.devicesCompromised, patients_affected: sum.patientsAffected,
-    infected_ids_json: JSON.stringify(Object.keys(s.infected).sort()),
-    services_down_json: JSON.stringify(sum.servicesDown),
-    patients_json: JSON.stringify(s.patients),
-  });
-
-  const policy = policyOf(r);
-  const done = isSettled(h, s, { policy });
-  ctx.db.run.id.update({
-    ...readRun(ctx, r.id),
-    tick: s.tick,
-    status: done ? "done" : readRun(ctx, r.id).status,
-    patients_affected: sum.patientsAffected,
-    devices_compromised: sum.devicesCompromised,
-    services_down: sum.servicesDown.length,
-    delayed_procedures: sum.delayedProcedures,
-    choke_points_json: JSON.stringify(sum.chokePoints),
-  });
-}
-
-/** Advances one run by one tick. Returns false if the run is already done. */
-function advance(ctx: any, runId: string): boolean {
-  const r = readRun(ctx, runId);
-  if (r.status === "done") return false;
-  const h = hospitalOf(ctx, r.session_id);
-  const prev = JSON.parse(ctx.db.run_state.run_id.find(r.id).state_json) as SimState;
-  const res = step(h, prev, { policy: policyOf(r) });
-  writeTickOutputs(ctx, h, r, res, prev);
-  return true;
-}
-
-function runsForKey(ctx: any, k: string): RunRow[] {
-  return [...ctx.db.run.iter()].filter((r: RunRow) => r.id === k || (r.pair_id !== "" && r.pair_id === k));
-}
-
-function validateHospital(json: string): HospitalFile {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    fail("The hospital file is not valid JSON.");
-  }
-  const f = parsed as Partial<HospitalFile>;
-  // Full validation (every path, every rule) lives in packages/schema and runs
-  // in the browser first. This is the server-side backstop for the essentials.
-  if (f?.schemaVersion !== 1 || !f.hospital) fail("Expected { schemaVersion: 1, hospital: {...} }.");
-  const h = f.hospital;
-  for (const k of ["floors", "rooms", "devices", "flows", "services", "patients"] as const) {
-    if (!Array.isArray(h[k])) fail(`hospital.${k} must be a list.`);
-  }
-  const ids = new Set(h.devices.map((d) => d.id));
-  for (const fl of h.flows) if (!ids.has(fl.from) || !ids.has(fl.to)) fail(`Flow "${fl.id}" refers to a missing device.`);
-  for (const g of h.patients as any[]) {
-    for (const banned of ["name", "age", "birthDate", "mrn", "diagnosis"]) {
-      if (banned in g) fail(`Patient group "${g.id}" has "${banned}". Patient groups hold counts only.`);
-    }
-  }
-  if (json.length > 2 * 1024 * 1024) fail("The hospital file is larger than 2 MB.");
-  return f as HospitalFile;
-}
 
 // ---------------------------------------------------------------- lifecycle
 
@@ -234,8 +54,28 @@ export const session_create = spacetimedb.reducer(
     ctx.db.session.insert({
       id: session_id, hospital_json, hospital_name: file.hospital.name,
       presenter: ctx.sender, active_run_id: "", created_at: ctx.timestamp,
-      round_state: "idle", round: 0, round_detail: "",
+      round_state: "idle", round: 0, round_detail: "", entry_points_json: "[]", solution_pair_id: "",
     });
+  },
+);
+
+/** The engine's legal patient zeros for this hospital, written by the watcher. The UI dims the rest. */
+export const session_entry_points_set = spacetimedb.reducer(
+  { session_id: t.string(), entry_points_json: t.string() },
+  (ctx, { session_id, entry_points_json }) => {
+    requireServer(ctx);
+    const s = getSession(ctx, session_id);
+    let ids: unknown;
+    try {
+      ids = JSON.parse(entry_points_json);
+    } catch {
+      fail("entry_points_json is not valid JSON.");
+    }
+    if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) fail("entry_points_json must be a list of device ids.");
+    if (new Set(ids).size !== ids.length) fail("entry_points_json lists a device twice.");
+    const devices = new Set(hospitalOf(ctx, session_id).devices.map((d) => d.id));
+    for (const id of ids as string[]) if (!devices.has(id)) fail(`Device "${id}" does not exist.`);
+    ctx.db.session.id.update({ ...s, entry_points_json: JSON.stringify(ids) });
   },
 );
 
@@ -267,7 +107,11 @@ export const set_presenter = spacetimedb.reducer(
 );
 
 // ---------------------------------------------------------------- runs
+// Status machine (INTEGRATION.md 5b): run_start, solution_start and run_reset
+// leave a run `requested`; the watcher's frame 0 makes it running or paused (by
+// autoplay); run_fail makes it `error`; the final frame makes it `done`.
 
+/** A new run, waiting for the engine. Writes no state rows: frame 0 does. */
 export const run_start = spacetimedb.reducer(
   {
     session_id: t.string(), run_id: t.string(), label: t.string(), patient_zero: t.string(),
@@ -277,91 +121,74 @@ export const run_start = spacetimedb.reducer(
     requirePresenter(ctx, a.session_id);
     if (ctx.db.run.id.find(a.run_id)) fail(`Run "${a.run_id}" already exists.`);
     if (!(SPEEDS as readonly number[]).includes(a.speed)) fail("Speed must be 0.5, 1, 2 or 4.");
+    const s = getSession(ctx, a.session_id);
     const h = hospitalOf(ctx, a.session_id);
     if (!h.devices.some((d) => d.id === a.patient_zero)) fail(`Device "${a.patient_zero}" does not exist.`);
-    let policy: Policy | null = null;
+    const entryPoints = JSON.parse(s.entry_points_json) as string[];
+    if (entryPoints.length && !entryPoints.includes(a.patient_zero)) {
+      fail(`The engine can't start an attack on "${a.patient_zero}": patient zero must be a Windows device that runs software and is not a medical device. Pick a highlighted device.`);
+    }
     if (a.policy_json) {
       try {
-        policy = JSON.parse(a.policy_json) as Policy;
+        JSON.parse(a.policy_json);
       } catch {
         fail("The policy is not valid JSON.");
       }
     }
-    const row = {
+    ctx.db.run.insert({
+      ...BEFORE_FRAME_0,
       id: a.run_id, session_id: a.session_id, pair_id: a.pair_id, label: a.label || "Run", seed: a.seed,
-      patient_zero: a.patient_zero, policy_json: a.policy_json, tick: 0,
-      status: a.autoplay ? "running" : "paused", speed: a.speed,
-      patients_affected: 0, devices_compromised: 0, services_down: 0, delayed_procedures: 0,
-      choke_points_json: "[]", protected_broken_json: JSON.stringify(protectedBroken(h, policy).map((f) => f.id)),
-      started_at: ctx.timestamp,
-    };
-    ctx.db.run.insert(row);
-    writeInitial(ctx, h, row);
-    if (!a.pair_id) {
-      const s = getSession(ctx, a.session_id);
-      ctx.db.session.id.update({ ...s, active_run_id: a.run_id });
-    }
-    if (a.autoplay) startTimer(ctx, timerKey(row), a.speed);
+      patient_zero: a.patient_zero, policy_json: a.policy_json, speed: a.speed, autoplay: a.autoplay,
+      challenges_json: "[]", recommendation_id: "", started_at: ctx.timestamp,
+    });
+    if (!a.pair_id) ctx.db.session.id.update({ ...getSession(ctx, a.session_id), active_run_id: a.run_id });
   },
 );
 
-/** Scheduled. Advances every running run under this timer's key, in one transaction (lockstep). */
-export const run_tick = spacetimedb.reducer({ arg: tick_timer.rowType }, (ctx, { arg }) => {
-  // The scheduler calls with the module's own identity. (In spacetimedb 2.13,
-  // senderAuth.isInternal is false for scheduled calls on a real server, so
-  // checking it alone rejects every tick.)
-  const fromScheduler = ctx.senderAuth.isInternal || ctx.sender.isEqual(ctx.identity);
-  if (!fromScheduler) fail("run_tick runs only on the scheduler.");
-  const runs = runsForKey(ctx, arg.key).filter((r) => r.status === "running");
-  for (const r of runs) advance(ctx, r.id);
-  const stillRunning = runsForKey(ctx, arg.key).some((r) => r.status === "running");
-  if (!stillRunning) stopTimer(ctx, arg.key);
-});
-
-function setStatus(ctx: any, k: string, status: "running" | "paused"): void {
-  for (const r of runsForKey(ctx, k)) if (r.status !== "done") ctx.db.run.id.update({ ...r, status });
+/** Pause or resume every run under the key that is in `from`. Others keep their status. */
+function setStatus(ctx: any, r: RunRow, from: string, to: string): void {
+  for (const x of runsForKey(ctx, r)) if (x.status === from) ctx.db.run.id.update({ ...x, status: to });
 }
 
 export const run_pause = spacetimedb.reducer({ run_id: t.string() }, (ctx, { run_id }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
-  setStatus(ctx, timerKey(r), "paused");
-  stopTimer(ctx, timerKey(r));
+  setStatus(ctx, r, "running", "paused");
 });
 
 export const run_resume = spacetimedb.reducer({ run_id: t.string() }, (ctx, { run_id }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
-  if (r.status === "done") fail("This run has finished. Reset it to play again.");
-  setStatus(ctx, timerKey(r), "running");
-  startTimer(ctx, timerKey(r), r.speed);
+  const refusal = statusRefusal(r.status);
+  if (refusal) fail(refusal);
+  setStatus(ctx, r, "paused", "running");
 });
 
 export const run_set_speed = spacetimedb.reducer({ run_id: t.string(), speed: t.f64() }, (ctx, { run_id, speed }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
   if (!(SPEEDS as readonly number[]).includes(speed)) fail("Speed must be 0.5, 1, 2 or 4.");
-  for (const x of runsForKey(ctx, timerKey(r))) ctx.db.run.id.update({ ...x, speed });
-  if (r.status === "running") startTimer(ctx, timerKey(r), speed);
+  for (const x of runsForKey(ctx, r)) ctx.db.run.id.update({ ...x, speed });
 });
 
+/** One step while paused: the watcher sees step_pending and applies the next frame. */
 export const run_step = spacetimedb.reducer({ run_id: t.string() }, (ctx, { run_id }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
   if (r.status === "running") fail("Pause the run before stepping.");
-  for (const x of runsForKey(ctx, timerKey(r))) advance(ctx, x.id);
+  const refusal = statusRefusal(r.status);
+  if (refusal) fail(refusal);
+  for (const x of runsForKey(ctx, r)) if (x.status === "paused") ctx.db.run.id.update({ ...x, step_pending: true });
 });
 
+/** Back to `requested` with every row cleared. The engine is deterministic, so the watcher recomputes the same run. */
 export const run_reset = spacetimedb.reducer({ run_id: t.string() }, (ctx, { run_id }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
-  const k = timerKey(r);
-  stopTimer(ctx, k);
-  for (const x of runsForKey(ctx, k)) {
+  if (r.status === "requested") fail(statusRefusal(r.status));
+  for (const x of runsForKey(ctx, r)) {
     deleteRunRows(ctx, x.id);
-    const fresh = { ...x, tick: 0, status: "paused" };
-    ctx.db.run.id.update(fresh);
-    writeInitial(ctx, hospitalOf(ctx, x.session_id), fresh);
+    ctx.db.run.id.update({ ...x, ...BEFORE_FRAME_0, autoplay: false });
   }
 });
 
@@ -374,8 +201,7 @@ export const annotation_add = spacetimedb.reducer(
     const p = ctx.db.presence.identity.find(ctx.sender);
     if (!p || p.session_id !== session_id) fail("Join the session before adding a focus.");
     if (!(ANNOTATING_ROLES as readonly string[]).includes(p.role)) fail("Observers can see focus pins but can't add them.");
-    const h = (JSON.parse(s.hospital_json) as HospitalFile).hospital;
-    if (!h.devices.some((d) => d.id === target_id)) fail(`Device "${target_id}" does not exist.`);
+    if (!hospitalOf(ctx, session_id).devices.some((d) => d.id === target_id)) fail(`Device "${target_id}" does not exist.`);
     if (note.length > NOTE_MAX) fail(`Notes are at most ${NOTE_MAX} characters.`);
     for (const a of [...ctx.db.annotation.session_id.filter(session_id)]) {
       if (a.active && a.target_id === target_id && same(a.author, ctx.sender)) fail("You already have a focus on this device.");

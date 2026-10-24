@@ -28,4 +28,12 @@ export default __t.row({
   chokePointsJson: __t.string().name("choke_points_json"),
   protectedBrokenJson: __t.string().name("protected_broken_json"),
   startedAt: __t.timestamp().name("started_at"),
+  finalTick: __t.u32().name("final_tick"),
+  detail: __t.string(),
+  autoplay: __t.bool(),
+  stepPending: __t.bool().name("step_pending"),
+  challengesJson: __t.string().name("challenges_json"),
+  removedFlowsJson: __t.string().name("removed_flows_json"),
+  assumptionsJson: __t.string().name("assumptions_json"),
+  recommendationId: __t.string().name("recommendation_id"),
 });

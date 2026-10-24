@@ -1,0 +1,98 @@
+{
+  "patientZero": "ws_admin",
+  "finalTick": 3,
+  "removedFlows": [],
+  "protectedBroken": [],
+  "frames": [
+    {
+      "tick": 0,
+      "final": false,
+      "devices": [
+        { "deviceId": "ws_admin", "infected": true, "infectedAtTick": 0, "infectedBy": "" },
+        { "deviceId": "srv_file", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "srv_ehr", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "ws_img", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "mri_1", "infected": false, "infectedAtTick": -1, "infectedBy": "" },
+        { "deviceId": "ws_er", "infected": false, "infectedAtTick": -1, "infectedBy": "" }
+      ],
+      "services": [
+        { "serviceId": "svc_ehr", "down": false, "downSinceTick": -1 },
+        { "serviceId": "svc_imaging", "down": false, "downSinceTick": -1 }
+      ],
+      "patients": [
+        { "groupId": "pg_er", "state": "ok" },
+        { "groupId": "pg_scan", "state": "ok" }
+      ],
+      "attempts": [],
+      "events": [
+        { "kind": "patient_zero", "targetId": "ws_admin", "text": "Admin workstation infected (patient zero)" }
+      ],
+      "snapshot": { "infectedCount": 1, "patientsAffected": 0, "infectedIds": ["ws_admin"], "servicesDown": [], "patients": { "pg_er": "ok", "pg_scan": "ok" } },
+      "summary": { "patientsAffected": 0, "devicesCompromised": 1, "servicesDown": 0, "delayedProcedures": 0, "chokePoints": [] },
+      "run": { "finalTick": 3, "removedFlows": [], "protectedBroken": [], "assumptions": ["[S] Hand-written fixture: every service fails at detonation, on the final step."] }
+    },
+    {
+      "tick": 1,
+      "final": false,
+      "devices": [
+        { "deviceId": "srv_file", "infected": true, "infectedAtTick": 1, "infectedBy": "ws_admin" }
+      ],
+      "services": [],
+      "patients": [],
+      "attempts": [
+        { "from": "ws_admin", "to": "srv_file", "flowId": "fl_1", "success": true }
+      ],
+      "events": [
+        { "kind": "device_infected", "targetId": "srv_file", "text": "File server compromised" }
+      ],
+      "snapshot": { "infectedCount": 2, "patientsAffected": 0, "infectedIds": ["srv_file", "ws_admin"], "servicesDown": [], "patients": { "pg_er": "ok", "pg_scan": "ok" } },
+      "summary": { "patientsAffected": 0, "devicesCompromised": 2, "servicesDown": 0, "delayedProcedures": 0, "chokePoints": [] }
+    },
+    {
+      "tick": 2,
+      "final": false,
+      "devices": [
+        { "deviceId": "srv_ehr", "infected": true, "infectedAtTick": 2, "infectedBy": "srv_file" },
+        { "deviceId": "ws_img", "infected": true, "infectedAtTick": 2, "infectedBy": "srv_file" }
+      ],
+      "services": [],
+      "patients": [],
+      "attempts": [
+        { "from": "srv_file", "to": "srv_ehr", "flowId": "fl_3", "success": true },
+        { "from": "srv_file", "to": "ws_img", "flowId": "fl_2", "success": true }
+      ],
+      "events": [
+        { "kind": "device_infected", "targetId": "srv_ehr", "text": "EHR server compromised" },
+        { "kind": "device_infected", "targetId": "ws_img", "text": "Imaging workstation compromised" }
+      ],
+      "snapshot": { "infectedCount": 4, "patientsAffected": 0, "infectedIds": ["srv_ehr", "srv_file", "ws_admin", "ws_img"], "servicesDown": [], "patients": { "pg_er": "ok", "pg_scan": "ok" } },
+      "summary": { "patientsAffected": 0, "devicesCompromised": 4, "servicesDown": 0, "delayedProcedures": 0, "chokePoints": [{ "deviceId": "srv_file", "share": 1 }] }
+    },
+    {
+      "tick": 3,
+      "final": true,
+      "devices": [
+        { "deviceId": "ws_er", "infected": true, "infectedAtTick": 3, "infectedBy": "srv_ehr" }
+      ],
+      "services": [
+        { "serviceId": "svc_ehr", "down": true, "downSinceTick": 3 },
+        { "serviceId": "svc_imaging", "down": true, "downSinceTick": 3 }
+      ],
+      "patients": [
+        { "groupId": "pg_er", "state": "diverted" },
+        { "groupId": "pg_scan", "state": "disrupted" }
+      ],
+      "attempts": [
+        { "from": "srv_ehr", "to": "ws_er", "flowId": "fl_4", "success": true }
+      ],
+      "events": [
+        { "kind": "device_infected", "targetId": "ws_er", "text": "ER workstation compromised" },
+        { "kind": "service_down", "targetId": "svc_ehr", "text": "Health records offline" },
+        { "kind": "service_down", "targetId": "svc_imaging", "text": "Imaging offline" },
+        { "kind": "diversion", "targetId": "rm_er", "text": "ER diverting ambulances" }
+      ],
+      "snapshot": { "infectedCount": 5, "patientsAffected": 12, "infectedIds": ["srv_ehr", "srv_file", "ws_admin", "ws_er", "ws_img"], "servicesDown": ["svc_ehr", "svc_imaging"], "patients": { "pg_er": "diverted", "pg_scan": "disrupted" } },
+      "summary": { "patientsAffected": 12, "devicesCompromised": 5, "servicesDown": 2, "delayedProcedures": 7, "chokePoints": [{ "deviceId": "srv_file", "share": 0.75 }, { "deviceId": "srv_ehr", "share": 0.25 }] }
+    }
+  ]
+}

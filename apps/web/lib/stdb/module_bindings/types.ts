@@ -153,14 +153,16 @@ export const Run = __t.object("Run", {
   chokePointsJson: __t.string(),
   protectedBrokenJson: __t.string(),
   startedAt: __t.timestamp(),
+  finalTick: __t.u32(),
+  detail: __t.string(),
+  autoplay: __t.bool(),
+  stepPending: __t.bool(),
+  challengesJson: __t.string(),
+  removedFlowsJson: __t.string(),
+  assumptionsJson: __t.string(),
+  recommendationId: __t.string(),
 });
 export type Run = __Infer<typeof Run>;
-
-export const RunState = __t.object("RunState", {
-  runId: __t.string(),
-  stateJson: __t.string(),
-});
-export type RunState = __Infer<typeof RunState>;
 
 export const ServiceState = __t.object("ServiceState", {
   id: __t.string(),
@@ -181,6 +183,8 @@ export const Session = __t.object("Session", {
   roundState: __t.string(),
   round: __t.u32(),
   roundDetail: __t.string(),
+  entryPointsJson: __t.string(),
+  solutionPairId: __t.string(),
 });
 export type Session = __Infer<typeof Session>;
 
@@ -216,11 +220,4 @@ export const TickSnapshot = __t.object("TickSnapshot", {
   patientsJson: __t.string(),
 });
 export type TickSnapshot = __Infer<typeof TickSnapshot>;
-
-export const TickTimer = __t.object("TickTimer", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  key: __t.string(),
-});
-export type TickTimer = __Infer<typeof TickTimer>;
 
