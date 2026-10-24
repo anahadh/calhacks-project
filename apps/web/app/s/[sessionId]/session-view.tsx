@@ -48,8 +48,8 @@ export function SessionView({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      <SessionHeader session={session} view={view} onView={setView} />
-      <JoinModal session={session} />
+      <SessionHeader sessionId={sessionId} session={session} view={view} onView={setView} />
+      <JoinModal session={session} sessionId={sessionId} />
 
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
         <div className="mt-3.5 empty:hidden">

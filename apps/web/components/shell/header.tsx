@@ -1,5 +1,6 @@
 "use client";
 
+import { InviteButton } from "@/features/review/invite";
 import { ROLE_LABEL } from "@/lib/format";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
@@ -11,10 +12,12 @@ const TABS: { id: ViewId; key: string; label: string }[] = [
 ];
 
 export function SessionHeader({
+  sessionId,
   session,
   view,
   onView,
 }: {
+  sessionId: string;
   session: SessionSnapshot;
   view: ViewId;
   onView: (v: ViewId) => void;
@@ -55,9 +58,9 @@ export function SessionHeader({
 
         <div className="flex items-center gap-3">
           <div className="flex -space-x-1.5">
-            {session.presence.map((p) => (
+            {session.presence.map((p, i) => (
               <span
-                key={p.name}
+                key={`${p.name}-${i}`}
                 title={`${p.name} · ${ROLE_LABEL[p.role]}`}
                 className="grid h-7 w-7 place-items-center rounded-full border-2 border-bg bg-panel2 font-disp text-[11px] font-bold text-ink-muted"
               >
@@ -65,6 +68,7 @@ export function SessionHeader({
               </span>
             ))}
           </div>
+          {session.source === "live" && <InviteButton sessionId={sessionId} />}
           <button className="num rounded-md border border-line px-2.5 py-1 text-[11px] text-ink-muted hover:border-line2 hover:text-ink">
             Log
           </button>

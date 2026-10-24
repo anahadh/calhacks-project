@@ -150,9 +150,10 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 
 | Path | Owner | Role |
 |---|---|---|
-| `apps/web/app/page.tsx` | Base | Load screen |
+| `apps/web/app/page.tsx` | Base | Load screen: **Start session** on the demo hospital creates a new session and opens it (Upload JSON still to come). `/s/demo` still works as a fixed shared session |
+| `apps/web/lib/stdb/create-session.ts` | Base | `createSession(hospitalJson)`: a random `s-…` id and `session_create`; the creator is the presenter |
 | `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (rail, demo steps, scene, side column) and Agents tab |
-| `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence, Log |
+| `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence, **Invite** (copies the session link), Log |
 | `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
 | `apps/web/components/panel/impact.tsx`, `services.tsx`, `inspector.tsx` | Base | Simulation side column: patients affected, service tiles, hovered-device record and choke points |
 | `apps/web/components/panel/counters.tsx` | Base | Counter strip on the Agents tab |
@@ -172,7 +173,8 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
 | `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; disabled while a visible run is `running` |
 | `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles (basic version, Show the solution still disabled) |
-| `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name and role, `presence_join` (basic version) |
+| `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name and role (presenter defaults to Security, link joiners to Observer), who is here, the invite link for the presenter; `presence_join`. Remembers the name per session in localStorage and rejoins after a reload |
+| `apps/web/features/review/invite.tsx` | F3 | The session link (`/s/<id>`) with Copy, and the header's Invite button |
 | `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |
 | `apps/web/app/api/export/[sessionId]/route.ts` | F3 | Memo plus ruleset |

@@ -36,11 +36,11 @@ Every screen exists to make one of those three visible. The demo walks them in o
 
 ### Load screen `/`
 
-Two cards: **Demo hospital** and **Upload JSON**. Under Upload: a drop zone, **Download template**, and **Download demo**. A valid file shows its summary and **Start session**; an invalid file shows every error with its path.
+Two cards: **Demo hospital** and **Upload JSON**. **Start session** creates a new session and opens it; its link (`/s/<id>`) is what you send to the others. Under Upload: a drop zone, **Download template**, and **Download demo**. A valid file shows its summary and **Start session**; an invalid file shows every error with its path.
 
 ### Join modal (first visit to `/s/[sessionId]`)
 
-A modal over the live, blurred session scene, so the hospital is visible right away. It asks for a name and a role (Security, Clinical engineering, Operations, or Observer).
+A modal over the live, blurred session scene, so the hospital is visible right away. It asks for a name and a role (Security, Clinical engineering, Operations, or Observer), and shows who is already here. The presenter also sees the session link with **Copy link**; **Invite** in the header copies it any time. A reload rejoins with the same name.
 
 ### Session view `/s/[sessionId]`
 

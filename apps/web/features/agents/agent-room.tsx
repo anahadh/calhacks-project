@@ -71,8 +71,8 @@ function AgentList({ session }: { session: SessionSnapshot }) {
       <div className="border-t border-line px-3.5 py-3">
         <div className="eyebrow">Humans in the session</div>
         <ul className="mt-2 space-y-1.5">
-          {session.presence.map((p) => (
-            <li key={p.name} className="flex items-center gap-2 text-[12px]">
+          {session.presence.map((p, i) => (
+            <li key={`${p.name}-${i}`} className="flex items-center gap-2 text-[12px]">
               <span className="grid h-5 w-5 place-items-center rounded-full bg-panel2 font-disp text-[10px] font-bold text-ink-muted">
                 {p.name[0]}
               </span>
