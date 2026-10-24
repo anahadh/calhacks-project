@@ -10,7 +10,7 @@ import { FLOOR_GAP, to3 } from "./space";
 const WALL_H = 0.9;
 const WALL_T = 0.08;
 
-export function FloorSlab({ floor }: { floor: Floor }) {
+export function FloorSlab({ floor, subtitle }: { floor: Floor; subtitle: string }) {
   const y = floor.level * FLOOR_GAP;
   return (
     <group>
@@ -18,9 +18,14 @@ export function FloorSlab({ floor }: { floor: Floor }) {
         <boxGeometry args={[41, 0.4, 25]} />
         <meshStandardMaterial color={C.slab} roughness={0.95} />
       </mesh>
-      <Html position={[-20, y + 0.1, 13.2]} center={false} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
-        <div className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-          {floor.name}
+      <lineSegments position={[0, y + 0.02, 0]}>
+        <edgesGeometry args={[new THREE.BoxGeometry(41, 0.01, 25)]} />
+        <lineBasicMaterial color={C.slabEdge} />
+      </lineSegments>
+      <Html position={[-20.5, y, 14.5]} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
+        <div className="whitespace-nowrap">
+          <div className="font-disp text-[12px] font-bold uppercase tracking-wide text-ink">{floor.name}</div>
+          <div className="num text-[10px] text-ink-faint">{subtitle}</div>
         </div>
       </Html>
     </group>
@@ -61,7 +66,7 @@ export function RoomShell({ room, level, infectedShare }: { room: Room; level: n
       <mesh position={[ox, level * FLOOR_GAP + 0.01, oz]} rotation={[Math.PI / 2, 0, 0]}>
         <shapeGeometry args={[shape]} />
         <meshBasicMaterial
-          color={infectedShare > 0 ? C.infected : C.slab}
+          color={C.infected}
           transparent
           opacity={infectedShare > 0 ? 0.04 + infectedShare * 0.32 : 0}
           side={THREE.DoubleSide}
@@ -71,7 +76,7 @@ export function RoomShell({ room, level, infectedShare }: { room: Room; level: n
       {walls.map((w) => (
         <mesh key={w.key} position={w.position} rotation={[0, w.rotationY, 0]}>
           <boxGeometry args={[w.len, WALL_H, WALL_T]} />
-          <meshStandardMaterial color={C.wall} transparent opacity={0.55} />
+          <meshStandardMaterial color={C.wall} transparent opacity={0.5} />
         </mesh>
       ))}
     </group>

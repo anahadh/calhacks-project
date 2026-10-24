@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { SidePanel } from "@/components/panel/side-panel";
 import { HospitalScene } from "@/components/scene/hospital-scene";
 import { SessionHeader } from "@/components/shell/header";
@@ -9,6 +10,7 @@ import { useSession, useSessionIndex } from "@/lib/stdb/use-session";
 export function SessionView({ sessionId }: { sessionId: string }) {
   const session = useSession(sessionId);
   const index = useSessionIndex(session);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
     <div className="grid h-screen grid-rows-[auto_1fr_auto] overflow-hidden">
@@ -16,7 +18,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
 
       <main className="grid min-h-0 grid-cols-[minmax(0,65fr)_minmax(360px,35fr)]">
         <div className="relative min-h-0 overflow-hidden">
-          <HospitalScene session={session} index={index} />
+          <HospitalScene session={session} index={index} hovered={hovered} onHover={setHovered} />
           <SceneLegend />
         </div>
         <SidePanel session={session} index={index} />
