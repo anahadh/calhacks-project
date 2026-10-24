@@ -134,14 +134,26 @@ class RunResult(Strict):
 
 class Constraint(Strict):
     kind: Literal["keep_flow", "keep_service", "confirm_device", "max_rules"]
-    targetIds: list[str]
+    targetIds: list[str]  # flow, service or device ids; empty for max_rules
+    limit: conint(ge=1) | None = None  # max_rules only: the most rules a policy may have
+
+    @root_validator(skip_on_failure=True)
+    def _limit_only_for_max_rules(cls, values):
+        if (values.get("kind") == "max_rules") != (values.get("limit") is not None):
+            raise ValueError("limit is required for max_rules and not allowed for other kinds")
+        return values
 
 
 class Proposal(Strict):
     round: conint(ge=1)
     policyId: NonEmptyStr
-    rules: list[PolicyRule]
+    # strategy, name and tradeoff are beyond the spec's field table: with them
+    # a Proposal carries a whole Policy, so the Coordinator can publish it.
+    strategy: Strategy
+    name: NonEmptyStr
+    rules: conlist(PolicyRule, max_items=40)
     rationale: str
+    tradeoff: str
     testResult: RunResult
 
 
@@ -189,6 +201,31 @@ class Recommendation(Strict):
     verdicts: list[Verdict]
     explanation: str
     requiredRoles: conlist(ReviewRole, min_items=1)
+
+
+# --- Coordinator → agents and relay (not in the spec's table) ---
+
+
+class ProposalRequest(Strict):
+    """Coordinator → Flow: propose (revise is None) or revise `revise`.
+    Round 1's request also goes to Inventory, which runs its preflight on it."""
+
+    sessionId: NonEmptyStr
+    round: conint(ge=1)
+    runId: NonEmptyStr
+    patientZero: NonEmptyStr
+    baseline: RunResult
+    constraints: list[Constraint]
+    revise: NonEmptyStr | None = None  # policy id to revise
+
+
+class RoundState(Strict):
+    """Coordinator → relay: written to session.roundState (round_state_set)."""
+
+    sessionId: NonEmptyStr
+    round: NonNegInt
+    state: Literal["idle", "running", "waiting_for_human", "done"]
+    detail: str | None = None
 
 
 # --- Coordinator REST requests (called by the watchers) ---

@@ -49,8 +49,9 @@ SAMPLES = {
     p.RunResult: RUN_RESULT,
     p.Constraint: CONSTRAINT,
     p.Proposal: {
-        "round": 1, "policyId": "pol_1", "rules": [RULE],
-        "rationale": "Separates imaging from the file server.", "testResult": RUN_RESULT,
+        "round": 1, "policyId": "pol_1", "strategy": "protect_critical_care", "name": "Critical care first",
+        "rules": [RULE], "rationale": "Separates imaging from the file server.",
+        "tradeoff": "Imaging workstations lose the shared drive.", "testResult": RUN_RESULT,
     },
     p.Verdict: VERDICT,
     p.RuleDiff: {"added": [RULE], "removed": ["r2"]},
@@ -70,6 +71,11 @@ SAMPLES = {
         "explanation": "Imaging stays connected to PACS; SMB to the file server is cut.",
         "requiredRoles": ["security", "clinical_engineering"],
     },
+    p.ProposalRequest: {
+        "sessionId": "demo", "round": 2, "runId": "run_baseline", "patientZero": "mri_2",
+        "baseline": RUN_RESULT, "constraints": [CONSTRAINT], "revise": "pol_1",
+    },
+    p.RoundState: {"sessionId": "demo", "round": 2, "state": "waiting_for_human"},
     p.StartRound: {"sessionId": "demo", "runId": "run_baseline", "patientZero": "mri_2"},
     p.Reassess: {"sessionId": "demo", "challenge": "unknown_device_imaging"},
     p.Resume: {
@@ -127,6 +133,14 @@ def test_fastest_deploy_selects_only_by_vlan_and_port():
         p.Policy.parse_obj({**POLICY, "strategy": "fastest_deploy"})
     vlan_rule = {"id": "r1", "from": {"vlan": 10}, "to": {"vlan": 20}, "port": 104, "plain": "VLAN 10 to 20 on 104."}
     p.Policy.parse_obj({**POLICY, "strategy": "fastest_deploy", "rules": [vlan_rule]})
+
+
+def test_constraint_limit_only_for_max_rules():
+    assert p.Constraint.parse_obj({"kind": "max_rules", "targetIds": [], "limit": 12}).limit == 12
+    with pytest.raises(ValidationError, match="limit is required"):
+        p.Constraint.parse_obj({"kind": "max_rules", "targetIds": []})
+    with pytest.raises(ValidationError, match="limit is required"):
+        p.Constraint.parse_obj({**CONSTRAINT, "limit": 3})
 
 
 @pytest.mark.parametrize(

@@ -174,4 +174,19 @@ Other gaps between the mock and `HOSPITAL_SCHEMA.md`, for the lead:
   - Roles exclude `observer`.
   - REST handlers return `RestAck { ok, detail? }`, since `on_rest_post` needs a response model.
   - `Policy` enforces the `fastest_deploy` rule strictly: no zone, type, role, or protocol, only VLAN and port.
-- `Constraint.kind: max_rules` has no number field in the spec. Today it can only carry `targetIds`.
+  - `Proposal` also carries `strategy`, `name` and `tradeoff`, so it holds a whole Policy and the Coordinator can publish it. `Revision` stays a diff, which the Coordinator applies.
+  - `Constraint` has `limit`, required for `max_rules` and forbidden for other kinds (the spec's `max_rules` had no number).
+  - Two Coordinator models the spec doesn't list: `ProposalRequest` (to Flow; round 1's also goes to Inventory for its preflight) and `RoundState` (to the relay, for `round_state_set`).
+- **Patient zero and `MAX_SERVICE_LOSS`.** Patient zero is infected at tick 0, so any service that depends on it is down for the whole run under every policy (in the demo, `svc_mri`, because patient zero is MRI 2). Applied literally, "no critical service down for more than 2 ticks" would reject every candidate. `logic/clinical.py` exempts the services that depend on a device infected at tick 0 (`unavoidable_services`). Lead: confirm, or choose another rule.
+
+## Decision logic (`agents/logic/`)
+
+Pure functions; the agents only execute what they return (AGENTS.md rule 7). No network, Claude, uagents runtime, clock, or randomness, and every set-derived output is sorted (a test replays a scenario under three `PYTHONHASHSEED`s).
+
+- "Devices a policy touches" are the endpoints of the flows in `RunResult.removedFlows`.
+- `inventory.check` rejects with `confirm_device` naming every flagged device touched, but asks about one device per check (the first, by id). The rest are asked about on the re-check after each answer.
+- `coordinator.Round` passes each Question to humans once per device. A confirmed device is never asked about again.
+- The round pauses (`waiting_for_human`) only when a rejection's `confirm_device` device has an open question. A preflight question about a device the candidate doesn't touch stays open without blocking the round (scenario a→b ends with one open).
+- After an answer, the round resumes. If the current candidate still breaks a remaining constraint, Flow is asked to revise (a new round). Otherwise both guardians re-check the same candidate in the same round.
+- **Runtime contract for prompt 3:** Inventory must send its `Question` before the `Verdict` it belongs to, and must remember which device each of its question ids is about, so it can apply an `answer` action.
+- Not handled yet: `Reassess` (challenges) has no event in `Round`.
