@@ -98,6 +98,14 @@ class Policy(Strict):
         return values
 
 
+class Candidate(Strict):
+    """A policy with an id, as the optimizer returns it. The id names the policy in
+    messages (policyId) and, in fixture mode, its result file."""
+
+    id: constr(regex=r"^[a-z0-9_]{1,60}$")
+    policy: Policy
+
+
 # --- RunResult: what hippo-sim prints (draft, needs lead approval) ---
 
 
@@ -145,6 +153,7 @@ class Constraint(Strict):
 
 
 class Proposal(Strict):
+    sessionId: NonEmptyStr
     round: conint(ge=1)
     policyId: NonEmptyStr
     # strategy, name and tradeoff are beyond the spec's field table: with them
@@ -158,6 +167,7 @@ class Proposal(Strict):
 
 
 class Verdict(Strict):
+    sessionId: NonEmptyStr
     round: conint(ge=1)
     policyId: NonEmptyStr
     agent: AgentName
@@ -172,13 +182,21 @@ class RuleDiff(Strict):
 
 
 class Revision(Strict):
+    sessionId: NonEmptyStr
     round: conint(ge=1)
     policyId: NonEmptyStr
     diff: RuleDiff
+    # The policy's other fields, when the revision changes them (None = unchanged).
+    # Beyond the spec's table: without them a revised plan keeps its old name.
+    strategy: Strategy | None = None
+    name: NonEmptyStr | None = None
+    rationale: str | None = None
+    tradeoff: str | None = None
     testResult: RunResult
 
 
 class Question(Strict):
+    sessionId: NonEmptyStr
     id: NonEmptyStr  # Answer.questionId refers to this
     round: conint(ge=1)
     agent: AgentName
@@ -189,6 +207,7 @@ class Question(Strict):
 
 
 class Answer(Strict):
+    sessionId: NonEmptyStr
     questionId: NonEmptyStr
     author: NonEmptyStr
     role: ReviewRole
@@ -214,6 +233,8 @@ class ProposalRequest(Strict):
     round: conint(ge=1)
     runId: NonEmptyStr
     patientZero: NonEmptyStr
+    seed: int  # the visible run's seed, so test runs match it
+    challenges: list[ChallengeId] = []
     baseline: RunResult
     constraints: list[Constraint]
     revise: NonEmptyStr | None = None  # policy id to revise
@@ -235,6 +256,10 @@ class StartRound(Strict):
     sessionId: NonEmptyStr
     runId: NonEmptyStr
     patientZero: NonEmptyStr
+    # seed and challenges are beyond the earlier draft: the agents' test runs must use
+    # the visible run's seed and challenges (run row), or their numbers won't match it.
+    seed: int
+    challenges: list[ChallengeId] = []
 
 
 class Reassess(Strict):

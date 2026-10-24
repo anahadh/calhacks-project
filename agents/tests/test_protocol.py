@@ -31,6 +31,7 @@ RUN_RESULT = {
 }
 CONSTRAINT = {"kind": "keep_flow", "targetIds": ["fl_2"]}
 VERDICT = {
+    "sessionId": "demo",
     "round": 1,
     "policyId": "pol_1",
     "agent": "clinical_workflow",
@@ -49,22 +50,22 @@ SAMPLES = {
     p.RunResult: RUN_RESULT,
     p.Constraint: CONSTRAINT,
     p.Proposal: {
-        "round": 1, "policyId": "pol_1", "strategy": "protect_critical_care", "name": "Critical care first",
+        "sessionId": "demo", "round": 1, "policyId": "pol_1", "strategy": "protect_critical_care", "name": "Critical care first",
         "rules": [RULE], "rationale": "Separates imaging from the file server.",
         "tradeoff": "Imaging workstations lose the shared drive.", "testResult": RUN_RESULT,
     },
     p.Verdict: VERDICT,
     p.RuleDiff: {"added": [RULE], "removed": ["r2"]},
     p.Revision: {
-        "round": 2, "policyId": "pol_1",
+        "sessionId": "demo", "round": 2, "policyId": "pol_1",
         "diff": {"added": [RULE], "removed": ["r2"]}, "testResult": RUN_RESULT,
     },
     p.Question: {
-        "id": "q_1", "round": 1, "agent": "inventory", "targetId": "dev_unknown_7",
+        "sessionId": "demo", "id": "q_1", "round": 1, "agent": "inventory", "targetId": "dev_unknown_7",
         "text": "Is dev_unknown_7 in Imaging a workstation or a scanner?",
         "choices": ["workstation", "scanner"], "allowedRoles": ["clinical_engineering"],
     },
-    p.Answer: {"questionId": "q_1", "author": "Dev", "role": "clinical_engineering", "choice": "workstation"},
+    p.Answer: {"sessionId": "demo", "questionId": "q_1", "author": "Dev", "role": "clinical_engineering", "choice": "workstation"},
     p.Recommendation: {
         "policy": POLICY, "testResult": RUN_RESULT,
         "verdicts": [{**VERDICT, "decision": "accept", "constraint": None}],
@@ -73,10 +74,11 @@ SAMPLES = {
     },
     p.ProposalRequest: {
         "sessionId": "demo", "round": 2, "runId": "run_baseline", "patientZero": "mri_2",
-        "baseline": RUN_RESULT, "constraints": [CONSTRAINT], "revise": "pol_1",
+        "seed": 1337, "challenges": ["unknown_device_imaging"], "baseline": RUN_RESULT, "constraints": [CONSTRAINT], "revise": "pol_1",
     },
     p.RoundState: {"sessionId": "demo", "round": 2, "state": "waiting_for_human"},
-    p.StartRound: {"sessionId": "demo", "runId": "run_baseline", "patientZero": "mri_2"},
+    p.StartRound: {"sessionId": "demo", "runId": "run_baseline", "patientZero": "mri_2", "seed": 1337},
+    p.Candidate: {"id": "cand_keep_scans", "policy": POLICY},
     p.Reassess: {"sessionId": "demo", "challenge": "unknown_device_imaging"},
     p.Resume: {
         "sessionId": "demo", "questionId": "q_1", "choice": "workstation",

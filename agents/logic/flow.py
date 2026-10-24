@@ -49,6 +49,35 @@ def rank(
     )
 
 
+def violation_count(result: RunResult, constraints: list[Constraint], hospital: HospitalIndex, rule_count: int) -> int:
+    return sum(violates(result, [c], hospital, rule_count) for c in constraints)
+
+
+def choose(
+    candidates: list[tuple[Policy, RunResult]], constraints: list[Constraint], hospital: HospitalIndex
+) -> tuple[Policy, RunResult, bool] | None:
+    """The best candidate per rank(), and False. If every candidate breaks a constraint,
+    the one breaking the fewest (ties ordered as in rank()), and True. None if there
+    are no candidates."""
+    ranked = rank(candidates, constraints, hospital)
+    if ranked:
+        return (*ranked[0], False)
+    if not candidates:
+        return None
+    least = min(
+        candidates,
+        key=lambda pr: (
+            violation_count(pr[1], constraints, hospital, len(pr[0].rules)),
+            pr[1].infectedCount,
+            -pr[1].patientCounts.ok,
+            len(pr[0].rules),
+            pr[0].name,
+            pr[0].json(sort_keys=True),
+        ),
+    )
+    return (*least, True)
+
+
 def diff(old: Policy, new: Policy) -> RuleDiff:
     """Rules in `new` that are not identical in `old` are added; ids from `old` that
     are gone or changed are removed. A changed rule appears in both."""

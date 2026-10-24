@@ -34,10 +34,10 @@ def services_down_too_long(result: RunResult, hospital: HospitalIndex, service_i
     return sorted(out)
 
 
-def check(round: int, policy_id: str, result: RunResult, hospital: HospitalIndex) -> Verdict:
+def check(session_id: str, round: int, policy_id: str, result: RunResult, hospital: HospitalIndex) -> Verdict:
     def verdict(decision, constraint=None):
         return Verdict(
-            round=round, policyId=policy_id, agent=AGENT, decision=decision, reason="[reason]", constraint=constraint
+            sessionId=session_id, round=round, policyId=policy_id, agent=AGENT, decision=decision, reason="[reason]", constraint=constraint
         )
 
     if result.protectedBroken:

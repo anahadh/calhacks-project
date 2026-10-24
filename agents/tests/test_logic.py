@@ -62,7 +62,7 @@ POLICY_B = Policy.parse_obj({
 
 
 def proposal(round, policy_id, policy, res):
-    return Proposal(round=round, policyId=policy_id, **{k: v for k, v in policy.dict().items()}, testResult=res)
+    return Proposal(sessionId="demo", round=round, policyId=policy_id, **{k: v for k, v in policy.dict().items()}, testResult=res)
 
 
 # --- a small harness: the coordinator plus guardians played by the logic functions ---
@@ -134,7 +134,7 @@ class Sim:
         if a.to == "flow" and a.type == "proposal_request":
             self.pending_requests.append(m)
         elif a.to == "inventory" and a.type == "proposal_request":
-            qs = inventory.preflight(m.round, m.baseline, H, self.inventory_confirmed)
+            qs = inventory.preflight(m.sessionId, m.round, m.baseline, H, self.inventory_confirmed)
             self.inventory_asked.update({q.id: q.targetId for q in qs})
             if qs:
                 self.log.append(("inventory", "coordinator", "question", "; ".join(describe(q) for q in qs)))
@@ -142,7 +142,7 @@ class Sim:
         elif a.to == "inventory" and a.type == "answer":
             self.inventory_confirmed[self.inventory_asked[m.questionId]] = m.choice
         elif a.to == "inventory" and a.type in ("proposal", "revision"):
-            verdict, q = inventory.check(m.round, m.policyId, m.testResult, H, self.inventory_confirmed)
+            verdict, q = inventory.check(m.sessionId, m.round, m.policyId, m.testResult, H, self.inventory_confirmed)
             out = []
             if q:  # Inventory sends the Question before its Verdict
                 self.inventory_asked[q.id] = q.targetId
@@ -151,7 +151,7 @@ class Sim:
             self.log.append(("inventory", "coordinator", "verdict", describe(verdict)))
             return out + self.round.on_verdict(verdict)
         elif a.to == "clinical_workflow" and a.type in ("proposal", "revision"):
-            verdict = clinical.check(m.round, m.policyId, m.testResult, H)
+            verdict = clinical.check(m.sessionId, m.round, m.policyId, m.testResult, H)
             self.log.append(("clinical_workflow", "coordinator", "verdict", describe(verdict)))
             return self.round.on_verdict(verdict)
         return []
@@ -159,7 +159,7 @@ class Sim:
     # scripted events
     def start(self):
         self._event("watcher", "start", RoundState(sessionId="demo", round=0, state="idle", detail="start_round run_baseline, patient zero mri_2"),
-                    self.round.start("run_baseline", "mri_2", result("baseline")))
+                    self.round.start("run_baseline", "mri_2", result("baseline"), seed=1337))
 
     def propose(self, p: Proposal):
         self._event("flow", "proposal", p, self.round.on_proposal(p))
@@ -179,7 +179,7 @@ def scenario_ab() -> Sim:
     sim.start()
     sim.propose(proposal(1, "pol_a", POLICY_A, result("a_max_containment")))
     req = sim.pending_requests[-1]
-    sim.revise(Revision(round=req.round, policyId="pol_a", diff=flow.diff(POLICY_A, POLICY_B), testResult=result("b_revision")))
+    sim.revise(Revision(sessionId="demo", round=req.round, policyId="pol_a", diff=flow.diff(POLICY_A, POLICY_B), testResult=result("b_revision")))
     return sim
 
 
@@ -206,17 +206,17 @@ def test_flagged_devices():
 
 
 def test_preflight_asks_about_unknown_device_on_the_infection_path():
-    (q,) = inventory.preflight(1, result("baseline"), H, {})
+    (q,) = inventory.preflight("demo", 1, result("baseline"), H, {})
     assert q.id == "q-r1-dev_unknown_7" and q.targetId == "dev_unknown_7"
     assert "unknown" not in q.choices and len(q.choices) == 12
     assert q.allowedRoles == ["clinical_engineering", "security"] and q.text == "[question]"
-    assert inventory.preflight(1, result("baseline"), H, {"dev_unknown_7": "workstation"}) == []
+    assert inventory.preflight("demo", 1, result("baseline"), H, {"dev_unknown_7": "workstation"}) == []
 
 
 def test_clinical_exempts_services_patient_zero_takes_down():
     # svc_mri depends on mri_2 (patient zero) and is down all run in every result.
     assert clinical.unavoidable_services(result("b_revision"), H) == {"svc_mri"}
-    v = clinical.check(1, "baseline", result("baseline"), H)
+    v = clinical.check("demo", 1, "baseline", result("baseline"), H)
     assert v.decision == "reject" and v.constraint.kind == "keep_service"
     assert v.constraint.targetIds == ["svc_ehr", "svc_er", "svc_reading"]  # critical only, not svc_mri
 
@@ -266,7 +266,7 @@ def test_a_round_1_clinical_rejects_broken_protected_flow():
     sim.propose(proposal(1, "pol_a", POLICY_A, result("a_max_containment")))
     rejection = next(e for e in sim.log if e[0] == "clinical_workflow")
     assert "REJECT pol_a" in rejection[3]
-    v = clinical.check(1, "pol_a", result("a_max_containment"), H)
+    v = clinical.check("demo", 1, "pol_a", result("a_max_containment"), H)
     assert v.constraint == Constraint(kind="keep_flow", targetIds=["fl_1", "fl_2", "fl_3", "fl_4"])
     (req,) = [a.message for a in by_type(sim, "proposal_request") if a.to == "flow" and a.message.round == 2]
     assert req.revise == "pol_a" and req.constraints == [v.constraint]
@@ -291,7 +291,7 @@ def test_c_unknown_device_pauses_for_a_human_then_resumes():
     assert q.targetId == "dev_unknown_7" and q.id == "q-r1-dev_unknown_7"
 
     sim.propose(proposal(1, "pol_c", POLICY_B, result("c_unknown_cut")))
-    v, q2 = inventory.check(1, "pol_c", result("c_unknown_cut"), H, {})
+    v, q2 = inventory.check("demo", 1, "pol_c", result("c_unknown_cut"), H, {})
     assert v.decision == "reject" and v.constraint == Constraint(kind="confirm_device", targetIds=["dev_unknown_7"])
     assert q2.targetId == "dev_unknown_7"
     assert len(by_type(sim, "question")) == 1  # same device: humans are asked once
@@ -299,7 +299,7 @@ def test_c_unknown_device_pauses_for_a_human_then_resumes():
     assert sim.actions[-1].message == RoundState(sessionId="demo", round=1, state="waiting_for_human")
     assert not by_type(sim, "recommendation")
 
-    sim.answer(Answer(questionId=q.id, author="Dev", role="clinical_engineering", choice="workstation"))
+    sim.answer(Answer(sessionId="demo", questionId=q.id, author="Dev", role="clinical_engineering", choice="workstation"))
     assert sim.round.confirmed == {"dev_unknown_7": "workstation"}
     assert sim.round.constraints == []
     (rec,) = [a.message for a in by_type(sim, "recommendation")]
@@ -313,11 +313,11 @@ def test_answers_are_checked():
     sim.start()
     (q,) = sim.round.open_questions.values()
     with pytest.raises(ValueError, match="may not answer"):
-        sim.round.on_answer(Answer(questionId=q.id, author="Kai", role="operations", choice="workstation"))
+        sim.round.on_answer(Answer(sessionId="demo", questionId=q.id, author="Kai", role="operations", choice="workstation"))
     with pytest.raises(ValueError, match="not a choice"):
-        sim.round.on_answer(Answer(questionId=q.id, author="Dev", role="clinical_engineering", choice="unknown"))
+        sim.round.on_answer(Answer(sessionId="demo", questionId=q.id, author="Dev", role="clinical_engineering", choice="unknown"))
     with pytest.raises(ValueError, match="no open question"):
-        sim.round.on_answer(Answer(questionId="q-nope", author="Dev", role="security", choice="ct"))
+        sim.round.on_answer(Answer(sessionId="demo", questionId="q-nope", author="Dev", role="security", choice="ct"))
 
 
 def test_d_four_rejected_rounds_end_with_no_recommendation():
@@ -326,14 +326,14 @@ def test_d_four_rejected_rounds_end_with_no_recommendation():
     sim.propose(proposal(1, "pol_a", POLICY_A, result("a_max_containment")))
     for _ in range(MAX_ROUNDS - 1):
         req = sim.pending_requests[-1]
-        sim.revise(Revision(round=req.round, policyId="pol_a", diff=flow.diff(POLICY_A, POLICY_A), testResult=result("a_max_containment")))
+        sim.revise(Revision(sessionId="demo", round=req.round, policyId="pol_a", diff=flow.diff(POLICY_A, POLICY_A), testResult=result("a_max_containment")))
     assert sim.round.state == "done" and sim.round.round == MAX_ROUNDS
     assert not by_type(sim, "recommendation") and sim.round.recommendation is None
     last = sim.actions[-1].message
     assert last == RoundState(sessionId="demo", round=4, state="done", detail="No agreement after 4 rounds. No recommendation.")
     assert [a.message.round for a in by_type(sim, "proposal_request") if a.to == "flow"] == [1, 2, 3, 4]
     # A further revision is ignored once done.
-    assert sim.round.on_revision(Revision(round=5, policyId="pol_a", diff=flow.diff(POLICY_A, POLICY_A), testResult=result("a_max_containment"))) == []
+    assert sim.round.on_revision(Revision(sessionId="demo", round=5, policyId="pol_a", diff=flow.diff(POLICY_A, POLICY_A), testResult=result("a_max_containment"))) == []
 
 
 def test_e_replaying_events_gives_identical_actions():

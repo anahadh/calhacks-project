@@ -145,6 +145,25 @@ agent.include(chat, publish_manifest=True)
 
 `Agent()` binds to the current event loop when it is constructed. `asyncio.run()` closes that loop, and the next `Agent()` then fails with "There is no current event loop". In tests, drive an agent with `agent._loop.run_until_complete(...)`.
 
+### 7. Local resolution (`LOCAL_RESOLVE=1`)
+
+By default an agent finds another agent's endpoint through the Almanac and Agentverse (`GlobalResolver`), and on startup it registers itself there. This environment blocks `agentverse.ai` and the Fetch.ai ledger, and the demo laptop may be offline, so with `LOCAL_RESOLVE=1` (the default) `runtime.make_agent()` builds each agent from uagents 0.26.1's own extension points:
+
+- **`resolve=RulesBasedResolver({address: "http://127.0.0.1:<port>/submit", ...})`** (`addresses.local_resolver()`). `ctx.send(address, msg)` calls `resolver.resolve(address)` with the raw address and posts the signed envelope to the endpoint it gets back. An unknown address resolves to no endpoint, so the send fails rather than going anywhere else.
+- **`registration_policy=NoRegistration()`**: a no-op `AgentRegistrationPolicy`, so there is no Almanac registration loop.
+- **`report_events=False`, `mark_inactive_on_shutdown=False`**: no Agentverse lookups at startup or shutdown.
+- **`LocalAgent._update_agent_status` is a no-op.** `run_startup_tasks()` awaits this Almanac status call before any `on_event("startup")` handler runs. Unreachable, it retries 10 times with backoff (about a minute) and then logs a traceback. It is a private method, so `tests/test_runtime.py` fails if an upgrade removes it.
+- The ledger client is still created in `Agent.__init__`. Its "Ledger unavailable" warnings are silenced (logger `network`, set to ERROR) and so is gRPC's proxy noise (`GRPC_VERBOSITY=NONE`, set by `run_all.py`).
+- `endpoint=["http://127.0.0.1:<port>/submit"]`, ports 8001 (inventory), 8002 (flow), 8003 (clinical_workflow), 8004 (coordinator). With `AGENT_MAILBOX=1` there is no endpoint and `mailbox=True`.
+
+Proof: `tests/test_runtime.py` checks the resolver maps all four addresses to their ports and that `make_agent` wires it in. `tests/test_live_round.py` runs a whole round between four separate processes this way, with every message delivered (`ctx.send` returns `delivered` only after the receiver's `/submit` accepted it).
+
+Not tested here: `LOCAL_RESOLVE=0` (Almanac registration) and `AGENT_MAILBOX=1`, both blocked by this environment's network policy. Try them on a laptop.
+
+### 8. Message order and delivery
+
+`ctx.send` awaits the delivery status: the envelope is posted to the receiver's `/submit`, which queues it. Awaiting each send in turn therefore keeps the order, which is how Inventory's Question reaches the Coordinator before its Verdict. Each agent processes its queue one message at a time (`handle_messages_concurrently=False`, the default). `runtime.send` raises if a send isn't `delivered` (or `sent`, through a mailbox).
+
 ## Test fixture: `agents/fixtures/hospital.json`
 
 A stand-in until `data/hospitals/demo.json` exists. It is generated, not hand-edited:
@@ -163,6 +182,56 @@ Other gaps between the mock and `HOSPITAL_SCHEMA.md`, for the lead:
 - Patient groups have an `id`, which the schema's `PatientGroup` does not list (`types.ts` does).
 - No flow sets `observed`, so all default to `true`.
 
+## Running the agents
+
+```bash
+cd agents
+python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# agents/.env (gitignored): one seed per agent, e.g. INVENTORY_AGENT_SEED=..., FLOW_AGENT_SEED=...,
+# CLINICAL_WORKFLOW_AGENT_SEED=..., COORDINATOR_AGENT_SEED=...  (see docs/.env.example)
+
+HIPPO_SIM_FIXTURES=1 .venv/bin/python run_all.py      # shell 1: the four agents
+.venv/bin/python scripts/start_round.py               # shell 2: session dev, run run_dev, patient zero mri_2
+.venv/bin/python scripts/answer.py --choice workstation   # answer the latest open question, if any
+.venv/bin/python addresses.py                         # print the four addresses and endpoints
+```
+
+- `run_all.py` starts `inventory.py`, `flow.py`, `clinical_workflow.py` and `coordinator.py` as separate processes and prefixes each one's output with `[agent]`. Ctrl-C or SIGTERM stops all four; if one exits, the rest are stopped.
+- With no `WATCHER_RELAY_URL`, each sent message prints one line (`#seq from → to type summary [fixture]`), and every row goes to `agents/logs/<sessionId>.jsonl`.
+- `HIPPO_SIM_FIXTURES=1` reads `agents/fixtures/results/<candidate id or baseline>.json` (with challenges: `<id>@<challenge>.json`). Without it, `HIPPO_SIM_BIN` must point at `hippo-sim`, or the round fails with that error. Nothing falls back silently.
+- Without `HIPPO_OPT_BIN`, the candidates are `agents/fixtures/candidates/*.json`.
+
+### Relay rows
+
+`tools.relay` writes the spec's `agent_message` and `agent_status` rows (Data Model), with the same field names:
+
+```jsonc
+{"table": "agent_message", "sessionId": "dev", "round": 1, "seq": 16, "from": "clinical_workflow", "to": "coordinator",
+ "type": "verdict", "payload": { /* the protocol model, as JSON */ }, "reason": "[reason]",
+ "createdAt": "2026-10-24T04:03:12.101+00:00", "direction": "sent", "fixture": true}
+{"table": "agent_status", "sessionId": "dev", "agent": "flow", "status": "thinking", "updatedAt": "…", "fixture": true}
+```
+
+- `type` is one of `proposal_request`, `proposal`, `revision`, `verdict`, `question`, `answer`, `recommendation`, `round_state`. `from` and `to` are agent names, `humans`, or `relay` (for `round_state` → `round_state_set` and `recommendation` → `recommendation_upsert`).
+- **Beyond the spec's columns:** `direction` (`sent` or `received`) and `fixture`.
+  - Rule 9 has both ends post, so every agent-to-agent message appears twice. The Agent Room should animate the `sent` row and can use `received` to confirm delivery.
+  - `fixture: true` means the numbers came from fixture files, and the UI should label the run (rule 13).
+- In file mode, `seq` is assigned under a file lock, because four processes append to one file. With `WATCHER_RELAY_URL`, rows are POSTed to `<url>/agent_message` and `<url>/agent_status` with `Authorization: Bearer $RELAY_TOKEN`, and `seq` is left for the reducer to assign. This is the contract `apps/watcher/src/relay.ts` should implement.
+
+### What each agent does
+
+| Agent | Receives | Does (all decisions from `logic/`) | Sends |
+|---|---|---|---|
+| Coordinator | REST `/start_round`, `/resume`, `/reassess`; Proposal, Revision, Verdict, Question | One `Round` per session; baseline via `run_sim(None, …)`; carries out every Action | ProposalRequest, Proposal/Revision (to guardians), Answer (to Inventory); questions → humans; round_state, recommendation → relay |
+| Flow | ProposalRequest | `optimize()` (protected flags and purposes stripped), `run_sim` on each candidate, `logic.flow.choose` | Proposal (round 1) or Revision (diff against its last candidate) |
+| Clinical Workflow | Proposal, Revision | `logic.clinical.check` | Verdict |
+| Inventory | ProposalRequest (round 1), Proposal, Revision, Answer | `preflight`; `check`; remembers question id → device | Question (before its Verdict), Verdict |
+
+- `/reassess` returns `{"ok": false, "detail": "reassess not implemented yet"}`.
+- REST errors from the logic (a wrong role, a closed question, a round already running) return `ok: false` with the reason.
+- When no candidate meets every constraint, Flow sends the one that breaks the fewest (`logic.flow.choose`) and logs that it did. The guardians reject it and the rounds run out honestly.
+- Agents report `thinking` on receive, `speaking` before each send, then `idle`. The Coordinator reports `waiting` while its round is `waiting_for_human`. An error is logged, the agent goes `idle`, and nothing is made up in its place.
+
 ## Open questions for the lead
 
 - **RunResult** is drafted in `HOSPITAL_SCHEMA.md` under "RunResult (draft, needs lead approval)" and in `protocol.py`. `hippo-sim` should print exactly this.
@@ -179,6 +248,16 @@ Other gaps between the mock and `HOSPITAL_SCHEMA.md`, for the lead:
   - Two Coordinator models the spec doesn't list: `ProposalRequest` (to Flow; round 1's also goes to Inventory for its preflight) and `RoundState` (to the relay, for `round_state_set`).
 - **Patient zero and `MAX_SERVICE_LOSS`.** Patient zero is infected at tick 0, so any service that depends on it is down for the whole run under every policy (in the demo, `svc_mri`, because patient zero is MRI 2). Applied literally, "no critical service down for more than 2 ticks" would reject every candidate. `logic/clinical.py` exempts the services that depend on a device infected at tick 0 (`unavoidable_services`). Lead: confirm, or choose another rule.
 
+- **Protocol changes for the live agents:**
+  - `sessionId` on `Proposal`, `Revision`, `Verdict`, `Question` and `Answer`.
+  - `seed` (required) and `challenges` on `StartRound` and `ProposalRequest`, so test runs use the visible run's seed and challenges.
+  - `Revision` has optional `strategy`, `name`, `rationale` and `tradeoff`, so a revised plan doesn't keep its old name.
+  - `Candidate { id, policy }` for optimizer output. The Policy format itself is unchanged.
+- **Draft CLI and HTTP contracts, for F2 and the watcher:**
+  - `hippo-opt --hospital <file> --baseline <RunResult file> --constraints <Constraint[] file>` prints `Candidate[]` JSON.
+  - The relay accepts POSTs at `/agent_message` and `/agent_status` (see "Relay rows").
+- **Realism check on the demo story.** With MRI 2 as patient zero and MRI → PACS (DICOM) kept, the spec's spread model reaches PACS with p = 0.10 per tick, which is about 99% over 48 ticks. When real `hippo-sim` results replace the fixtures, "keep scans flowing" will likely lose PACS, and Clinical will reject it with `keep_service[svc_reading]`. The fixture `cand_keep_scans.json` assumes PACS stays clean. Lead: decide whether the demo seed, the tick count, or the story changes.
+
 ## Decision logic (`agents/logic/`)
 
 Pure functions; the agents only execute what they return (AGENTS.md rule 7). No network, Claude, uagents runtime, clock, or randomness, and every set-derived output is sorted (a test replays a scenario under three `PYTHONHASHSEED`s).
@@ -188,5 +267,5 @@ Pure functions; the agents only execute what they return (AGENTS.md rule 7). No 
 - `coordinator.Round` passes each Question to humans once per device. A confirmed device is never asked about again.
 - The round pauses (`waiting_for_human`) only when a rejection's `confirm_device` device has an open question. A preflight question about a device the candidate doesn't touch stays open without blocking the round (scenario a→b ends with one open).
 - After an answer, the round resumes. If the current candidate still breaks a remaining constraint, Flow is asked to revise (a new round). Otherwise both guardians re-check the same candidate in the same round.
-- **Runtime contract for prompt 3:** Inventory must send its `Question` before the `Verdict` it belongs to, and must remember which device each of its question ids is about, so it can apply an `answer` action.
+- **Runtime contract:** Inventory sends its `Question` before the `Verdict` it belongs to, and remembers which device each of its question ids is about, so it can apply an `answer` action. Both are implemented in `agents/inventory.py`.
 - Not handled yet: `Reassess` (challenges) has no event in `Round`.

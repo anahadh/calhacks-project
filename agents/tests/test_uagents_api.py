@@ -60,7 +60,7 @@ def test_rest_post_validates_with_strict_models():
         seen.append(req)
         return p.RestAck(ok=True, detail=f"round started for {req.runId}")
 
-    ok = {"sessionId": "demo", "runId": "run_baseline", "patientZero": "mri_2"}
+    ok = {"sessionId": "demo", "runId": "run_baseline", "patientZero": "mri_2", "seed": 1337, "challenges": []}
     assert _post(agent, "/start_round", ok) == (200, {"ok": True, "detail": "round started for run_baseline"})
     assert seen == [p.StartRound(**ok)]
 

@@ -27,8 +27,9 @@ def flagged_devices(hospital: HospitalIndex, confirmed: dict[str, str]) -> set[s
     return out
 
 
-def question(round: int, device_id: str) -> Question:
+def question(session_id: str, round: int, device_id: str) -> Question:
     return Question(
+        sessionId=session_id,
         id=f"q-r{round}-{device_id}",
         round=round,
         agent=AGENT,
@@ -39,25 +40,28 @@ def question(round: int, device_id: str) -> Question:
     )
 
 
-def preflight(round: int, baseline: RunResult, hospital: HospitalIndex, confirmed: dict[str, str]) -> list[Question]:
+def preflight(
+    session_id: str, round: int, baseline: RunResult, hospital: HospitalIndex, confirmed: dict[str, str]
+) -> list[Question]:
     """One question per flagged device on the baseline's infection path: an infected
     device, or the other end of a flow touching one."""
     infected = {d.id for d in baseline.infectedDevices}
     path = set(infected)
     for device_id in infected:
         path |= hospital.endpoints(f["id"] for f in hospital.flows_by_device[device_id])
-    return [question(round, d) for d in sorted(flagged_devices(hospital, confirmed) & path)]
+    return [question(session_id, round, d) for d in sorted(flagged_devices(hospital, confirmed) & path)]
 
 
 def check(
-    round: int, policy_id: str, result: RunResult, hospital: HospitalIndex, confirmed: dict[str, str]
+    session_id: str, round: int, policy_id: str, result: RunResult, hospital: HospitalIndex, confirmed: dict[str, str]
 ) -> tuple[Verdict, Question | None]:
     """Reject a policy that touches a flagged device, and ask about the first one.
     When several are touched, the others are asked about on later checks, one at a time."""
     touched = sorted(flagged_devices(hospital, confirmed) & hospital.touched(result))
     if not touched:
-        return Verdict(round=round, policyId=policy_id, agent=AGENT, decision="accept", reason="[reason]"), None
+        return Verdict(sessionId=session_id, round=round, policyId=policy_id, agent=AGENT, decision="accept", reason="[reason]"), None
     verdict = Verdict(
+        sessionId=session_id,
         round=round,
         policyId=policy_id,
         agent=AGENT,
@@ -65,4 +69,4 @@ def check(
         reason="[reason]",
         constraint=Constraint(kind="confirm_device", targetIds=touched),
     )
-    return verdict, question(round, touched[0])
+    return verdict, question(session_id, round, touched[0])

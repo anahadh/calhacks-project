@@ -54,15 +54,20 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 
 | Path | Owner | Role |
 |---|---|---|
-| `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation`; `Policy`/`PolicyRule`; draft `RunResult`; REST requests `StartRound`, `Reassess`, `Resume`; Coordinator messages `ProposalRequest`, `RoundState`. All reject extra fields |
-| `agents/inventory.py` | F1 | Unidentified-device check, `confirm_device`, sends `Question`s |
-| `agents/flow.py` | F1 | `hippo-opt` candidates, `llm.propose()` fallback, `hippo-sim` testing and revision |
-| `agents/clinical_workflow.py` | F1 | Protected-flow and service-loss checks, `keep_flow`, `keep_service` |
-| `agents/coordinator.py` | F1 | Rounds, `waiting_for_human`, required roles; `start_round`, `reassess`, `resume` handlers |
-| `agents/tools.py` | F1 | Wrappers for `hippo-sim`, `hippo-opt`, and the watcher relay |
+| `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation`; `Policy`/`PolicyRule`; draft `RunResult`; `Candidate`; REST requests `StartRound`, `Reassess`, `Resume`; Coordinator messages `ProposalRequest`, `RoundState`. All reject extra fields |
+| `agents/inventory.py` | F1 | Inventory uAgent: preflight on round 1's request, `check` on each candidate (Question before Verdict), applies Answers |
+| `agents/flow.py` | F1 | Flow uAgent: `optimize()` without protected-flow info, `run_sim` per candidate, `logic.flow.choose`; Proposal or Revision. `llm.propose()` fallback later |
+| `agents/clinical_workflow.py` | F1 | Clinical Workflow uAgent: `logic.clinical.check` on each Proposal/Revision, replies with a Verdict |
+| `agents/coordinator.py` | F1 | Coordinator uAgent: one `Round` per session; REST `/start_round`, `/resume`, `/reassess` (not implemented yet); carries out every Action |
+| `agents/tools.py` | F1 | `run_sim` (hippo-sim or fixture results), `optimize` (hippo-opt or fixture candidates), `relay` (agent_message/agent_status rows: HTTP or `logs/<session>.jsonl`) |
 | `agents/llm.py` | F2 | Claude `propose()` and `explain()`, with number and word checks |
 | `agents/cache/demo_round.json` | F1 | Cached demo-seed conversation, question and answer included |
-| `agents/run_all.py` | F1 | Starts all four agents |
+| `agents/run_all.py` | F1 | Starts the four agents as separate processes with `[agent]` prefixes; Ctrl-C stops all |
+| `agents/config.py` | F1 | Settings from `agents/.env`: seeds, ports 8001–8004, `AGENT_MAILBOX`, `LOCAL_RESOLVE`, sim/opt/relay settings |
+| `agents/addresses.py` | F1 | Addresses from seeds; the local `RulesBasedResolver` (address → `127.0.0.1:<port>/submit`) |
+| `agents/runtime.py` | F1 | Builds each Agent (local resolution, no Almanac); `send`/`received` relay every message and set status |
+| `agents/scripts/start_round.py`, `agents/scripts/answer.py` | F1 | POST `/start_round` and `/resume` to the Coordinator, as the watchers will |
+| `agents/fixtures/candidates/*.json`, `agents/fixtures/results/*.json` | F1 | Runtime fixtures: three candidates and their hand-written results plus `baseline.json`, for `HIPPO_SIM_FIXTURES=1` and no `HIPPO_OPT_BIN` |
 | `agents/logic/hospital.py` | F1 | Read-only hospital index: devices, rooms, flows, services by id; room type and zone per device; active flows per device |
 | `agents/logic/inventory.py` | F1 | `flagged_devices`, `preflight`, `check`: unidentified-device decisions and `Question`s (pure) |
 | `agents/logic/clinical.py` | F1 | `check` with `MAX_SERVICE_LOSS`: `keep_flow` and `keep_service` rejections (pure) |
@@ -75,6 +80,8 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | `agents/tests/test_fixture.py` | F1 | The fixture loads and its references (flows → devices, etc.) exist |
 | `agents/tests/test_logic.py` | F1 | Guardians, ranking, and Coordinator scenarios a–g; `pytest -s` prints the a→b transcript |
 | `agents/tests/fixtures/results/test_*.json` | F1 | Hand-written RunResults for `test_logic.py`. Test-only, never loaded at runtime |
+| `agents/tests/test_runtime.py` | F1 | Config, local resolver, `make_agent`, `run_sim`/`optimize` fixtures and errors, fixture consistency, relay rows |
+| `agents/tests/test_live_round.py` | F1 | Four real agent processes, one full round over uAgents, checked from the relay log |
 | `agents/tests/test_uagents_api.py` | F1 | Runs the uAgents API snippets in `AGENT_NOTES.md` (seed address, mailbox, REST, chat protocol) |
 
 ## Optimizer

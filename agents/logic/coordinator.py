@@ -92,6 +92,8 @@ class Round:
         self.recommendation: Recommendation | None = None
         self._run_id = ""
         self._patient_zero = ""
+        self._seed = 0
+        self.challenges: list[str] = []
         self._baseline: RunResult | None = None
         self._policy: Policy | None = None  # current candidate
         self._result: RunResult | None = None
@@ -100,9 +102,12 @@ class Round:
 
     # --- events ---
 
-    def start(self, runId: str, patientZero: str, baseline: RunResult) -> list[Action]:
+    def start(
+        self, runId: str, patientZero: str, baseline: RunResult, seed: int, challenges: list[str] = ()
+    ) -> list[Action]:
         self._require("idle")
         self._run_id, self._patient_zero, self._baseline = runId, patientZero, baseline
+        self._seed, self.challenges = seed, sorted(challenges)
         self.round, self.state = 1, "running"
         request = self._request(revise=None)
         # Inventory gets round 1's request too: it runs its preflight on the baseline.
@@ -111,6 +116,8 @@ class Round:
     def on_questions(self, questions: list[Question]) -> list[Action]:
         """Record open questions and pass them to humans. A question about a device
         that already has one open is dropped, so humans are asked once."""
+        for q in questions:
+            self._check_session(q)
         if self.state == "done":
             return []
         asked = {q.targetId for q in self.open_questions.values()}
@@ -124,6 +131,7 @@ class Round:
         return actions
 
     def on_proposal(self, proposal: Proposal) -> list[Action]:
+        self._check_session(proposal)
         if self.state != "running" or proposal.round != self.round or self._policy is not None:
             return []
         self._policy = Policy(
@@ -136,14 +144,17 @@ class Round:
         return self._forward(proposal, "proposal")
 
     def on_revision(self, revision: Revision) -> list[Action]:
+        self._check_session(revision)
         if self.state != "running" or revision.round != self.round or self._policy is None:
             return []
         rules = flow.apply_diff(self._policy.rules, revision.diff)
+        changed = {k: getattr(revision, k) for k in ("strategy", "name", "rationale", "tradeoff") if getattr(revision, k) is not None}
         # parse_obj re-validates (e.g. still at most 40 rules); copy(update=...) would not.
-        self._policy = Policy.parse_obj({**self._policy.dict(), "rules": [r.dict() for r in rules]})
+        self._policy = Policy.parse_obj({**self._policy.dict(), **changed, "rules": [r.dict() for r in rules]})
         return self._forward(revision, "revision")
 
     def on_verdict(self, verdict: Verdict) -> list[Action]:
+        self._check_session(verdict)
         if verdict.agent not in GUARDIANS:
             raise ValueError(f"verdict from {verdict.agent}, which is not a guardian")
         stale = self._current is None or (verdict.round, verdict.policyId) != (self._current.round, self._current.policyId)
@@ -166,6 +177,7 @@ class Round:
         return self._next_round()
 
     def on_answer(self, answer: Answer) -> list[Action]:
+        self._check_session(answer)
         q = self.open_questions.get(answer.questionId)
         if q is None:
             raise ValueError(f"no open question {answer.questionId}")
@@ -183,6 +195,10 @@ class Round:
 
     # --- internals ---
 
+    def _check_session(self, msg):
+        if msg.sessionId != self.sessionId:
+            raise ValueError(f"{type(msg).__name__} for session {msg.sessionId}, this round is {self.sessionId}")
+
     def _require(self, state: State):
         if self.state != state:
             raise ValueError(f"round is {self.state}, expected {state}")
@@ -196,6 +212,8 @@ class Round:
             round=self.round,
             runId=self._run_id,
             patientZero=self._patient_zero,
+            seed=self._seed,
+            challenges=self.challenges,
             baseline=self._baseline,
             constraints=self.constraints,
             revise=revise,
