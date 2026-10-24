@@ -10,6 +10,32 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AgentMessage = __t.object("AgentMessage", {
+  id: __t.u64(),
+  sessionId: __t.string(),
+  round: __t.u32(),
+  seq: __t.u32(),
+  fromAgent: __t.string(),
+  toAgent: __t.string(),
+  type: __t.string(),
+  payloadJson: __t.string(),
+  reason: __t.string(),
+  reasonSource: __t.string(),
+  direction: __t.string(),
+  fixture: __t.bool(),
+  createdAt: __t.timestamp(),
+});
+export type AgentMessage = __Infer<typeof AgentMessage>;
+
+export const AgentStatus = __t.object("AgentStatus", {
+  id: __t.string(),
+  sessionId: __t.string(),
+  agent: __t.string(),
+  status: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type AgentStatus = __Infer<typeof AgentStatus>;
+
 export const Annotation = __t.object("Annotation", {
   id: __t.u64(),
   sessionId: __t.string(),
@@ -31,6 +57,19 @@ export const Config = __t.object("Config", {
   serverIdentity: __t.identity(),
 });
 export type Config = __Infer<typeof Config>;
+
+export const DefendRequestLog = __t.object("DefendRequestLog", {
+  id: __t.u64(),
+  sessionId: __t.string(),
+  runId: __t.string(),
+  patientZero: __t.string(),
+  seed: __t.u32(),
+  challengesJson: __t.string(),
+  requestedBy: __t.identity(),
+  requesterName: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type DefendRequestLog = __Infer<typeof DefendRequestLog>;
 
 export const DeviceState = __t.object("DeviceState", {
   id: __t.string(),
@@ -59,6 +98,42 @@ export const Presence = __t.object("Presence", {
   lastSeen: __t.timestamp(),
 });
 export type Presence = __Infer<typeof Presence>;
+
+export const Question = __t.object("Question", {
+  id: __t.string(),
+  sessionId: __t.string(),
+  questionId: __t.string(),
+  round: __t.u32(),
+  agent: __t.string(),
+  targetId: __t.string(),
+  text: __t.string(),
+  textSource: __t.string(),
+  choicesJson: __t.string(),
+  allowedRolesJson: __t.string(),
+  answered: __t.bool(),
+  answerChoice: __t.string(),
+  answerAuthor: __t.string(),
+  answerRole: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type Question = __Infer<typeof Question>;
+
+export const Recommendation = __t.object("Recommendation", {
+  id: __t.string(),
+  sessionId: __t.string(),
+  round: __t.u32(),
+  name: __t.string(),
+  policyJson: __t.string(),
+  explanation: __t.string(),
+  explanationSource: __t.string(),
+  verifiedJson: __t.string(),
+  verdictsJson: __t.string(),
+  requiredRolesJson: __t.string(),
+  fixture: __t.bool(),
+  status: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type Recommendation = __Infer<typeof Recommendation>;
 
 export const Run = __t.object("Run", {
   id: __t.string(),
@@ -103,6 +178,9 @@ export const Session = __t.object("Session", {
   presenter: __t.identity(),
   activeRunId: __t.string(),
   createdAt: __t.timestamp(),
+  roundState: __t.string(),
+  round: __t.u32(),
+  roundDetail: __t.string(),
 });
 export type Session = __Infer<typeof Session>;
 

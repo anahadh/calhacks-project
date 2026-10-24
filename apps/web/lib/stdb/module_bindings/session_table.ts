@@ -17,4 +17,7 @@ export default __t.row({
   presenter: __t.identity(),
   activeRunId: __t.string().name("active_run_id"),
   createdAt: __t.timestamp().name("created_at"),
+  roundState: __t.string().name("round_state"),
+  round: __t.u32(),
+  roundDetail: __t.string().name("round_detail"),
 });

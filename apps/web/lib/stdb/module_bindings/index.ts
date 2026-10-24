@@ -34,11 +34,18 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AgentMessageAddReducer from "./agent_message_add_reducer";
+import AgentStatusSetReducer from "./agent_status_set_reducer";
 import AnnotationAddReducer from "./annotation_add_reducer";
 import AnnotationClearReducer from "./annotation_clear_reducer";
 import ConfigSetServerReducer from "./config_set_server_reducer";
+import DefendRequestReducer from "./defend_request_reducer";
 import PresenceHeartbeatReducer from "./presence_heartbeat_reducer";
 import PresenceJoinReducer from "./presence_join_reducer";
+import QuestionAddReducer from "./question_add_reducer";
+import QuestionAnswerReducer from "./question_answer_reducer";
+import RecommendationUpsertReducer from "./recommendation_upsert_reducer";
+import RoundStateSetReducer from "./round_state_set_reducer";
 import RunPauseReducer from "./run_pause_reducer";
 import RunResetReducer from "./run_reset_reducer";
 import RunResumeReducer from "./run_resume_reducer";
@@ -51,10 +58,15 @@ import SetPresenterReducer from "./set_presenter_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import AgentMessageRow from "./agent_message_table";
+import AgentStatusRow from "./agent_status_table";
 import AnnotationRow from "./annotation_table";
+import DefendRequestLogRow from "./defend_request_log_table";
 import DeviceStateRow from "./device_state_table";
 import PatientStateRow from "./patient_state_table";
 import PresenceRow from "./presence_table";
+import QuestionRow from "./question_table";
+import RecommendationRow from "./recommendation_table";
 import RunRow from "./run_table";
 import ServiceStateRow from "./service_state_table";
 import SessionRow from "./session_table";
@@ -66,6 +78,34 @@ import TickSnapshotRow from "./tick_snapshot_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  agentMessage: __table({
+    name: 'agent_message',
+    indexes: [
+      { accessor: 'id', name: 'agent_message_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'session_id', name: 'agent_message_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'agent_message_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AgentMessageRow),
+  agentStatus: __table({
+    name: 'agent_status',
+    indexes: [
+      { accessor: 'id', name: 'agent_status_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'session_id', name: 'agent_status_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'agent_status_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AgentStatusRow),
   annotation: __table({
     name: 'annotation',
     indexes: [
@@ -80,6 +120,20 @@ const tablesSchema = __schema({
       { name: 'annotation_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, AnnotationRow),
+  defendRequestLog: __table({
+    name: 'defend_request_log',
+    indexes: [
+      { accessor: 'id', name: 'defend_request_log_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'session_id', name: 'defend_request_log_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'defend_request_log_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DefendRequestLogRow),
   deviceState: __table({
     name: 'device_state',
     indexes: [
@@ -122,6 +176,34 @@ const tablesSchema = __schema({
       { name: 'presence_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PresenceRow),
+  question: __table({
+    name: 'question',
+    indexes: [
+      { accessor: 'id', name: 'question_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'session_id', name: 'question_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'question_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, QuestionRow),
+  recommendation: __table({
+    name: 'recommendation',
+    indexes: [
+      { accessor: 'id', name: 'recommendation_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'session_id', name: 'recommendation_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'recommendation_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, RecommendationRow),
   run: __table({
     name: 'run',
     indexes: [
@@ -207,11 +289,18 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("agent_message_add", AgentMessageAddReducer),
+  __reducerSchema("agent_status_set", AgentStatusSetReducer),
   __reducerSchema("annotation_add", AnnotationAddReducer),
   __reducerSchema("annotation_clear", AnnotationClearReducer),
   __reducerSchema("config_set_server", ConfigSetServerReducer),
+  __reducerSchema("defend_request", DefendRequestReducer),
   __reducerSchema("presence_heartbeat", PresenceHeartbeatReducer),
   __reducerSchema("presence_join", PresenceJoinReducer),
+  __reducerSchema("question_add", QuestionAddReducer),
+  __reducerSchema("question_answer", QuestionAnswerReducer),
+  __reducerSchema("recommendation_upsert", RecommendationUpsertReducer),
+  __reducerSchema("round_state_set", RoundStateSetReducer),
   __reducerSchema("run_pause", RunPauseReducer),
   __reducerSchema("run_reset", RunResetReducer),
   __reducerSchema("run_resume", RunResumeReducer),
@@ -228,6 +317,12 @@ const proceduresSchema = __procedures(
 
 type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "tables"> & {
   tables: typeof tablesSchema.schemaType.tables & {
+    /** @deprecated Use `agentMessage` instead. This alias will be removed in the next major version. */
+    readonly "agent_message": Omit<typeof tablesSchema.schemaType.tables["agentMessage"], "accessorName"> & { readonly accessorName: "agent_message" };
+    /** @deprecated Use `agentStatus` instead. This alias will be removed in the next major version. */
+    readonly "agent_status": Omit<typeof tablesSchema.schemaType.tables["agentStatus"], "accessorName"> & { readonly accessorName: "agent_status" };
+    /** @deprecated Use `defendRequestLog` instead. This alias will be removed in the next major version. */
+    readonly "defend_request_log": Omit<typeof tablesSchema.schemaType.tables["defendRequestLog"], "accessorName"> & { readonly accessorName: "defend_request_log" };
     /** @deprecated Use `deviceState` instead. This alias will be removed in the next major version. */
     readonly "device_state": Omit<typeof tablesSchema.schemaType.tables["deviceState"], "accessorName"> & { readonly accessorName: "device_state" };
     /** @deprecated Use `patientState` instead. This alias will be removed in the next major version. */
@@ -258,6 +353,9 @@ const REMOTE_MODULE = {
 >;
 
 const tableAccessorAliases = {
+  "agent_message": "agentMessage",
+  "agent_status": "agentStatus",
+  "defend_request_log": "defendRequestLog",
   "device_state": "deviceState",
   "patient_state": "patientState",
   "service_state": "serviceState",
@@ -284,6 +382,12 @@ function __withTableAccessorAliases<T extends object>(target: T, freeze = false)
 
 type __DbViewBase = __DbConnectionImpl<typeof REMOTE_MODULE>["db"];
 export type DbView = __DbViewBase & {
+  /** @deprecated Use `agentMessage` instead. This alias will be removed in the next major version. */
+  readonly "agent_message": __DbViewBase["agentMessage"];
+  /** @deprecated Use `agentStatus` instead. This alias will be removed in the next major version. */
+  readonly "agent_status": __DbViewBase["agentStatus"];
+  /** @deprecated Use `defendRequestLog` instead. This alias will be removed in the next major version. */
+  readonly "defend_request_log": __DbViewBase["defendRequestLog"];
   /** @deprecated Use `deviceState` instead. This alias will be removed in the next major version. */
   readonly "device_state": __DbViewBase["deviceState"];
   /** @deprecated Use `patientState` instead. This alias will be removed in the next major version. */
@@ -300,6 +404,12 @@ export type DbView = __DbViewBase & {
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
 export type Tables = __TablesBase & {
+  /** @deprecated Use `agentMessage` instead. This alias will be removed in the next major version. */
+  readonly "agent_message": __TablesBase["agentMessage"];
+  /** @deprecated Use `agentStatus` instead. This alias will be removed in the next major version. */
+  readonly "agent_status": __TablesBase["agentStatus"];
+  /** @deprecated Use `defendRequestLog` instead. This alias will be removed in the next major version. */
+  readonly "defend_request_log": __TablesBase["defendRequestLog"];
   /** @deprecated Use `deviceState` instead. This alias will be removed in the next major version. */
   readonly "device_state": __TablesBase["deviceState"];
   /** @deprecated Use `patientState` instead. This alias will be removed in the next major version. */
