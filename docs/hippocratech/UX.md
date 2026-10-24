@@ -11,15 +11,15 @@ A hospital team has to agree on a network change, and each member sees a differe
 **Show, don't tell.** The product earns trust by letting people *watch* three things:
 
 1. **The attack spreading** through their building.
-2. **The aggregate fix** — after the attack, the agents talk their way to a defense (never while the simulation is running).
+2. **The segmentation plan** — after the attack, the agents talk their way to a defense (never while the simulation is running).
 3. **The solution holding** against the same attack.
 
 Every screen exists to make one of those three visible. The demo walks them in order on two laptops.
 
 ## Rules
 
-1. **The human number leads.** Patients affected is the largest number on the panel. Devices compromised comes second.
-2. **State colors mean state.** Orange, blue, amber, rose, and purple appear only on devices, patients, arcs, zones, and spread effects. Agents, presence, buttons, and chrome use neutral colors and the monochrome ink selection (`#E9ECEE`), never a state color.
+1. **The spread leads on the simulation; people lead on the plan.** On the simulation view, devices infected is the largest number, and every system that goes down says what it means for patients ("36 patients in Emergency and ER waiting depend on it"). On the Agents tab, the solution view and the memo, patients affected stays the largest number.
+2. **State colors mean state.** Orange, blue, red, amber, rose, and purple appear only on devices, patients, arcs, zones, and spread effects. Patient zero has its own red (`#FF3B3B`) with an ink ring. Agents, presence, buttons, and chrome use neutral colors and the monochrome ink selection (`#E9ECEE`). One exception: **Create segmentation plan** is filled with infected orange, because it is the answer to the spread on screen.
 3. **Never color alone.** Patient states have badges. Message types have shapes (◆ proposal, ● accept, ✕ reject, ↻ revision, ? question). Review verdicts have icons and words. Cut connections are dashed.
 4. **Every visual is backed by data.** A pulse means a `spread_attempt` row; a flash means a `device_state` change; a message particle means an `agent_message` row. Never animate something that didn't happen.
 5. **Readable before fast.** Agent messages reveal no faster than one every 1.2 seconds. Event toasts stay for at least 2 seconds. **Skip to result** is always available.
@@ -27,7 +27,7 @@ Every screen exists to make one of those three visible. The demo walks them in o
 7. **A broken protected flow is always visible.** Any recommendation that breaks one shows a warning naming the flow's `purpose`, and is never styled as recommended.
 8. **Humans decide.** Only review rows change a recommendation's status. Agent agreement is shown as the agents' verdict, never as approval.
 9. **Shared by default.** Everyone sees the same live simulation because everyone subscribes to the same SpacetimeDB state. Follow presenter is on when you join; breaking off and rejoining are one click each.
-10. **The simulation says what it is.** Under the clock: "Illustrative simulation. Spread rates are not measured from real incidents."
+10. **The simulation says what it is.** In the footer of every screen: "Illustrative simulation. Spread rates are not measured from real incidents."
 11. **No outcome language.** Never "deaths," "lives," "fatal," or "mortality."
 12. **No game elements.** No attacker role, scores, or win states.
 13. **Motion budget.** Spread pulses and fizzles, device flashes, room tints, service "down" pops, ambulance diversion, the camera follow, agent message particles, agent status dots, scene highlights, and the split-screen replay. Nothing else animates.
@@ -36,7 +36,7 @@ Every screen exists to make one of those three visible. The demo walks them in o
 
 ### Load screen `/`
 
-Two cards: **Demo hospital** and **Upload JSON**. **Start session** creates a new session and opens it; its link (`/s/<id>`) is what you send to the others. Under Upload: a drop zone, **Download template**, and **Download demo**. A valid file shows its summary and **Start session**; an invalid file shows every error with its path.
+"Run a simulation", then **My hospitals**: one row per hospital with a drawn model of the building (every floor and device, from the file), its counts ("2 floors · 11 rooms · 48 devices"), **Edit hospital**, and **Simulate attacks**, which creates a new session and opens it; its link (`/s/<id>`) is what you send to the others. Under the list, a dashed **Add hospital** row opens the JSON upload: **Download template**, **Download demo**, a valid file shows its summary, an invalid file shows every error with its path. Add hospital waits for the schema validator, and Edit hospital is not built yet; both show as disabled until then.
 
 ### Join modal (first visit to `/s/[sessionId]`)
 
@@ -44,14 +44,14 @@ A modal over the live, blurred session scene, so the hospital is visible right a
 
 ### Session view `/s/[sessionId]`
 
-- **Header:** hospital name, two view tabs (**1 Simulation**, **2 Agents**; the keys 1 and 2 switch), presence avatars, and **Log**.
-- **Simulation tab**, top to bottom:
-  - **Runs strip:** one tab per baseline run in the session: "Run 2 · HVAC controller" on top, "Dev K. · settles T+4:45" under it (or running/paused), and **+ New run** at the end (pick a patient zero and start; anyone in the session can). The selected tab decides which run the rail, scene and side column show. Each run is monitored separately; nothing is merged across runs on screen.
-  - **Timeline rail** (for the selected run): back to start, play/pause, reset, **Add note** (then click anywhere on the track to write a note at that moment; everyone sees the ▼ marker live; Esc stops), the clock as `T+h:mm` since the run started, speed (0.5× 1× 2× 4×), presence avatars (`+N` past three), **Following [name]** / **Rejoin**, a track with event and note markers over a segmented infected-count heat strip labelled `T+0:00` to "Settles T+4:30", and the current beat (the latest events) with "Illustrative simulation…" under it. Only the presenter and the run's starter change that run.
-  - **Demo steps:** 1 Run the attack (one or more runs) → 2 Create aggregate fix (agents negotiate one plan for every run) → 3 Show the solution, with one line saying what to do next. Step 2 is disabled while any run is `running`.
-  - **Scene (about 65%):** the live 3D hospital (see "The attack spreading" below), with **Change conditions** and the 3D/2D toggle in its header and a legend under it.
-  - **Side column (about 35%):** **Patients affected** (headline and split, then devices compromised and delayed procedures), **Clinical services** (one tile per service, running or down), and **Inspector** (the hovered device's record; choke points when nothing is hovered).
-- **Agents tab:** a counter strip (patients affected first and largest), then three columns: the agents and the humans in the session, with **Create aggregate fix** (writes `defend_request`; disabled while a visible run is `running`) and **Skip to result**; the Agent Room thread (see "The agents talking" below); and **Recommendations**, up to three cards. Each card shows its rules, the "why this works" explanation, verified numbers, each agent's verdict, the required roles with their review status, and **Show the solution**.
+- **Header:** the Hippocra.tech mark, the hospital name, two view tabs (**1 Simulation**, **2 Agents**; the keys 1 and 2 switch), and **Invite**. The Log drawer is not built yet.
+- **Simulation tab:** one simulation panel (about two-thirds) beside a side column.
+  - **Runs strip:** "Runs", then one tab per baseline run in the session: "Run 2 · HVAC controller" on top, its status under it ("Running · T+1:15", "Paused · …", "Settles T+4:45"), and a dashed **+ New run** at the end (pick a patient zero and start; anyone in the session can). The selected tab decides which run the panel and side column show. Each run is monitored separately; nothing is merged across runs on screen.
+  - **Transport row:** back to start, play/pause (ink filled), forward 15 minutes, **Add note** (then click anywhere on the track to write a note at that moment; everyone sees the ▼ marker live; Esc stops), the clock as a light `T+h:mm` readout, speed (0.5× 1× 2× 4×) as a segmented control, and presence avatars (initials, `+N` past three, the presenter ringed in ink). Only the presenter and the run's starter change that run.
+  - **Track:** a 14px row of ▼ note markers (hover shows who, their role, the time and the note), the scrubber, a segmented heat strip of infected count over time, and labels `T+0:00`, the midpoint, and "Settles T+4:30" (or "Spreading" while it runs).
+  - **Scene:** on scene-ground, a floor picker ("All floors · 48 devices", or one floor) and the legend (healthy, patient zero, infected, infection path, delayed, disrupted), then the live 3D hospital (see "The attack spreading" below). Hovering a device shows its record in a card over the scene: type, role, room, OS, known vulnerability, criticality, VLAN, infected at.
+  - **Side column:** **Devices infected** (large readout, `/ 48`, share, orange bar) with **Services offline** and one pip per service under it; **Relevant systems down**, newest first: each card has the time, the devices behind it with how many are infected ("MRI scanners 1/3"), the service, what stops working, and how many patients depend on it; ER diversion appears here too. At the bottom, **Create segmentation plan** (writes `defend_request` and opens the Agents tab; disabled with its reason while any run is `running`; reads "Watch the agents negotiate" during a round).
+- **Agents tab:** a counter strip (patients affected first and largest), then three columns: the agents and the humans in the session, with **Create segmentation plan** (writes `defend_request`; disabled while a visible run is `running`) and **Skip to result**; the Agent Room thread (see "The agents talking" below); and **Recommendations**, up to three cards. Each card shows its rules, the "why this works" explanation, verified numbers, each agent's verdict, the required roles with their review status, and **Show the solution**.
 - **Question banner:** when an agent asks a human something, a banner appears across the top of every screen until it is answered.
 - **Log drawer:** human decisions, the memo editor, **Approve memo**, and **Export**. This is the only drawer allowed.
 
@@ -67,7 +67,7 @@ A modal over the live, blurred session scene, so the hospital is visible right a
 
 #### The agents talking (Agent Room)
 
-- **When it is live:** only during an aggregate-fix round, after **Create aggregate fix**. While a simulation run is `running`, all agent nodes stay **idle** and no new messages appear.
+- **When it is live:** only during an segmentation-plan round, after **Create segmentation plan**. While a simulation run is `running`, all agent nodes stay **idle** and no new messages appear.
 - **Map:** four agent nodes in a diamond (Inventory, Flow, Clinical Workflow, Sign-off Coordinator), plus a Humans node. Each node shows its icon, its name, and a live status from `agent_status`: idle, thinking (animated dots), speaking, or waiting for a human.
 - **Particles:** each message travels sender → receiver as a shaped particle, then lands in the thread.
 - **Thread:** a speech bubble per message, with the sender's icon, a one- or two-sentence reason, the constraint added (for rejections), and an expandable payload (the rules, or what a revision changed, as a diff).
@@ -103,7 +103,7 @@ A printable page: the hospital, patient zero, and seed; the chosen plan and its 
 - Messages scroll by faster than someone can read them.
 - An agent message refers to a device or flow and the scene doesn't show which one.
 - The solution is shown only as numbers, without the side-by-side replay.
-- Devices compromised is shown bigger than patients affected.
+- Devices infected is shown bigger than patients affected anywhere but the simulation view.
 - Agent agreement is styled like human approval, or anyone but the required humans can make a plan Ready.
 - A follower can move the presenter's playback.
 - A second drawer, or a third panel. (The Agent Room overlay and the solution view are the only full-screen moments.)
@@ -114,7 +114,7 @@ A printable page: the hospital, patient zero, and seed; the chosen plan and its 
 Open the demo session on two laptops with different roles, and walk the demo script:
 
 1. Infect MRI 2 and run. Both laptops show the same pulses, flashes, and services going down.
-2. Let the run finish (or pause it). Press **Create aggregate fix** and expand the Agent Room. Follow the particles and bubbles; check that each message highlights its target in the scene.
+2. Let the run finish (or pause it). Press **Create segmentation plan** and expand the Agent Room. Follow the particles and bubbles; check that each message highlights its target in the scene.
 3. Open **Show the solution**. The split screen runs in lockstep, and the right side stops at the zone edge.
 4. Apply **Change conditions → unidentified device**. The question banner appears on both laptops; answer it on laptop 2.
 5. Approve from each required role, then draft, approve, and export the memo.

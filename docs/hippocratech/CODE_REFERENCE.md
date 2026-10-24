@@ -96,7 +96,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/watcher/src/answer.ts` | F1 | On a `question` answer: calls the Coordinator's `resume` |
 | `apps/watcher/src/relay.ts` | F1 | HTTP endpoint the agents post to (`POST /agent_message`, `/agent_status`, bearer `RELAY_TOKEN`, strict zod). Writes `agent_message_add` and `agent_status_set`; from the sender's copy, also `question_add` (questions to humans), `round_state_set` and `recommendation_upsert`. A reducer's refusal returns HTTP 502, so the agent doesn't send. Live state reads: not built yet |
 | `apps/watcher/test/relay.test.ts` | F1 | Relay contract with fake reducers |
-| `apps/watcher/test/live.integration.test.ts` | F1 | Two clients against the running stack (`E2E_STDB_URI`): no agent traffic while running, a full round after Create aggregate fix, and a question answered by an allowed role |
+| `apps/watcher/test/live.integration.test.ts` | F1 | Two clients against the running stack (`E2E_STDB_URI`): no agent traffic while running, a full round after Create segmentation plan, and a question answered by an allowed role |
 
 ## Agents (Python, Fetch.ai uAgents)
 
@@ -150,16 +150,18 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 
 | Path | Owner | Role |
 |---|---|---|
-| `apps/web/app/page.tsx` | Base | Load screen: **Start session** on the demo hospital creates a new session and opens it (Upload JSON still to come). `/s/demo` still works as a fixed shared session |
+| `apps/web/app/page.tsx` | Base | Load screen: **My hospitals** with the drawn building, **Simulate attacks** creates a new session and opens it; **Add hospital** (Upload JSON) and **Edit hospital** disabled until built. `/s/demo` still works as a fixed shared session |
+| `apps/web/components/shell/brand.tsx`, `apps/web/public/logo.svg` | Base | The Hippocra.tech mark and wordmark, linking home |
+| `apps/web/components/shell/building-thumb.tsx` | Base | Isometric drawing of a hospital file (floors, walls, device dots) for the load screen |
 | `apps/web/lib/stdb/create-session.ts` | Base | `createSession(hospitalJson)`: a random `s-…` id and `session_create`; the creator is the presenter |
-| `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (rail, demo steps, scene, side column) and Agents tab |
-| `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence, **Invite** (copies the session link), Log |
+| `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (simulation panel with timeline, floor picker, legend and scene; side column with spread stats, systems down and **Create segmentation plan**) and Agents tab |
+| `apps/web/components/shell/header.tsx` | Base | Logo, hospital name, Simulation / Agents tabs, **Invite** (copies the session link) |
 | `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
-| `apps/web/components/panel/impact.tsx`, `services.tsx`, `inspector.tsx` | Base | Simulation side column: patients affected, service tiles, hovered-device record and choke points |
+| `apps/web/components/panel/spread.tsx` | Base | Simulation side column: devices infected and services offline (`SpreadStats`), relevant systems down with dependent patients (`SystemsDown`) |
+| `apps/web/components/panel/device-card.tsx` | Base | Hovered device's record, shown over the scene |
 | `apps/web/components/panel/counters.tsx` | Base | Counter strip on the Agents tab |
 | `apps/web/components/scene/*` | Base | Floors, rooms, device boxes, patients, arcs, subscribed to live state |
-| `apps/web/components/timeline.tsx` | Base | Timeline rail for the selected run: back to start, playback, reset, speed, `T+h:mm` clock, follow, scrubber with event and note markers and heat strip, "Settles T+…", current beat (reads `tick_snapshot`, `sim_event`) |
-| `apps/web/components/runs-strip.tsx` (planned) | Base | One tab per baseline run (number, patient zero, who started it, settles T+…) and **+ New run**; selecting a tab sets the shown run |
+| `apps/web/components/timeline.tsx` | Base | Top of the simulation panel: runs strip with **+ New run**, transport (back to start, play/pause, forward 15 minutes, **Add note**), `T+h:mm` clock, speed, presence, scrubber with note markers, heat strip, "Settles T+…" (reads `tick_snapshot`) |
 | `apps/web/features/scene/spread-fx.tsx` | F4 | Pulses and fizzles from `spread_attempt`, device flashes, room tints |
 | `apps/web/features/scene/service-icons.tsx` | F4 | Service icons, "down" badges, event toasts from `sim_event` |
 | `apps/web/features/scene/patients-fx.tsx` | F4 | Patient badges, ambulance diversion |
@@ -172,10 +174,10 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/features/agents/agents.ts`, `agent-icon.tsx` | F1 | Agent names and objectives, message-type shapes, agent icons |
 | `apps/web/features/agents/scene-highlights.tsx` | F1 | Scene highlights driven by each `agent_message` |
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
-| `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; disabled while a visible run is `running` |
+| `apps/web/features/agents/defend-button.tsx` | F1 | **Create segmentation plan** — calls `defend_request`; disabled while a visible run is `running` |
 | `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles (basic version, Show the solution still disabled) |
 | `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name only (everyone joins as `security`, so anyone can answer questions), who is here, and for the session's creator the invite link; `presence_join`. Remembers the name per session in localStorage and rejoins after a reload |
-| `apps/web/features/review/timeline-notes.tsx` | F3 | **Annotate** toggle on the timeline rail; in annotate mode a click on the track opens a pop-up to write a note at that tick (`annotation_add_note`). Every note on the active run shows as a marker for everyone; click to read, author or presenter can delete |
+| `apps/web/features/review/timeline-notes.tsx` | F3 | **Add note** on the transport row; while on, a click on the track opens a pop-up to write a note at that tick (`annotation_add_note`). Every note on the active run shows as a ▼ marker above the scrubber for everyone; hover to read, click to open, author or presenter can delete |
 | `apps/web/features/review/invite.tsx` | F3 | The session link (`/s/<id>`) with Copy, and the header's Invite button |
 | `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |

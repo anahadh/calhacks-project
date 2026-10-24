@@ -21,7 +21,7 @@ Operating context for now: the Cal Hacks 13.0 table demo (Sun Oct 25, 2026), whe
 Hippocra.tech is a multi-agent hospital cyber-defense simulator and the planning layer that comes before enforcement tools (Illumio, Claroty, ORDR, Akamai Guardicore). It replaces arguments over spreadsheets with three things a team can watch:
 
 1. **The attack spreading** through a 3D model of their building, tick by tick.
-2. **The aggregate fix being negotiated**: after the attack, four Fetch.ai uAgents (Inventory, Flow, Clinical Workflow, Sign-off Coordinator) talk their way to one segmentation plan that contains every run in the session.
+2. **The segmentation plan being negotiated**: after the attack, four Fetch.ai uAgents (Inventory, Flow, Clinical Workflow, Sign-off Coordinator) talk their way to one segmentation plan that contains every run in the session.
 3. **The solution holding**: the same attack replayed side by side, with and without the plan.
 
 Success: the team leaves with a plan every required role has reviewed and approved, exported as a memo and ruleset, and trusts it because they saw it tested.
@@ -32,7 +32,7 @@ Agents with genuinely conflicting objectives negotiate in the open, and every po
 
 ## Operating Context
 
-- Loop: load a hospital (demo or validated JSON upload) → start a session and share its link → one or more baseline runs, each from a different patient zero → **Create aggregate fix** → Agent Room negotiation (may pause to ask a human a `Question`) → **Show the solution** split screen → optional new challenge (unidentified device) → role reviews → memo approval → export.
+- Loop: load a hospital (demo or validated JSON upload) → start a session and share its link → one or more baseline runs, each from a different patient zero → **Create segmentation plan** → Agent Room negotiation (may pause to ask a human a `Question`) → **Show the solution** split screen → optional new challenge (unidentified device) → role reviews → memo approval → export.
 - Shared by default: everyone subscribes to the same SpacetimeDB state; follow-presenter is on at join. Only the presenter and a run's starter control that run.
 - Screens: load `/`, join modal, session view `/s/[sessionId]` (Simulation and Agents tabs, Log drawer), solution view, printable memo. See `docs/hippocratech/UX.md`.
 - Simulation and agent rounds never overlap: no agent traffic while a visible run is `running`.
@@ -45,9 +45,10 @@ Authoritative sources: `docs/Hippocratech.md` (spec), `docs/hippocratech/UX.md` 
 - **No outcome language.** Never "deaths," "lives," "fatal," "mortality"; nothing computes or shows clinical outcomes.
 - **Visuals come from data.** Every pulse, flash, particle, and highlight is backed by a row (`spread_attempt`, `sim_event`, `agent_message`, `agent_status`). The browser only renders; spread logic lives in `sim-core`.
 - **Humans approve.** Agent agreement is shown as the agents' verdict, never as approval; never say "approved," "ready," or "safe to deploy" for agent output. Only `review_submit` sets a recommendation's status.
-- **The human number leads.** Patients affected is the largest number; devices compromised is second.
+- **Spread leads, people stay attached.** On the simulation view devices infected is the largest number, and every system that goes down names the patients who depend on it. On the agents, solution and memo screens, patients affected leads.
 - **State color means state; never color alone.** Badges, message shapes, icons, and dashed cuts carry meaning alongside color. The palette itself lives in the spec's Design Language.
 - **Readable before fast.** Agent messages reveal no faster than one per 1.2 s; toasts stay ≥ 2 s; **Skip to result** is always available.
+- **The Create segmentation plan button is the one chrome element in a state color** (infected orange).
 - **Fixed motion budget**, one drawer (Log), and only two full-screen moments (Agent Room overlay, solution view).
 - **No game elements**: no attacker role, scores, or win states. No accounts or auth; everyone joins by name with the same role.
 - **No faking a sponsor.** Integration failures show the error; the only exception is a cached demo round labeled "Cached run."
@@ -71,7 +72,7 @@ Authoritative sources: `docs/Hippocratech.md` (spec), `docs/hippocratech/UX.md` 
 ## Product Principles
 
 1. **Show, don't tell.** Trust comes from watching the attack, the negotiation, and the containment, not from numbers alone.
-2. **Patients before devices.** Express impact in clinical terms that every role at the table can weigh.
+2. **Impact in clinical terms.** Every device that falls is tied to the services and patients that depend on it, so every role at the table can weigh it.
 3. **Tested, not asserted.** Every recommendation carries simulation results; no model output sets a verdict.
 4. **Humans decide.** Agents propose and ask; people approve and deploy.
 5. **One shared truth.** Every laptop sees the same live state, and nothing on screen happens without a row behind it.
