@@ -127,6 +127,9 @@ export type SessionActions = {
   join: (name: string, role: PresenceRow["role"]) => Promise<void>;
   addFocus: (deviceId: string, note?: string) => Promise<void>;
   clearFocus: (annotationId: string) => Promise<void>;
+  /** Create aggregate fix: writes defend_request. Refused while the active run is running. */
+  defend: () => Promise<void>;
+  answerQuestion: (questionId: string, choice: string) => Promise<void>;
 };
 
 export type SessionSnapshot = {
@@ -147,6 +150,10 @@ export type SessionSnapshot = {
   agentStatus: AgentStatusRow[];
   messages: AgentMessageRow[];
   annotations: AnnotationRow[];
+  questions: QuestionRow[];
+  recommendations: RecommendationRow[];
+  /** This browser's presence row, once it has joined. */
+  me?: PresenceRow;
   source: SessionSource;
   /** Set when source is "error". Shown as-is (AGENTS.md rule 14). */
   error?: string;
@@ -159,7 +166,10 @@ export type SessionSnapshot = {
 
 export type AgentId = "inventory" | "flow" | "clinical_workflow" | "coordinator";
 export type Speaker = AgentId | "humans";
-export type MessageType = "proposal" | "accept" | "reject" | "revision" | "question" | "answer";
+export type MessageType = "request" | "proposal" | "accept" | "reject" | "revision" | "question" | "answer" | "recommendation";
+/** Who wrote a message's text (rule 14: a template is never passed off as Claude's). */
+export type TextSource = "claude" | "template";
+export type ReviewRole = "security" | "clinical_engineering" | "operations";
 
 export type AgentMessageRow = {
   round: number;
@@ -174,6 +184,9 @@ export type AgentMessageRow = {
   rules?: string[];
   diff?: string[];
   tested?: { patientsAffected: number };
+  source?: TextSource;
+  /** The numbers came from fixture files, not hippo-sim. */
+  fixture?: boolean;
 };
 
 export type AgentStatusRow = { agent: AgentId; status: "idle" | "thinking" | "speaking" | "waiting" };
@@ -182,4 +195,34 @@ export type RoundState = {
   state: "idle" | "running" | "waiting_for_human" | "done";
   round: number;
   maxRounds: number;
+  /** The Coordinator's detail, or an error from the watcher. Shown as-is. */
+  detail?: string;
+};
+
+export type QuestionRow = {
+  questionId: string;
+  round: number;
+  agent: AgentId;
+  targetId: string;
+  text: string;
+  source?: TextSource;
+  choices: string[];
+  allowedRoles: ReviewRole[];
+  answer?: { choice: string; author: string; role: ReviewRole };
+};
+
+/** A published plan. `status` changes only through human review (rule 9). */
+export type RecommendationRow = {
+  id: string;
+  round: number;
+  name: string;
+  rules: string[];
+  explanation: string;
+  source?: TextSource;
+  /** From hippo-sim's RunResult for this plan, on the same attack. */
+  verified: { patientsAffected: number; devicesCompromised: number; protectedBroken: string[]; removedFlows: string[] };
+  verdicts: { agent: AgentId; decision: "accept" | "reject"; reason: string }[];
+  requiredRoles: ReviewRole[];
+  status: "draft" | "ready";
+  fixture: boolean;
 };

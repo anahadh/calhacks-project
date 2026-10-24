@@ -10,19 +10,15 @@ import { PatientBadge } from "@/components/shell/badges";
 import { SessionHeader, type ViewId } from "@/components/shell/header";
 import { Timeline } from "@/components/timeline";
 import { AgentRoom } from "@/features/agents/agent-room";
+import { defendBlocker } from "@/features/agents/defend-button";
+import { QuestionBanner } from "@/features/agents/question-card";
+import { JoinModal } from "@/features/review/join-modal";
 import { useSession, useSessionIndex } from "@/lib/stdb/use-session";
+import type { SessionSnapshot } from "@/lib/stdb/types";
 
 export function SessionView({ sessionId }: { sessionId: string }) {
   const session = useSession(sessionId);
   const index = useSessionIndex(session);
-
-  if (session.source === "error" || session.source === "missing" || !session.hospital.devices.length) {
-    const text =
-      session.source === "missing" ? `Session "${sessionId}" doesn't exist.`
-      : session.source === "error" ? session.error ?? "Something went wrong."
-      : "Connecting to SpacetimeDB…";
-    return <div role="status" className="flex h-screen items-center justify-center p-8 text-sm text-ink-muted">{text}</div>;
-  }
   const [view, setView] = useState<ViewId>("simulation");
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -42,15 +38,27 @@ export function SessionView({ sessionId }: { sessionId: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  if (session.source === "error" || session.source === "missing" || !session.hospital.devices.length) {
+    const text =
+      session.source === "missing" ? `Session "${sessionId}" doesn't exist.`
+      : session.source === "error" ? session.error ?? "Something went wrong."
+      : "Connecting to SpacetimeDB…";
+    return <div role="status" className="flex h-screen items-center justify-center p-8 text-sm text-ink-muted">{text}</div>;
+  }
+
   return (
     <>
       <SessionHeader session={session} view={view} onView={setView} />
+      <JoinModal session={session} />
 
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
+        <div className="mt-3.5 empty:hidden">
+          <QuestionBanner session={session} index={index} />
+        </div>
         {view === "simulation" ? (
           <div className="mt-3.5 space-y-3.5">
             <Timeline session={session} index={index} />
-            <DemoSteps onAgents={() => setView("agents")} />
+            <DemoSteps session={session} onAgents={() => setView("agents")} />
 
             <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(340px,0.9fr)]">
               <div className="panel flex flex-col overflow-hidden">
@@ -118,17 +126,42 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   );
 }
 
-function DemoSteps({ onAgents }: { onAgents: () => void }) {
+function DemoSteps({ session, onAgents }: { session: SessionSnapshot; onAgents: () => void }) {
+  const run = session.runs.find((r) => r.id === session.activeRunId);
+  const blocker = defendBlocker(session);
+  const [error, setError] = useState<string>();
+  const round = session.roundState.state;
+  const negotiating = round === "running" || round === "waiting_for_human";
+
+  // Step 2 is Create aggregate fix itself; disabled while the run is running (spec 7.4).
+  const defend = async () => {
+    setError(undefined);
+    try {
+      await session.actions.defend();
+      onAgents();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const next =
+    error ?? (!run ? "Click a device to make it patient zero, then press Run."
+    : run.status === "running" ? "The attack is spreading. Agents stay idle until it finishes or you pause it."
+    : negotiating ? "The agents are negotiating. Press 2 to watch."
+    : blocker ?? "Press Create aggregate fix to let the agents negotiate a plan.");
+
   return (
     <div className="flex flex-wrap items-stretch gap-2.5">
-      <Step n={1} title="Run the attack" sub="infect a device, watch it spread" state="on" />
+      <Step n={1} title="Run the attack" sub="infect a device, watch it spread" state={!blocker || negotiating ? undefined : "on"} />
       <Arrow />
-      <Step n={2} title="Agents defend" sub="four agents argue out a plan" onClick={onAgents} />
+      <Step
+        n={2} title="Create aggregate fix" sub="four agents negotiate a plan"
+        state={!blocker || negotiating ? "on" : undefined}
+        disabled={!!blocker && !negotiating}
+        onClick={negotiating ? onAgents : defend}
+      />
       <Arrow />
       <Step n={3} title="Show the solution" sub="same attack, with the plan" disabled />
-      <p className="min-w-[200px] flex-[1_1_220px] self-center pl-1.5 font-disp text-[15px] text-ink-muted">
-        The attack is spreading. Press 2 to let the agents defend.
-      </p>
+      <p className="min-w-[200px] flex-[1_1_220px] self-center pl-1.5 font-disp text-[15px] text-ink-muted">{next}</p>
     </div>
   );
 }

@@ -18,10 +18,12 @@ export const SPEAKER_NAME: Record<Speaker | "all", string> = {
 
 // Message type never depends on color alone (UX rule 3).
 export const MESSAGE_SHAPE: Record<MessageType, { glyph: string; label: string }> = {
+  request: { glyph: "▷", label: "Request" },
   proposal: { glyph: "◆", label: "Proposal" },
   accept: { glyph: "●", label: "Accept" },
   reject: { glyph: "✕", label: "Reject" },
   revision: { glyph: "↻", label: "Revision" },
   question: { glyph: "?", label: "Question" },
   answer: { glyph: "→", label: "Answer" },
+  recommendation: { glyph: "■", label: "Recommendation" },
 };

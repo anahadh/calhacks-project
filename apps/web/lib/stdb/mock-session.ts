@@ -266,10 +266,15 @@ export const mockSession: SessionSnapshot = {
   annotations: [
     { id: "1", targetId: "srv_file", note: "This file server is feeding the ER", authorName: "Dev", role: "clinical_engineering", active: true, mine: false },
   ],
+  questions: [],
+  recommendations: [],
   source: "mock",
   isPresenter: false,
   actions: (() => {
     const noop = async () => {};
-    return { startRun: noop, play: noop, pause: noop, step: noop, reset: noop, setSpeed: noop, join: noop, addFocus: noop, clearFocus: noop };
+    return {
+      startRun: noop, play: noop, pause: noop, step: noop, reset: noop, setSpeed: noop, join: noop, addFocus: noop,
+      clearFocus: noop, defend: noop, answerQuestion: noop,
+    };
   })(),
 };

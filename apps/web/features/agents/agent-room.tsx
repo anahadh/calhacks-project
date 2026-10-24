@@ -3,19 +3,29 @@
 import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
+import { RecommendationCard } from "@/features/policy/card-body";
 import { AgentIcon } from "./agent-icon";
 import { AGENTS, MESSAGE_SHAPE, SPEAKER_NAME } from "./agents";
+import { DefendButton } from "./defend-button";
 
 // The Agents tab: who the agents are, what they are saying, and what comes
-// out of the round. Renders agent_message and agent_status rows only.
+// out of the round. Renders agent_message, agent_status, question and
+// recommendation rows only.
 export function AgentRoom({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   return (
     <div className="grid items-start gap-3.5 lg:grid-cols-[280px_minmax(0,1.3fr)_minmax(0,1fr)]">
       <AgentList session={session} />
       <Negotiation session={session} index={index} />
-      <Recommendations session={session} />
+      <Recommendations session={session} index={index} />
     </div>
   );
+}
+
+/** Patients affected on the active visible run right now. Read from patient_state rows. */
+function currentAffected(session: SessionSnapshot, index: SessionIndex): number {
+  return session.hospital.patients
+    .filter((g) => (index.patientState.get(g.id) ?? "ok") !== "ok")
+    .reduce((a, g) => a + g.count, 0);
 }
 
 const STATUS: Record<AgentStatusRow["status"], { label: string; cls: string }> = {
@@ -71,9 +81,9 @@ function AgentList({ session }: { session: SessionSnapshot }) {
             </li>
           ))}
         </ul>
-        <button className="num mt-3 w-full rounded-[7px] border border-accent bg-accent px-3 py-2.5 text-[11.5px] font-semibold text-bg transition hover:brightness-110">
-          Defend
-        </button>
+        <div className="mt-3">
+          <DefendButton session={session} />
+        </div>
         <button className="num mt-2 w-full rounded-[7px] border border-accent px-3 py-2.5 text-[11.5px] font-semibold text-accent transition hover:bg-accent/10">
           Skip to result
         </button>
@@ -88,9 +98,7 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
   const rounds = [...new Set(messages.map((m) => m.round))];
   const lastTest = [...messages].reverse().find((m) => m.tested)?.tested;
   const constraints = messages.filter((m) => m.constraint).length;
-  const baseline = session.hospital.patients
-    .filter((g) => (index.patientState.get(g.id) ?? "ok") !== "ok")
-    .reduce((a, g) => a + g.count, 0);
+  const baseline = currentAffected(session, index);
 
   return (
     <div className="panel">
@@ -100,8 +108,23 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
           {roundState.state === "running" ? "In progress" : roundState.state.replaceAll("_", " ")}
         </span>
       </div>
+      {roundState.detail && (
+        <p role="status" className="num border-b border-line px-3.5 py-2 text-[10.5px] leading-snug text-ink-muted">
+          {roundState.detail}
+        </p>
+      )}
+      {messages.some((m) => m.fixture) && (
+        <p className="num border-b border-line px-3.5 py-1.5 text-[10px] text-ink-faint">
+          Test numbers in this round come from fixture files, not hippo-sim.
+        </p>
+      )}
 
       <div className="scroll-quiet max-h-[520px] overflow-y-auto px-3.5 py-2">
+        {!messages.length && (
+          <p className="num py-6 text-center text-[11px] text-ink-faint">
+            No agent messages yet. Agents stay idle while the attack runs; press Create aggregate fix when it has finished or is paused.
+          </p>
+        )}
         {rounds.map((r) => (
           <div key={r}>
             <div className="num pb-1 pt-3 text-[9.5px] uppercase tracking-[0.08em] text-accent">Round {r}</div>
@@ -115,7 +138,7 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
         {thinking && (
           <div className="num flex items-center gap-2 py-3 text-[10.5px] text-ink-faint">
             <AgentIcon who={thinking.agent} size={20} />
-            {SPEAKER_NAME[thinking.agent]} is reviewing the revision
+            {SPEAKER_NAME[thinking.agent]} is thinking
             <Dots />
           </div>
         )}
@@ -151,7 +174,10 @@ function Message({ m, index }: { m: AgentMessageRow; index: SessionIndex }) {
         <div className="num text-[9.5px] uppercase tracking-[0.06em] text-ink-faint">
           <span className="text-ink">{shape.glyph}</span> {shape.label} · {SPEAKER_NAME[m.from]} → {SPEAKER_NAME[m.to]}
         </div>
-        <p className="mt-0.5 text-[12.5px] leading-snug text-ink-muted">{m.reason}</p>
+        <p className="mt-0.5 text-[12.5px] leading-snug text-ink-muted">
+          {m.reason}
+          {m.source === "template" && <span className="num ml-1 text-[10px] text-ink-faint">(template text)</span>}
+        </p>
 
         {m.constraint && (
           <span className="num mt-1.5 inline-block rounded border border-line2 bg-panel2 px-1.5 py-0.5 text-[10px] text-ink">
@@ -191,7 +217,8 @@ function PlanCell({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function Recommendations({ session }: { session: SessionSnapshot }) {
+function Recommendations({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
+  const recs = session.recommendations.slice(0, 3);
   return (
     <div className="panel">
       <div className="panel-h">
@@ -200,12 +227,17 @@ function Recommendations({ session }: { session: SessionSnapshot }) {
           Humans approve
         </span>
       </div>
+      {recs.map((rec) => (
+        <RecommendationCard key={rec.id} rec={rec} baseline={currentAffected(session, index)} index={index} />
+      ))}
       <div className="p-3.5">
-        <p className="num text-[11.5px] leading-relaxed text-ink-faint">
-          {session.roundState.state === "done"
-            ? "No recommendation came out of this round."
-            : "The round is still running. Up to three recommendations appear here when it ends, each with its rules, tested numbers, every agent's verdict, and the roles that must sign off."}
-        </p>
+        {!recs.length && (
+          <p className="num text-[11.5px] leading-relaxed text-ink-faint">
+            {session.roundState.state === "done"
+              ? "No recommendation came out of this round."
+              : "Up to three recommendations appear here when a round ends, each with its rules, tested numbers, every agent's verdict, and the roles that must sign off."}
+          </p>
+        )}
         <button
           disabled
           className="num mt-3 w-full cursor-not-allowed rounded-[7px] border border-line2 px-3 py-2.5 text-[11.5px] font-semibold text-ink-faint"

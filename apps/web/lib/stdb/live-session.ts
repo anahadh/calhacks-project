@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Identity } from "spacetimedb";
 import demo from "../../../../data/hospitals/demo.json";
+import { messagesOf, questionsOf, recommendationsOf, roundStateOf, statusOf } from "./agent-rows";
 import { getConnection } from "./connection";
 import type { DbConnection } from "./module_bindings";
 import type {
@@ -23,6 +24,10 @@ const EMPTY_HOSPITAL: Hospital = { id: "", name: "", floors: [], rooms: [], devi
 
 
 type Live = { conn: DbConnection; identity: Identity };
+
+function presenceOf(p: { name: string; role: string; following: boolean }): PresenceRow {
+  return { name: p.name, role: (ROLES.has(p.role) ? p.role : "observer") as PresenceRow["role"], following: p.following };
+}
 
 export function useLiveSession(sessionId: string): SessionSnapshot {
   const [live, setLive] = useState<Live | null>(null);
@@ -57,6 +62,7 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
         for (const table of [
           conn.db.session, conn.db.run, conn.db.presence, conn.db.annotation, conn.db.deviceState,
           conn.db.serviceState, conn.db.patientState, conn.db.spreadAttempt, conn.db.simEvent, conn.db.tickSnapshot,
+          conn.db.agentMessage, conn.db.agentStatus, conn.db.question, conn.db.recommendation,
         ] as any[]) {
           table.onInsert(bump);
           table.onDelete(bump);
@@ -87,6 +93,10 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
             `SELECT * FROM run WHERE session_id = '${sessionId}'`,
             `SELECT * FROM presence WHERE session_id = '${sessionId}'`,
             `SELECT * FROM annotation WHERE session_id = '${sessionId}'`,
+            `SELECT * FROM agent_message WHERE session_id = '${sessionId}'`,
+            `SELECT * FROM agent_status WHERE session_id = '${sessionId}'`,
+            `SELECT * FROM question WHERE session_id = '${sessionId}'`,
+            `SELECT * FROM recommendation WHERE session_id = '${sessionId}'`,
           ]);
       })
       .catch((e: Error) => {
@@ -143,6 +153,8 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
   const presenceRows = db ? [...db.presence.iter()].filter((p) => p.sessionId === sessionId) : [];
   const presenter = sessionRow ? presenceRows.find((p) => p.identity.isEqual(sessionRow.presenter)) : undefined;
   const isPresenter = !!(sessionRow && me && sessionRow.presenter.isEqual(me));
+  const mine = me ? presenceRows.find((p) => p.identity.isEqual(me)) : undefined;
+  const ofSession = <T extends { sessionId: string }>(rows: Iterable<T>) => [...rows].filter((x) => x.sessionId === sessionId);
 
   let chokePoints: ChokePoint[] = [];
   try {
@@ -184,11 +196,8 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
       : [],
     chokePoints,
     delayedProcedures: activeRow?.delayedProcedures ?? 0,
-    presence: presenceRows.map((p) => ({
-      name: p.name,
-      role: (ROLES.has(p.role) ? p.role : "observer") as PresenceRow["role"],
-      following: p.following,
-    })),
+    presence: presenceRows.map(presenceOf),
+    me: mine ? presenceOf(mine) : undefined,
     annotations: db
       ? [...db.annotation.iter()]
           .filter((a) => a.sessionId === sessionId && a.active)
@@ -200,10 +209,11 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
             }),
           )
       : [],
-    // Agent rows arrive with F1's tables; empty until then, never mocked (rule 14).
-    roundState: { state: "idle", round: 0, maxRounds: 4 },
-    agentStatus: [],
-    messages: [],
+    roundState: roundStateOf(sessionRow),
+    agentStatus: db ? statusOf(ofSession(db.agentStatus.iter())) : [],
+    messages: db ? messagesOf(ofSession(db.agentMessage.iter())) : [],
+    questions: db ? questionsOf(ofSession(db.question.iter())) : [],
+    recommendations: db ? recommendationsOf(ofSession(db.recommendation.iter())) : [],
     source,
     error,
     isPresenter,
@@ -233,6 +243,8 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
     join: async (name, role) => (await need()).presenceJoin({ sessionId, name, role }),
     addFocus: async (deviceId, note = "") => (await need()).annotationAdd({ sessionId, targetId: deviceId, note }),
     clearFocus: async (id) => (await need()).annotationClear({ annotationId: BigInt(id) }),
+    defend: async () => (await need()).defendRequest({ sessionId }),
+    answerQuestion: async (questionId, choice) => (await need()).questionAnswer({ sessionId, questionId, choice }),
   };
 
   return { ...session, actions };
