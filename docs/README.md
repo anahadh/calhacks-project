@@ -59,8 +59,8 @@ Design and evidence limits are in [`engine/RESEARCH_DECISIONS.md`](../engine/RES
 |---|---|---|---|---|
 | Inventory | Hippocratech Inventory Agent | `@hippocratech-inventory` | *after registration* | *after registration* |
 | Flow | Hippocratech Flow Agent | `@hippocratech-flow` | *after registration* | *after registration* |
-| Clinical Workflow | Hippocratech Clinical Workflow Agent | `@hippocratech-clinical-workflow` | *after registration* | *after registration* |
-| Sign-off Coordinator | Hippocratech Sign-off Coordinator | `@hippocratech-coordinator` | *after registration* | *after registration* |
+| Clinical Workflow | Hippocratech Clinical Workflow | `@hippocratech-clinical-workflow` | *after registration* | *after registration* |
+| Sign-off Coordinator | Hippocratech Coordinator | `@hippocratech-coordinator` | *after registration* | *after registration* |
 
 Addresses come from the team's shared seed phrases, and the profile URLs from Agentverse. Both get filled in here after the agents are registered on a laptop ([`hippocratech/AGENTVERSE_SETUP.md`](hippocratech/AGENTVERSE_SETUP.md)).
 
