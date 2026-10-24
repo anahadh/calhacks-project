@@ -2,24 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body {
-  height: 100%;
-  background: #0b0f14;
-  color: #e8ecf1;
+html {
+  color-scheme: dark;
 }
 
 body {
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 700px at 78% -10%, rgba(88, 198, 216, 0.06), transparent 60%),
+    radial-gradient(900px 600px at -5% 110%, rgba(139, 120, 230, 0.06), transparent 55%),
+    #0c131c;
+  color: #e9eef3;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-.num {
-  font-family: var(--font-plex-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
+h1,
+h2,
+h3 {
+  font-family: var(--font-grotesk), var(--font-inter), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
-/* Quiet scrollbars for the panel and feed. */
+@layer components {
+  .num {
+    font-family: var(--font-plex-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Small uppercase mono label, used for panel captions and states. */
+  .eyebrow {
+    font-family: var(--font-plex-mono), ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #6f8299;
+  }
+  .panel {
+    @apply min-w-0 rounded-panel border border-line bg-panel shadow-panel;
+  }
+  .panel-h {
+    @apply flex min-h-[44px] flex-wrap items-center gap-2.5 border-b border-line px-3.5 py-2.5;
+  }
+  .panel-h h2 {
+    @apply text-[13px] font-semibold;
+  }
+}
+
 .scroll-quiet {
   scrollbar-width: thin;
-  scrollbar-color: #222a35 transparent;
+  scrollbar-color: #2f4458 transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
