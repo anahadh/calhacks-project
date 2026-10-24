@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
+import { STDB_URI } from "./connection";
+import { useLiveSession } from "./live-session";
 import { mockSession } from "./mock-session";
 import type { SessionSnapshot } from "./types";
 
-// Will subscribe to the session's rows in SpacetimeDB. For now it returns a
-// fixed snapshot so the UI can be built against the row shapes.
-export function useSession(_sessionId: string): SessionSnapshot {
-  return mockSession;
-}
+const useMock = (_sessionId: string): SessionSnapshot => mockSession;
+
+// Live rows from SpacetimeDB when NEXT_PUBLIC_STDB_URI is set; otherwise the
+// labeled mock snapshot (source: "mock") so the UI can be built offline.
+export const useSession: (sessionId: string) => SessionSnapshot = STDB_URI ? useLiveSession : useMock;
 
 // Lookup tables over the subscribed rows. Indexing only, no simulation.
 export function useSessionIndex(s: SessionSnapshot) {

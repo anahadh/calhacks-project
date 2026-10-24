@@ -107,6 +107,28 @@ export type PresenceRow = {
   following: boolean;
 };
 
+/** A focus pin (spec 7.8). Context for the agents, never an order. */
+export type AnnotationRow = {
+  id: string; targetId: string; note: string; authorName: string;
+  role: PresenceRow["role"]; active: boolean; mine: boolean;
+};
+
+/** Where the snapshot came from. "mock" only when no SpacetimeDB host is configured. */
+export type SessionSource = "mock" | "connecting" | "live" | "missing" | "error";
+
+/** Playback and pin controls. Reducers reject anyone who isn't allowed. */
+export type SessionActions = {
+  startRun: (patientZero: string, speed?: 0.5 | 1 | 2 | 4) => Promise<void>;
+  play: () => Promise<void>;
+  pause: () => Promise<void>;
+  step: () => Promise<void>;
+  reset: () => Promise<void>;
+  setSpeed: (speed: 0.5 | 1 | 2 | 4) => Promise<void>;
+  join: (name: string, role: PresenceRow["role"]) => Promise<void>;
+  addFocus: (deviceId: string, note?: string) => Promise<void>;
+  clearFocus: (annotationId: string) => Promise<void>;
+};
+
 export type SessionSnapshot = {
   hospital: Hospital;
   runs: RunRow[];
@@ -124,6 +146,13 @@ export type SessionSnapshot = {
   roundState: RoundState;
   agentStatus: AgentStatusRow[];
   messages: AgentMessageRow[];
+  annotations: AnnotationRow[];
+  source: SessionSource;
+  /** Set when source is "error". Shown as-is (AGENTS.md rule 14). */
+  error?: string;
+  /** True when this browser is the presenter and may control playback. */
+  isPresenter: boolean;
+  actions: SessionActions;
 };
 
 // --- Agent rows (agent_message, agent_status, session.roundState) ---

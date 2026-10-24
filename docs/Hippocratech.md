@@ -627,6 +627,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 
 | Date | Decision |
 |---|---|
+| Oct 24, 2026 | **SpacetimeDB module is TypeScript** (2.13), sharing `packages/sim-core` with `hippo-sim`. Verified on a local server: live runs match `sim-core` tick for tick, and two clients stay in sync |
 | Oct 22, 2026 | Product name **Hippocra.tech**; upload in scope; one simulation engine |
 | Oct 23, 2026 | Collaborative review; human approval gate; table judging with the whole team present |
 | Oct 23, 2026 | Sponsor tracks: Fetch.ai, Armadin, Microsoft, Factory, Anthropic, SpacetimeDB. All others dropped |

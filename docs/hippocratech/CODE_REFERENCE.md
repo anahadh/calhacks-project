@@ -20,6 +20,15 @@ data/hospitals/          demo.json, template.json, invalid/
 
 If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hippo-sim` become TypeScript packages instead, with the same split.
 
+**Update (Oct 24): the SpacetimeDB module is TypeScript** (2.13) and lives at:
+
+- `packages/sim-core/` the spread engine (`engine.ts`, `policy.ts`, `rng.ts`, `run.ts`), with `test/engine.test.ts` for determinism.
+- `spacetime/src/index.ts` all tables and the base reducers (sessions, presence, runs, scheduled `run_tick`, annotations). `spacetime/src/constants.ts` holds constants, because every export from `index.ts` must be a table, reducer or lifecycle hook or the module won't load.
+- `spacetime/test/module.test.ts` unit tests; `spacetime/test/live.integration.test.ts` two live clients against a running server (`STDB_URI=ws://127.0.0.1:3000`).
+- `apps/web/lib/stdb/module_bindings/` generated with `npm run generate -w hippocratech-module`. Never edit by hand.
+- `apps/web/lib/stdb/connection.ts`, `live-session.ts` the live subscription; `use-session.ts` uses it when `NEXT_PUBLIC_STDB_URI` is set, else the mock.
+- Feature reducers (F1 agents, F2 recommendations, F4 solution) go in their own `spacetime/src/<feature>.ts` files, re-exported from `index.ts`.
+
 ## Simulation (SpacetimeDB and sim-core)
 
 | Path | Owner | Role |
