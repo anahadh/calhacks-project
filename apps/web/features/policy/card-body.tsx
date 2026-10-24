@@ -14,13 +14,16 @@ import { SPEAKER_NAME } from "@/features/agents/agents";
 export function RecommendationCard({
   rec,
   baseline,
+  baselineNote,
   index,
   blocked,
   onShow,
 }: {
   rec: RecommendationRow;
-  /** Patients affected on the session's baseline run (its run row). */
-  baseline: number;
+  /** Patients affected on the session's baseline run (its run row), once that run is done. */
+  baseline?: number;
+  /** Shown in place of the baseline while it isn't final ("baseline paused at step 5 of 14"). */
+  baselineNote?: string;
   index: SessionIndex;
   /** Why Show the solution would be refused now (solution_start's reasons), or null. */
   blocked: string | null;
@@ -73,7 +76,14 @@ export function RecommendationCard({
 
       <div className="num mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-muted">
         <span>
-          Patients affected <s className="text-ink-faint">{baseline}</s> → <b className="font-disp text-[15px] font-light text-ink">{rec.verified.patientsAffected}</b>
+          Patients affected{" "}
+          {baseline !== undefined && (
+            <>
+              <s className="text-ink-faint">{baseline}</s> →{" "}
+            </>
+          )}
+          <b className="font-disp text-[15px] font-light text-ink">{rec.verified.patientsAffected}</b>
+          {baseline === undefined && baselineNote && <span className="ml-1 text-ink-faint">({baselineNote})</span>}
         </span>
         <span>Devices compromised {rec.verified.devicesCompromised}</span>
         <span>Connections cut {rec.verified.removedFlows.length}</span>

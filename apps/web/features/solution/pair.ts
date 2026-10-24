@@ -4,6 +4,7 @@
 // column, copied (AGENTS.md rule 3): nothing here simulates or recomputes.
 
 import { MOCK_REFUSAL } from "@/features/agents/defend";
+import { finalOf, notFinalYet } from "@/features/flow/final";
 import { controlRefusal, runProgress, solutionRefusal, type PlaybackControl } from "@/lib/stdb/run-status";
 import type { Hospital, RunRow, RunView, ServiceStateRow, SessionSnapshot } from "@/lib/stdb/types";
 
@@ -91,24 +92,38 @@ export function pairClock(sides: Sides): { tick: number; finalTick: number; line
 
 export type Delta = {
   label: string;
-  /** No segmentation's value, or undefined until its row arrives. */
+  /** No segmentation's final value, or undefined until that run is done. */
   before?: number;
-  /** The plan's value, or undefined until its row arrives. */
+  /** The plan's final value, or undefined until that run is done. */
   after?: number;
   /** The headline (UX rule 1: patients affected leads). */
   lead?: boolean;
 };
 
-/** The before/after strip, from the two run rows' summary columns, plus the plan's rule count. */
+/**
+ * The before/after strip, from the two run rows' summary columns, plus the
+ * plan's rule count. A side's numbers fill in only once its run is done: part
+ * way through, a run row holds the numbers at that step, and the two sides
+ * finish at different steps, so mid-run columns would compare unlike things.
+ */
 export function beforeAfter(none: RunRow | undefined, plan: RunRow | undefined, rules: number | undefined): Delta[] {
+  const b = finalOf(none);
+  const a = finalOf(plan);
   return [
-    { label: "Patients affected", before: none?.patientsAffected, after: plan?.patientsAffected, lead: true },
-    { label: "Devices compromised", before: none?.devicesCompromised, after: plan?.devicesCompromised },
-    { label: "Services down", before: none?.servicesDown, after: plan?.servicesDown },
-    { label: "Delayed procedures", before: none?.delayedProcedures, after: plan?.delayedProcedures },
-    { label: "Protected flows broken", before: none?.protectedBroken.length, after: plan?.protectedBroken.length },
+    { label: "Patients affected", before: b?.patientsAffected, after: a?.patientsAffected, lead: true },
+    { label: "Devices compromised", before: b?.devicesCompromised, after: a?.devicesCompromised },
+    { label: "Services down", before: b?.servicesDown, after: a?.servicesDown },
+    { label: "Delayed procedures", before: b?.delayedProcedures, after: a?.delayedProcedures },
+    { label: "Protected flows broken", before: b?.protectedBroken.length, after: a?.protectedBroken.length },
     { label: "Rules", before: none ? 0 : undefined, after: plan ? rules : undefined },
   ];
+}
+
+/** Which side the strip is still waiting for, and where it is ("No segmentation paused at step 5 of 14"), or null. */
+export function stripPending(none: RunRow | undefined, plan: RunRow | undefined): string | null {
+  const sides: [string, string | null][] = [["No segmentation", notFinalYet(none)], ["With the plan", notFinalYet(plan)]];
+  const waiting = sides.filter(([, note]) => note !== null).map(([side, note]) => `${side} ${note}`);
+  return waiting.length ? waiting.join(" · ") : null;
 }
 
 export type KeptFlow = { purpose: string; flowIds: string[]; broken: string[] };

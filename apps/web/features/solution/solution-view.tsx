@@ -10,7 +10,8 @@ import { ROLE_LABEL } from "@/lib/format";
 import { pairOf, runProgress } from "@/lib/stdb/run-status";
 import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
 import type { RecommendationRow, RunRow, SessionSnapshot } from "@/lib/stdb/types";
-import { beforeAfter, keptWorking, pairClock, pairRefusal, pairTarget, sceneOf, type Delta } from "./pair";
+import { numbersCaption } from "@/features/flow/final";
+import { beforeAfter, keptWorking, pairClock, pairRefusal, pairTarget, sceneOf, stripPending, type Delta } from "./pair";
 
 // The payoff screen (UX.md "Solution view"): the same attack rerun as one
 // lockstep pair from solution_start, "No segmentation" on the left and the
@@ -37,6 +38,9 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
     reset: pairTarget("reset", sides), speed: pairTarget("speed", sides),
   };
   const deltas = beforeAfter(none, plan, rec?.rules.length);
+  const pending = stripPending(none, plan);
+  // A pair run's subscription failing is shown as written (rule 14), never as an empty scene.
+  const rowsError = left.error ?? right.error;
   const kept = keptWorking(session.hospital, plan, right.services);
   const brokenPurposes = kept.flows.filter((f) => f.broken.length).map((f) => f.purpose);
   const notes = [...new Set([...(none?.assumptions ?? []), ...(plan?.assumptions ?? [])])];
@@ -87,9 +91,9 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
               Same attack, same patient zero · both sides in lockstep
             </div>
           </div>
-          {err && (
+          {(err || rowsError) && (
             <span role="alert" className="num text-[11px] text-ink-muted">
-              {err}
+              {err ?? rowsError}
             </span>
           )}
           <div className="ml-auto flex flex-wrap items-center gap-3">
@@ -118,7 +122,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
           />
         </div>
 
-        <BeforeAfter deltas={deltas} />
+        <BeforeAfter deltas={deltas} pending={pending} />
 
         <div className="grid gap-3.5 lg:grid-cols-2">
           <Rules rec={rec} />
@@ -166,6 +170,12 @@ function Side({
         </p>
       )}
       <div className="relative h-[440px]">{scene}</div>
+      {/* The scene's numbers: the step on screen until the run is done (final ones are in the strip). */}
+      {numbersCaption(run) && (
+        <div className="num border-t border-line px-3.5 pt-1.5 text-[10px] uppercase tracking-[0.08em] text-ink-faint">
+          {numbersCaption(run)}
+        </div>
+      )}
       <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-px border-t border-line bg-line">
         <Stat label="Patients affected" value={run?.patientsAffected} lead />
         <Stat label="Devices compromised" value={run?.devicesCompromised} />
@@ -186,14 +196,22 @@ function Stat({ label, value, lead }: { label: string; value?: number; lead?: bo
   );
 }
 
-/** Each number from the two run rows, with the difference called out ("212 → 9"). */
-function BeforeAfter({ deltas }: { deltas: Delta[] }) {
+/**
+ * Each number from the two run rows, with the difference called out ("212 → 9").
+ * A side shows "—" until its run is done; the line says which side is still playing.
+ */
+function BeforeAfter({ deltas, pending }: { deltas: Delta[]; pending: string | null }) {
   return (
     <section className="panel">
       <div className="panel-h">
         <h2>Before and after</h2>
         <span className="eyebrow ml-auto">no segmentation → with the plan</span>
       </div>
+      {pending && (
+        <p role="status" className="num border-b border-line px-4 py-1.5 text-[10.5px] text-ink-faint">
+          Final numbers fill in as each side finishes · {pending}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-3 lg:grid-cols-6">
         {deltas.map((d) => (
           <div key={d.label} className="bg-panel px-3.5 py-3">

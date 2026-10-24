@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MOCK_REFUSAL } from "@/features/agents/defend";
 import { recRow, runRow, withRun } from "@/features/fixtures";
 import type { Hospital, RunView, SessionSnapshot } from "@/lib/stdb/types";
-import { beforeAfter, keptWorking, pairClock, pairRefusal, pairTarget, sceneOf, showBlocker } from "./pair";
+import { beforeAfter, keptWorking, pairClock, pairRefusal, pairTarget, sceneOf, showBlocker, stripPending } from "./pair";
 
 describe("showBlocker", () => {
   const done = runRow({ status: "done", tick: 15, finalTick: 15 });
@@ -76,8 +76,8 @@ describe("pairClock", () => {
 describe("beforeAfter", () => {
   it("copies the two run rows' summary columns, patients first", () => {
     const d = beforeAfter(
-      none({ patientsAffected: 212, devicesCompromised: 14, servicesDown: 7, delayedProcedures: 52 }),
-      plan({ patientsAffected: 9, devicesCompromised: 1, servicesDown: 1, delayedProcedures: 0, protectedBroken: ["fl_1"] }),
+      none({ status: "done", patientsAffected: 212, devicesCompromised: 14, servicesDown: 7, delayedProcedures: 52 }),
+      plan({ status: "done", patientsAffected: 9, devicesCompromised: 1, servicesDown: 1, delayedProcedures: 0, protectedBroken: ["fl_1"] }),
       3,
     );
     expect(d[0]).toEqual({ label: "Patients affected", before: 212, after: 9, lead: true });
@@ -91,8 +91,39 @@ describe("beforeAfter", () => {
     ]);
   });
   it("leaves a side blank until its row arrives", () => {
-    const d = beforeAfter(undefined, plan({ patientsAffected: 4 }), 2);
+    const d = beforeAfter(undefined, plan({ status: "done", patientsAffected: 4 }), 2);
     expect(d[0]).toMatchObject({ before: undefined, after: 4 });
+  });
+
+  it("leaves a side blank until its run is done, so mid-run columns never read as the result", () => {
+    // No segmentation part way through (patients 0 until its final step), the plan already finished.
+    const playing = none({ status: "running", tick: 5, finalTick: 14, patientsAffected: 0, devicesCompromised: 6 });
+    const finished = plan({ status: "done", tick: 1, finalTick: 1, patientsAffected: 26, devicesCompromised: 1, servicesDown: 1, delayedProcedures: 26 });
+    const d = beforeAfter(playing, finished, 2);
+    expect(d.map((x) => [x.label, x.before, x.after])).toEqual([
+      ["Patients affected", undefined, 26],
+      ["Devices compromised", undefined, 1],
+      ["Services down", undefined, 1],
+      ["Delayed procedures", undefined, 26],
+      ["Protected flows broken", undefined, 0],
+      ["Rules", 0, 2],
+    ]);
+    expect(beforeAfter(none({ status: "paused", tick: 5, finalTick: 14 }), plan({ status: "paused" }), 2)[0]).toMatchObject({
+      before: undefined,
+      after: undefined,
+    });
+  });
+});
+
+describe("stripPending", () => {
+  it("names the side still playing and where it is, until both are done", () => {
+    expect(stripPending(none({ status: "running", tick: 5, finalTick: 14 }), plan({ status: "done", tick: 1, finalTick: 1 }))).toBe(
+      "No segmentation playing, step 5 of 14",
+    );
+    expect(stripPending(none({ status: "paused", tick: 5, finalTick: 14 }), plan())).toBe(
+      "No segmentation paused at step 5 of 14 · With the plan computing…",
+    );
+    expect(stripPending(none({ status: "done" }), plan({ status: "done" }))).toBeNull();
   });
 });
 

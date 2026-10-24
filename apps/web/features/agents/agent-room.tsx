@@ -3,6 +3,7 @@
 import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
+import { finalOf, notFinalYet } from "@/features/flow/final";
 import { RecommendationCard } from "@/features/policy/card-body";
 import { showBlocker } from "@/features/solution/pair";
 import { AgentIcon } from "./agent-icon";
@@ -89,8 +90,9 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
   const rounds = [...new Set(messages.map((m) => m.round))];
   const lastTest = [...messages].reverse().find((m) => m.tested)?.tested;
   const constraints = messages.filter((m) => m.constraint).length;
-  // The baseline run's own column (the run row), never summed in the browser.
-  const baseline = session.totals.patientsAffected;
+  // The baseline run's own column (the run row), never summed in the browser,
+  // and only once the run is done: a paused baseline's column is its current step's.
+  const baseline = finalOf(session.activeRun)?.patientsAffected;
 
   return (
     <div className="panel">
@@ -140,7 +142,10 @@ function Negotiation({ session, index }: { session: SessionSnapshot; index: Sess
         <PlanCell label="Patients affected">
           {lastTest ? (
             <>
-              {lastTest.patientsAffected} <small className="text-[11px] font-medium text-ink-faint">was {baseline}</small>
+              {lastTest.patientsAffected}{" "}
+              <small className="text-[11px] font-medium text-ink-faint">
+                {baseline !== undefined ? `was ${baseline}` : `baseline ${notFinalYet(session.activeRun)}`}
+              </small>
             </>
           ) : (
             "—"
@@ -211,6 +216,9 @@ function PlanCell({ label, children }: { label: string; children: React.ReactNod
 
 function Recommendations({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   const recs = session.recommendations.slice(0, 3);
+  // Compared with the baseline's result only once the baseline has finished playing.
+  const baseline = finalOf(session.activeRun)?.patientsAffected;
+  const baselineNote = baseline === undefined ? `baseline ${notFinalYet(session.activeRun)}` : undefined;
   return (
     <div className="panel">
       <div className="panel-h">
@@ -223,7 +231,8 @@ function Recommendations({ session, index }: { session: SessionSnapshot; index: 
         <RecommendationCard
           key={rec.id}
           rec={rec}
-          baseline={session.totals.patientsAffected}
+          baseline={baseline}
+          baselineNote={baselineNote}
           index={index}
           blocked={showBlocker(session, rec.id)}
           onShow={() => session.actions.showSolution(rec.id)}
