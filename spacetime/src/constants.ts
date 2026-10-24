@@ -13,7 +13,7 @@ export const ANNOTATING_ROLES = ["security", "clinical_engineering", "operations
 // Runs. The engine computes every frame; the run watcher feeds them in (ingest.ts).
 /** requested: waiting for the engine. running/paused: frames arriving. done: the final frame landed. error: see run.detail. */
 export const RUN_STATUSES = ["requested", "running", "paused", "done", "error"] as const;
-/** Largest frames_json one run_frames_apply call may carry. */
+/** Largest frames_json one run_frames_apply call may carry, in UTF-8 bytes. */
 export const FRAMES_MAX = 256 * 1024;
 /** Longest run.detail kept from run_fail. */
 export const DETAIL_MAX = 500;

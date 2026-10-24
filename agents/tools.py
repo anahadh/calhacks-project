@@ -160,10 +160,10 @@ class Relay:
     with `Authorization: Bearer $RELAY_TOKEN`. Otherwise appends it to
     <RELAY_LOG_DIR>/<sessionId>.jsonl (with a "table" field) and prints sent messages.
 
-    Rows carry fields beyond the spec's tables: "direction" (sent or received; rule 9
+    Rows carry fields beyond the spec's tables: "direction" (sent or received; rule 10
     has both ends post, so every message appears twice), "fixture" (true when results
     come from fixtures/results/, so the UI can label the run) and "reasonSource"
-    ("claude" or "template": who wrote "reason", rule 13).
+    ("claude" or "template": who wrote "reason", rule 14).
     """
 
     async def post(

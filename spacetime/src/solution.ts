@@ -6,12 +6,31 @@
 //
 // Not a deployment (rule 9): nothing here writes recommendation.status. The
 // session's baseline (active_run_id) stays put, so the Agent Room keeps reading it.
+// The pair reruns the attack on screen only when it is the attack the plan was
+// tested on, so the plan side's numbers can equal recommendation.verified_json.
 // Every export here must be a reducer (index.ts re-exports this file).
 
 import { t } from "spacetimedb/server";
+import type { Timestamp } from "spacetimedb";
 
 import { SPEEDS } from "./constants";
-import spacetimedb, { BEFORE_FRAME_0, busyRun, fail, getSession, readRun, requirePresenter } from "./schema";
+import spacetimedb, { BEFORE_FRAME_0, busyRun, fail, getSession, readRun, requirePresenter, roundOpen } from "./schema";
+
+type DefendRow = { id: bigint; patient_zero: string; challenges_json: string; created_at: Timestamp };
+
+/**
+ * The Create aggregate fix request a plan answers: the newest one in the
+ * session at or before the plan's last write. Round numbers restart at 1 on
+ * every request, so recommendation.round can't name it.
+ */
+function requestBehind(ctx: any, sessionId: string, updatedAt: Timestamp): DefendRow | undefined {
+  let best: DefendRow | undefined;
+  for (const d of ctx.db.defend_request_log.session_id.filter(sessionId) as Iterable<DefendRow>) {
+    if (d.created_at.microsSinceUnixEpoch > updatedAt.microsSinceUnixEpoch) continue;
+    if (!best || d.id > best.id) best = d;
+  }
+  return best;
+}
 
 /** A fresh pair id per press, so a reopened solution never reuses a stale plan. */
 function newPairId(ctx: any, sessionId: string, recommendationId: string): string {
@@ -30,12 +49,16 @@ export const solution_start = spacetimedb.reducer(
     if (!(SPEEDS as readonly number[]).includes(speed)) fail("Speed must be 0.5, 1, 2 or 4.");
     const rec = ctx.db.recommendation.id.find(recommendation_id);
     if (!rec || rec.session_id !== session_id) fail(`Recommendation "${recommendation_id}" does not exist in this session.`);
-    if (s.round_state === "running" || s.round_state === "waiting_for_human") {
-      fail("Wait for the agents to finish negotiating before showing a solution.");
-    }
+    if (roundOpen(s)) fail("Wait for the agents to finish negotiating before showing a solution.");
     if (busyRun(ctx, session_id)) fail("Wait for every run in this session to finish, or pause it, before showing a solution.");
     if (!s.active_run_id) fail("Run the attack first. The solution reruns the baseline's attack.");
     const base = readRun(ctx, s.active_run_id);
+    if (base.status === "error") fail("The attack run failed, so there is no attack to rerun. Reset it or start a new attack.");
+    const tested = requestBehind(ctx, session_id, rec.updated_at);
+    if (!tested) fail("This plan has no aggregate fix request in this session, so there is no attack to rerun.");
+    if (tested.patient_zero !== base.patient_zero || tested.challenges_json !== base.challenges_json) {
+      fail(`This plan was tested on the attack from "${tested.patient_zero}", not the one on screen. Run that attack again, or create an aggregate fix for this one.`);
+    }
 
     const pair_id = newPairId(ctx, session_id, rec.id);
     const common = {

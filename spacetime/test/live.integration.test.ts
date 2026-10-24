@@ -11,10 +11,11 @@
 // anonymous clients, subscribed to the session the way two tabs are, must hold
 // identical rows after every tick, and those rows must equal the frames
 // (oracle.ts). Every argument goes over the wire as real BSATN, including a
-// frames_json at the 256 KiB cap.
+// frames_json at the 256 KiB cap (counted in UTF-8 bytes).
 //
 // The flow is the demo's: start the attack, watch it (with a pause and a step),
-// create an aggregate fix, show the solution as a lockstep pair, reset.
+// create an aggregate fix, show the solution as a lockstep pair, hold every run
+// while a round is open, reset.
 // Frames are the engine's real ones when copied into test/fixtures, the
 // hand-written ones otherwise.
 //
@@ -207,10 +208,30 @@ describe.skipIf(!URI)(`live SpacetimeDB (${PAIR.name} frames)`, () => {
       sessionId, runId: capId, label: "Cap", patientZero: fx.patientZero, seed: 1337, speed: 1, policyJson: "", pairId: "cap", autoplay: false,
     });
     const items = framesJson([[capId, fx.frames[0]]]);
-    const padded = (n: number) => items.slice(0, -1) + " ".repeat(n - items.length) + "]";
+    // Padded to exactly n UTF-8 bytes: the engine's text holds non-ASCII ("—"), so characters undercount.
+    const padded = (n: number) => items.slice(0, -1) + " ".repeat(n - Buffer.byteLength(items, "utf8")) + "]";
     await expect(srv.reducers.runFramesApply({ framesJson: padded(FRAMES_MAX + 1) })).rejects.toThrow(/larger than 256 KiB/);
+    // The cap counts UTF-8 bytes, as BSATN carries them: 3-byte "…" keep this one under 256 Ki characters but over 256 KiB.
+    const wide = structuredClone(fx.frames[0]) as { events: { text: string }[] };
+    wide.events[0].text = "…".repeat(90_000);
+    const wideJson = framesJson([[capId, wide]]);
+    expect(wideJson.length).toBeLessThan(FRAMES_MAX);
+    await expect(srv.reducers.runFramesApply({ framesJson: wideJson })).rejects.toThrow(/larger than 256 KiB/);
     await srv.reducers.runFramesApply({ framesJson: padded(FRAMES_MAX) });
     await until(() => tabs.every((c) => runOf(c, capId)?.status === "paused"), "cap run paused");
+
+    // While the agents negotiate, no run starts, resumes or steps (rule 5), whoever asks.
+    await srv.reducers.roundStateSet({ sessionId, round: 1, state: "running", detail: "" });
+    await until(() => tabs.every((c) => sessionOf(c)?.roundState === "running"), "round running");
+    await expect(a.reducers.runResume({ runId: capId })).rejects.toThrow(/finish negotiating before playing a run/);
+    await expect(a.reducers.runStep({ runId: capId })).rejects.toThrow(/finish negotiating before playing a run/);
+    await expect(a.reducers.runStart({
+      sessionId, runId: `${sessionId}_late`, label: "Late", patientZero: fx.patientZero, seed: 1337, speed: 1,
+      policyJson: "", pairId: "", autoplay: true,
+    })).rejects.toThrow(/finish negotiating before starting an attack/);
+    await srv.reducers.roundStateSet({ sessionId, round: 1, state: "done", detail: "" });
+    await until(() => tabs.every((c) => sessionOf(c)?.roundState === "done"), "round done");
+    expect(tabs.map((c) => [runOf(c, capId)?.status, runOf(c, `${sessionId}_late`)])).toEqual([["paused", undefined], ["paused", undefined]]);
 
     // Only the presenter controls playback; a reset clears the baseline's rows on both tabs.
     await expect(b.reducers.runReset({ runId: baseId })).rejects.toThrow(/presenter/);

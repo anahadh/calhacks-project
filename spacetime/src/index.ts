@@ -13,8 +13,8 @@ import { t } from "spacetimedb/server";
 import { ANNOTATING_ROLES, NOTE_MAX, ROLES, SPEEDS } from "./constants";
 import { hospitalOf, validateHospital } from "./hospital";
 import spacetimedb, {
-  BEFORE_FRAME_0, deleteRunRows, fail, getSession, isServer, readRun, requirePresenter, requireServer, runsForKey, same,
-  statusRefusal, type RunRow,
+  BEFORE_FRAME_0, deleteRunRows, fail, getSession, isServer, keyRefusal, readRun, requirePresenter, requireServer, roundOpen,
+  runsForKey, same, statusRefusal, type RunRow,
 } from "./schema";
 
 // Tables live in schema.ts; feature reducers in their own files, re-exported here.
@@ -110,6 +110,12 @@ export const set_presenter = spacetimedb.reducer(
 // Status machine (INTEGRATION.md 5b): run_start, solution_start and run_reset
 // leave a run `requested`; the watcher's frame 0 makes it running or paused (by
 // autoplay); run_fail makes it `error`; the final frame makes it `done`.
+// While an aggregate-fix round is open, no run starts, resumes or steps (rule 5).
+
+/** Rule 5, the other way round from defend_request: agents talking means no run plays. */
+function refuseDuringRound(ctx: any, sessionId: string, what: string): void {
+  if (roundOpen(getSession(ctx, sessionId))) fail(`Wait for the agents to finish negotiating before ${what}.`);
+}
 
 /** A new run, waiting for the engine. Writes no state rows: frame 0 does. */
 export const run_start = spacetimedb.reducer(
@@ -119,14 +125,16 @@ export const run_start = spacetimedb.reducer(
   },
   (ctx, a) => {
     requirePresenter(ctx, a.session_id);
+    refuseDuringRound(ctx, a.session_id, "starting an attack");
     if (ctx.db.run.id.find(a.run_id)) fail(`Run "${a.run_id}" already exists.`);
     if (!(SPEEDS as readonly number[]).includes(a.speed)) fail("Speed must be 0.5, 1, 2 or 4.");
     const s = getSession(ctx, a.session_id);
     const h = hospitalOf(ctx, a.session_id);
     if (!h.devices.some((d) => d.id === a.patient_zero)) fail(`Device "${a.patient_zero}" does not exist.`);
+    // The engine's own rule decides the list (session_entry_points_set); the module only checks membership.
     const entryPoints = JSON.parse(s.entry_points_json) as string[];
     if (entryPoints.length && !entryPoints.includes(a.patient_zero)) {
-      fail(`The engine can't start an attack on "${a.patient_zero}": patient zero must be a Windows device that runs software and is not a medical device. Pick a highlighted device.`);
+      fail(`"${a.patient_zero}" is not one of the engine's entry points for this hospital. Pick a highlighted device.`);
     }
     if (a.policy_json) {
       try {
@@ -145,23 +153,29 @@ export const run_start = spacetimedb.reducer(
   },
 );
 
-/** Pause or resume every run under the key that is in `from`. Others keep their status. */
-function setStatus(ctx: any, r: RunRow, from: string, to: string): void {
-  for (const x of runsForKey(ctx, r)) if (x.status === from) ctx.db.run.id.update({ ...x, status: to });
+/**
+ * Pause or resume every run under the key that is in `from`. Others keep their
+ * status. A step asked for before the change is dropped, so a run paused again
+ * never takes a frame nobody asked for.
+ */
+function setStatus(ctx: any, runs: RunRow[], from: string, to: string): void {
+  for (const x of runs) if (x.status === from) ctx.db.run.id.update({ ...x, status: to, step_pending: false });
 }
 
 export const run_pause = spacetimedb.reducer({ run_id: t.string() }, (ctx, { run_id }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
-  setStatus(ctx, r, "running", "paused");
+  setStatus(ctx, runsForKey(ctx, r), "running", "paused");
 });
 
+/** Through either run of a pair: the side that already finished doesn't block its partner. */
 export const run_resume = spacetimedb.reducer({ run_id: t.string() }, (ctx, { run_id }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
-  const refusal = statusRefusal(r.status);
-  if (refusal) fail(refusal);
-  setStatus(ctx, r, "paused", "running");
+  refuseDuringRound(ctx, r.session_id, "playing a run");
+  const runs = runsForKey(ctx, r);
+  if (!runs.some((x) => x.status === "paused" || x.status === "running")) fail(keyRefusal(r, runs));
+  setStatus(ctx, runs, "paused", "running");
 });
 
 export const run_set_speed = spacetimedb.reducer({ run_id: t.string(), speed: t.f64() }, (ctx, { run_id, speed }) => {
@@ -175,10 +189,11 @@ export const run_set_speed = spacetimedb.reducer({ run_id: t.string(), speed: t.
 export const run_step = spacetimedb.reducer({ run_id: t.string() }, (ctx, { run_id }) => {
   const r = readRun(ctx, run_id);
   requirePresenter(ctx, r.session_id);
-  if (r.status === "running") fail("Pause the run before stepping.");
-  const refusal = statusRefusal(r.status);
-  if (refusal) fail(refusal);
-  for (const x of runsForKey(ctx, r)) if (x.status === "paused") ctx.db.run.id.update({ ...x, step_pending: true });
+  refuseDuringRound(ctx, r.session_id, "playing a run");
+  const runs = runsForKey(ctx, r);
+  if (runs.some((x) => x.status === "running")) fail("Pause the run before stepping.");
+  if (!runs.some((x) => x.status === "paused")) fail(keyRefusal(r, runs));
+  for (const x of runs) if (x.status === "paused") ctx.db.run.id.update({ ...x, step_pending: true });
 });
 
 /** Back to `requested` with every row cleared. The engine is deterministic, so the watcher recomputes the same run. */

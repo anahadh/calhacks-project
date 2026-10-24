@@ -6,7 +6,7 @@
 import { t } from "spacetimedb/server";
 
 import { AGENT_NAMES, AGENT_STATUSES, MESSAGE_TYPES, PAYLOAD_MAX, ROUND_STATES, SPEAKERS, TEXT_SOURCES } from "./constants";
-import spacetimedb, { busyRun, fail, getSession, requireServer } from "./schema";
+import spacetimedb, { busyRun, fail, getSession, requireServer, roundOpen } from "./schema";
 
 function oneOf<T extends string>(value: string, allowed: readonly T[], what: string): T {
   if (!(allowed as readonly string[]).includes(value)) fail(`${what} must be one of: ${allowed.join(", ")}.`);
@@ -29,9 +29,7 @@ export const defend_request = spacetimedb.reducer({ session_id: t.string() }, (c
   if (r.status === "error") fail("The attack run failed, so there is no baseline for the agents. Reset it or start a new attack.");
   if (r.status === "running") fail("Wait for the run to finish, or pause it, before creating an aggregate fix.");
   if (busyRun(ctx, session_id)) fail("Wait for every run in this session to finish, or pause it, before creating an aggregate fix.");
-  if (s.round_state === "running" || s.round_state === "waiting_for_human") {
-    fail("An aggregate fix is already being negotiated for this session.");
-  }
+  if (roundOpen(s)) fail("An aggregate fix is already being negotiated for this session.");
   ctx.db.defend_request_log.insert({
     id: 0n, session_id, run_id: r.id, patient_zero: r.patient_zero, seed: r.seed, challenges_json: r.challenges_json,
     requested_by: ctx.sender, requester_name: p.name, created_at: ctx.timestamp,

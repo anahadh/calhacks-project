@@ -354,10 +354,20 @@ export function busyRun(ctx: any, sessionId: string): RunRow | undefined {
   return [...ctx.db.run.session_id.filter(sessionId)].find((r: RunRow) => r.status === "requested" || r.status === "running");
 }
 
+/** An aggregate-fix round is open: the agents are negotiating or waiting for a human. No run plays meanwhile (rule 5). */
+export function roundOpen(s: { round_state: string }): boolean {
+  return s.round_state === "running" || s.round_state === "waiting_for_human";
+}
+
 /** Why a playback control can't act on a run in this status. */
 export function statusRefusal(status: string): string {
   if (status === "requested") return "This run is still being computed.";
   if (status === "done") return "This run has finished. Reset it to play again.";
   if (status === "error") return "This run failed. Reset it to try again.";
   return "";
+}
+
+/** Why no run under the key can take a control: the named run's own reason first, then its partner's. */
+export function keyRefusal(r: RunRow, runs: RunRow[]): string {
+  return statusRefusal(r.status) || runs.map((x) => statusRefusal(x.status)).find(Boolean) || "";
 }

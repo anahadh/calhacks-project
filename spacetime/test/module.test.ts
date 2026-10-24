@@ -4,7 +4,7 @@
 // read straight off the frames (oracle.ts); nothing here computes spread.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { ConnectionId } from "spacetimedb";
+import { ConnectionId, Timestamp } from "spacetimedb";
 import { createModuleTestHarness, TestAuth } from "spacetimedb/server/test-utils";
 import spacetimedb, * as mod from "../src/index";
 import { DETAIL_MAX, FRAMES_MAX, KEEP_ATTEMPT_TICKS } from "../src/constants";
@@ -88,7 +88,7 @@ describe("sessions", () => {
     expect(() => set(SERVER, '{"a":1}')).toThrow(/list of device ids/);
     set(SERVER, '["ws_admin","ws_er"]');
     expect(rows("session")[0].entry_points_json).toBe('["ws_admin","ws_er"]');
-    expect(() => startRun({ patient_zero: "mri_1" })).toThrow(/can't start an attack on "mri_1"/);
+    expect(() => startRun({ patient_zero: "mri_1" })).toThrow(/"mri_1" is not one of the engine's entry points/);
     expect(rows("run")).toHaveLength(0);
     startRun({ patient_zero: "ws_er" });
     expect(runRow("run_1").patient_zero).toBe("ws_er");
@@ -234,10 +234,29 @@ describe("run_frames_apply (ingestion)", () => {
     expect(() => call(SERVER, mod.run_frames_apply, { frames_json: "[]" })).toThrow(/no frames/);
     expect(() => call(SERVER, mod.run_frames_apply, { frames_json: "{" })).toThrow(/not valid JSON/);
     const items = JSON.stringify([{ runId: "run_1", frame: BASE.frames[0] }]);
-    const padded = (n: number) => items.slice(0, -1) + " ".repeat(n - items.length) + "]";
+    const padded = (n: number) => items.slice(0, -1) + " ".repeat(n - Buffer.byteLength(items, "utf8")) + "]";
     expect(() => call(SERVER, mod.run_frames_apply, { frames_json: padded(FRAMES_MAX + 1) })).toThrow(/larger than 256 KiB/);
     call(SERVER, mod.run_frames_apply, { frames_json: padded(FRAMES_MAX) }); // at the cap is fine
     expect(runRow("run_1").status).toBe("running");
+  });
+
+  it("measures the size cap in UTF-8 bytes, not characters", () => {
+    startRun();
+    // "…" is one character and three UTF-8 bytes; "😀" is two UTF-16 units and four bytes.
+    const wide = (text: string, bytes: number) => {
+      const f = clone(BASE.frames[0]);
+      f.events[0].text = text;
+      const items = JSON.stringify([{ runId: "run_1", frame: f }]);
+      const size = Buffer.byteLength(items, "utf8");
+      return items.slice(0, -1) + " ".repeat(bytes - size) + "]";
+    };
+    const many = "…".repeat(80_000) + "😀".repeat(10);
+    expect(Buffer.byteLength(wide(many, FRAMES_MAX + 1), "utf8")).toBe(FRAMES_MAX + 1);
+    expect(wide(many, FRAMES_MAX + 1).length).toBeLessThan(FRAMES_MAX); // under the cap in characters
+    expect(() => call(SERVER, mod.run_frames_apply, { frames_json: wide(many, FRAMES_MAX + 1) })).toThrow(/larger than 256 KiB/);
+    expect(runRow("run_1").status).toBe("requested");
+    call(SERVER, mod.run_frames_apply, { frames_json: wide(many, FRAMES_MAX) }); // exactly 256 KiB of bytes lands
+    expect(rows("sim_event")[0].text).toBe(many);
   });
 
   it("lands frame 0 paused without autoplay, and a paused run takes one frame per step", () => {
@@ -377,6 +396,58 @@ describe("playback (presenter reducers the watcher obeys)", () => {
     expect([runRow("left").status, runRow("right").status]).toEqual(["running", "running"]);
   });
 
+  it("resumes and steps a pair through the side that already finished", () => {
+    startRun({ run_id: "left", pair_id: "pair_1" });
+    startRun({ run_id: "right", pair_id: "pair_1" });
+    apply([["left", BASE.frames[0]], ["right", PLAN.frames[0]]]);
+    apply([["left", BASE.frames[1]], ["right", PLAN.frames[1]]]);
+    expect([runRow("left").status, runRow("right").status]).toEqual(["running", "done"]);
+    expect(() => call(ANA, mod.run_step, { run_id: "right" })).toThrow(/Pause the run/);
+    call(ANA, mod.run_pause, { run_id: "right" });
+    call(ANA, mod.run_step, { run_id: "right" });
+    expect([runRow("left").step_pending, runRow("right").step_pending]).toEqual([true, false]);
+    apply([["left", BASE.frames[2]]]);
+    call(ANA, mod.run_resume, { run_id: "right" });
+    expect([runRow("left").status, runRow("right").status]).toEqual(["running", "done"]);
+    apply([["left", BASE.frames[3]]]);
+    expect(() => call(ANA, mod.run_resume, { run_id: "right" })).toThrow(/finished/);
+    expect(() => call(ANA, mod.run_step, { run_id: "left" })).toThrow(/finished/);
+  });
+
+  it("drops a pending step on resume and on pause, so a paused run takes no frame nobody asked for", () => {
+    startRun({ autoplay: false });
+    apply([["run_1", BASE.frames[0]]]);
+    call(ANA, mod.run_step, { run_id: "run_1" });
+    call(ANA, mod.run_resume, { run_id: "run_1" });
+    expect(runRow("run_1")).toMatchObject({ status: "running", step_pending: false });
+    call(ANA, mod.run_pause, { run_id: "run_1" });
+    expect(runRow("run_1")).toMatchObject({ status: "paused", step_pending: false });
+    expect(() => apply([["run_1", BASE.frames[1]]])).toThrow(/no step was asked for/);
+  });
+
+  it("starts, resumes and steps no run while an aggregate-fix round is open (rule 5)", () => {
+    const round = (state: string) => call(SERVER, mod.round_state_set, { session_id: "demo", round: 1, state, detail: "" });
+    startRun();
+    apply([["run_1", BASE.frames[0]]]);
+    call(ANA, mod.run_pause, { run_id: "run_1" });
+    call(DEV, mod.defend_request, { session_id: "demo" });
+    for (const state of ["running", "waiting_for_human"]) {
+      round(state);
+      expect(() => call(ANA, mod.run_resume, { run_id: "run_1" })).toThrow(/finish negotiating before playing a run/);
+      expect(() => call(ANA, mod.run_step, { run_id: "run_1" })).toThrow(/finish negotiating before playing a run/);
+      expect(() => startRun({ run_id: "run_2" })).toThrow(/finish negotiating before starting an attack/);
+      expect(() => startRun({ run_id: "p_left", pair_id: "p" })).toThrow(/finish negotiating/);
+      expect(() => call(SERVER, mod.run_resume, { run_id: "run_1" })).toThrow(/finish negotiating/); // no caller is exempt
+    }
+    expect(runRow("run_1")).toMatchObject({ status: "paused", step_pending: false });
+    expect(rows("run")).toHaveLength(1);
+    expect(rows("session")[0].active_run_id).toBe("run_1");
+    expect(() => apply([["run_1", BASE.frames[1]]])).toThrow(/no step was asked for/);
+    round("done");
+    call(ANA, mod.run_resume, { run_id: "run_1" });
+    expect(runRow("run_1").status).toBe("running");
+  });
+
   it("resets to requested with every row cleared, autoplay off, and the engine columns emptied", () => {
     startRun();
     feed("run_1", BASE, 0, 2);
@@ -407,10 +478,16 @@ const rec = (name: string) => JSON.stringify({
   testResult: { ticks: 1 }, verdicts: [], explanation: "Why.", explanationSource: "template", requiredRoles: ["security"],
 });
 
-function finishedBaselineWithRecommendation() {
+/** Moves the harness clock on, so rows written next carry a later timestamp. */
+const later = () => t.clock.set(new Timestamp(t.clock.now().microsSinceUnixEpoch + 1_000_000n));
+
+/** A finished baseline, a Create aggregate fix request on it, then the Coordinator's plan. */
+function finishedBaselineWithRecommendation(round = 1, name = "Cut admin SMB") {
   startRun();
   feed("run_1", BASE, 0, BASE.finalTick);
-  call(SERVER, mod.recommendation_upsert, { session_id: "demo", round: 1, recommendation_json: rec("Cut admin SMB"), fixture: false });
+  call(DEV, mod.defend_request, { session_id: "demo" });
+  later();
+  call(SERVER, mod.recommendation_upsert, { session_id: "demo", round, recommendation_json: rec(name), fixture: false });
 }
 
 describe("solution_start / solution_close", () => {
@@ -465,6 +542,44 @@ describe("solution_start / solution_close", () => {
     expect(rows("run").filter((x) => x.pair_id === first)).toHaveLength(2); // runs are kept
     call(ANA, mod.solution_start, { session_id: "demo", recommendation_id: "demo:1", speed: 1 });
     expect(rows("session")[0].solution_pair_id).toBe("pair_demo_1_2");
+  });
+
+  it("reruns only the attack the plan was tested on, and never a failed one", () => {
+    finishedBaselineWithRecommendation(); // tested on BASE.patientZero
+    const start = () => call(ANA, mod.solution_start, { session_id: "demo", recommendation_id: "demo:1", speed: 1 });
+    startRun({ run_id: "run_2" });
+    call(SERVER, mod.run_fail, { run_id: "run_2", detail: "Engine refused" });
+    expect(start).toThrow(/attack run failed, so there is no attack to rerun/);
+    startRun({ run_id: "run_3", patient_zero: "ws_er", autoplay: false });
+    apply([["run_3", BASE.frames[0]]]);
+    expect(start).toThrow(new RegExp(`tested on the attack from "${BASE.patientZero}", not the one on screen`));
+    expect(rows("run").filter((r) => r.pair_id)).toHaveLength(0);
+    startRun({ run_id: "run_4", patient_zero: BASE.patientZero });
+    feed("run_4", BASE, 0, BASE.finalTick);
+    start(); // the same attack again: the same engine inputs
+    expect(rows("run").filter((r) => r.pair_id).map((r) => r.patient_zero)).toEqual([BASE.patientZero, BASE.patientZero]);
+  });
+
+  it("matches each plan to its own request by time, since round numbers restart on every request", () => {
+    finishedBaselineWithRecommendation(2, "Older plan"); // request A on BASE.patientZero, then demo:2
+    later();
+    startRun({ run_id: "run_2", patient_zero: "ws_er", autoplay: false });
+    apply([["run_2", BASE.frames[0]]]);
+    call(DEV, mod.defend_request, { session_id: "demo" }); // request B, on ws_er
+    later();
+    call(SERVER, mod.recommendation_upsert, { session_id: "demo", round: 1, recommendation_json: rec("Newer plan"), fixture: false });
+    const start = (id: string) => () => call(ANA, mod.solution_start, { session_id: "demo", recommendation_id: id, speed: 1 });
+    expect(start("demo:2")).toThrow(new RegExp(`tested on the attack from "${BASE.patientZero}"`));
+    start("demo:1")();
+    expect(rows("run").filter((r) => r.pair_id).map((r) => r.patient_zero)).toEqual(["ws_er", "ws_er"]);
+  });
+
+  it("refuses a plan with no aggregate fix request behind it", () => {
+    startRun();
+    feed("run_1", BASE, 0, BASE.finalTick);
+    call(SERVER, mod.recommendation_upsert, { session_id: "demo", round: 1, recommendation_json: rec("Orphan"), fixture: true });
+    expect(() => call(ANA, mod.solution_start, { session_id: "demo", recommendation_id: "demo:1", speed: 1 }))
+      .toThrow(/no aggregate fix request in this session/);
   });
 });
 

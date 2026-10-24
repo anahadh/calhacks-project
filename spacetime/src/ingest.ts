@@ -194,6 +194,21 @@ function readFrame(v: unknown, path: string, ix: HospitalIndex): TickFrame {
   };
 }
 
+/** A string's UTF-8 size, as BSATN sends it. Counting stops once past `max`. */
+function utf8Bytes(s: string, max: number): number {
+  let n = 0;
+  for (let i = 0; i < s.length && n <= max; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) {
+      n += 4; // a surrogate pair is one 4-byte code point
+      i++;
+    } else n += 3;
+  }
+  return n;
+}
+
 function patientState(v: unknown, path: string): string {
   const s = str(v, path);
   if (!(PATIENT_STATES as readonly string[]).includes(s)) fail(`${path} must be one of: ${PATIENT_STATES.join(", ")}.`);
@@ -298,7 +313,10 @@ function applyFrame(ctx: any, r: RunRow, f: TickFrame): void {
  */
 export const run_frames_apply = spacetimedb.reducer({ frames_json: t.string() }, (ctx, { frames_json }) => {
   requireServer(ctx);
-  if (frames_json.length > FRAMES_MAX) fail(`frames_json is larger than ${FRAMES_MAX / 1024} KiB. Send fewer frames per call.`);
+  // Bytes, not characters: every UTF-16 unit is at least one byte, so the length check is a fast first cut.
+  if (frames_json.length > FRAMES_MAX || utf8Bytes(frames_json, FRAMES_MAX) > FRAMES_MAX) {
+    fail(`frames_json is larger than ${FRAMES_MAX / 1024} KiB. Send fewer frames per call.`);
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(frames_json);
