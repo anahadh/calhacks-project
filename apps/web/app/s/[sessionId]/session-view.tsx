@@ -19,10 +19,32 @@ import type { SessionSnapshot } from "@/lib/stdb/types";
 
 export function SessionView({ sessionId }: { sessionId: string }) {
   const session = useSession(sessionId);
-  const index = useSessionIndex(session);
   const [view, setView] = useState<ViewId>("simulation");
   const [hovered, setHovered] = useState<string | null>(null);
   const [floor, setFloor] = useState("all");
+  const [pickingNew, setPickingNew] = useState(false);
+  const [pickError, setPickError] = useState<string>();
+
+  // Picking patient zero: before the first attack, or after + New run. The
+  // building itself is the picker — the presenter clicks a device to start.
+  const picking = !session.activeRun || pickingNew;
+  // While picking a new run, show the empty hospital (no run's rows), not the last attack.
+  const shown: SessionSnapshot =
+    picking && session.activeRun
+      ? { ...session, devices: [], services: [], patients: [], attempts: [], events: [], snapshots: [], activeRun: undefined, activeRunId: "" }
+      : session;
+  const index = useSessionIndex(shown);
+  const canPick = picking && session.isPresenter && session.source === "live";
+  const pick = async (id: string) => {
+    if (!canPick || !session.entryPoints.includes(id)) return;
+    setPickError(undefined);
+    try {
+      await session.actions.startRun(id);
+      setPickingNew(false);
+    } catch (e) {
+      setPickError((e as Error).message);
+    }
+  };
 
   // ?view=agents opens straight onto the Agents tab.
   useEffect(() => {
@@ -69,7 +91,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       {view === "simulation" ? (
         <main className="flex flex-grow flex-wrap items-stretch gap-6 p-4 md:p-6">
           <section aria-label="Simulation" className="panel flex min-w-0 flex-[999_1_760px] flex-col overflow-hidden">
-            <Timeline session={session} index={index} />
+            <Timeline session={session} index={index} onNewRun={() => setPickingNew(true)} />
 
             <div className="flex flex-grow flex-col bg-scene-ground">
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4">
@@ -99,13 +121,15 @@ export function SessionView({ sessionId }: { sessionId: string }) {
               </div>
 
               <div className="relative min-h-[620px] flex-1">
-                <SceneBoundary session={session}>
+                <SceneBoundary session={shown}>
                   <HospitalScene
-                    session={session}
+                    session={shown}
                     index={index}
                     hovered={hovered}
                     onHover={setHovered}
                     floorId={floor === "all" ? undefined : floor}
+                    onPick={canPick ? pick : undefined}
+                    pickable={picking ? (id) => session.entryPoints.includes(id) : undefined}
                   />
                 </SceneBoundary>
                 {hovered && (
@@ -113,9 +137,12 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                     <DeviceCard session={session} index={index} deviceId={hovered} />
                   </div>
                 )}
-                {!session.activeRun && <StartAttack session={session} />}
                 <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
-                  Drag to rotate · scroll to zoom · hover a device
+                  {picking
+                    ? session.isPresenter
+                      ? pickError ?? "Click a device to start the attack from it"
+                      : `Waiting for ${session.presenterName || "the presenter"} to pick patient zero`
+                    : "Drag to rotate · scroll to zoom · hover a device"}
                 </span>
               </div>
             </div>
@@ -180,48 +207,6 @@ function PlanButton({ session, onAgents }: { session: SessionSnapshot; onAgents:
         </svg>
       </button>
       {(error || (blocker && !negotiating)) && <p className="num m-0 text-xs leading-snug text-ink-faint">{error ?? blocker}</p>}
-    </div>
-  );
-}
-
-/** Before any run: the presenter starts the attack. This is the entry to the core loop. */
-function StartAttack({ session }: { session: SessionSnapshot }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-  const pz = session.entryPoints.includes("mri_2") ? "mri_2" : session.entryPoints[0];
-
-  if (!session.isPresenter) {
-    return (
-      <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <span className="num rounded-ctl bg-panel2/90 px-4 py-2 text-xs text-ink-muted">
-          Waiting for {session.presenterName || "the presenter"} to start the attack…
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2">
-      <button
-        type="button"
-        disabled={busy || !pz}
-        onClick={async () => {
-          setError(undefined);
-          setBusy(true);
-          try {
-            await session.actions.startRun(pz);
-          } catch (e) {
-            setError((e as Error).message);
-            setBusy(false);
-          }
-        }}
-        className="num inline-flex min-h-[52px] items-center gap-2.5 rounded-ctl bg-state-infected px-6 text-[14px] font-medium text-bg transition-[filter] enabled:hover:brightness-110 disabled:opacity-50"
-      >
-        {busy ? "Starting…" : "Start attack"}
-        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
-          <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      {error && <span className="num text-xs text-ink-faint">{error}</span>}
     </div>
   );
 }

@@ -12,7 +12,16 @@ import type { SessionSnapshot } from "@/lib/stdb/types";
 const SPEEDS = [0.5, 1, 2, 4] as const;
 const MIN_SPAN = 16; // 4 simulated hours, until the run settles
 
-export function Timeline({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
+export function Timeline({
+  session,
+  index,
+  onNewRun,
+}: {
+  session: SessionSnapshot;
+  index: SessionIndex;
+  /** + New run: the view clears the hospital so a device can be clicked as the next patient zero. */
+  onNewRun?: () => void;
+}) {
   const run = session.runs.find((r) => r.id === session.activeRunId) ?? session.runs[0];
   const [err, setErr] = useState<string>();
   const runTick = run?.tick ?? 0;
@@ -34,7 +43,7 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
   if (!run) {
     return (
       <div className="flex flex-col gap-4 border-b border-line p-5">
-        <RunsStrip session={session} index={index} />
+        <RunsStrip session={session} index={index} onNewRun={onNewRun} />
       </div>
     );
   }
@@ -51,7 +60,7 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
 
   return (
     <div className="flex flex-col gap-4 border-b border-line p-5">
-      <RunsStrip session={session} index={index} />
+      <RunsStrip session={session} index={index} onNewRun={onNewRun} />
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <div className="flex gap-2.5">
@@ -167,7 +176,15 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
 }
 
 /** One tab per baseline run, then + New run. The selected tab is the run on screen. */
-function RunsStrip({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
+function RunsStrip({
+  session,
+  index,
+  onNewRun,
+}: {
+  session: SessionSnapshot;
+  index: SessionIndex;
+  onNewRun?: () => void;
+}) {
   const runs = session.runs.filter((r) => r.id && !r.pairId);
   return (
     <div role="group" aria-label="Runs in this session" className="flex flex-wrap items-center gap-2.5 border-b border-line pb-4">
@@ -191,92 +208,35 @@ function RunsStrip({ session, index }: { session: SessionSnapshot; index: Sessio
           </button>
         );
       })}
-      <NewRun session={session} />
+      <NewRun session={session} onNewRun={onNewRun} />
     </div>
   );
 }
 
-/** + New run: pick a patient zero and start. Anyone in the session can. */
-function NewRun({ session }: { session: SessionSnapshot }) {
-  const [open, setOpen] = useState(false);
-  const [pz, setPz] = useState("");
-  const [err, setErr] = useState<string>();
-  const [busy, setBusy] = useState(false);
-  const { hospital } = session;
+/**
+ * + New run: clears the hospital on screen so the presenter clicks the next
+ * patient zero straight on the building. No picker here; the scene is the picker.
+ */
+function NewRun({ session, onNewRun }: { session: SessionSnapshot; onNewRun?: () => void }) {
   const blocker =
     session.source !== "live" ? "Connect to SpacetimeDB to start a run."
     : !session.me ? "Join the session to start a run."
+    : !session.isPresenter ? `Only ${session.presenterName} starts runs.`
     : null;
 
-  const start = async () => {
-    if (!pz) return;
-    setBusy(true);
-    setErr(undefined);
-    try {
-      await session.actions.startRun(pz);
-      setOpen(false);
-      setPz("");
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        aria-expanded={open}
-        disabled={!!blocker}
-        title={blocker ?? undefined}
-        onClick={() => setOpen(!open)}
-        className="num flex min-h-[60px] items-center gap-2.5 rounded-ctl border border-dashed border-line2 px-4 text-[14px] text-ink enabled:hover:border-ink-faint disabled:cursor-not-allowed disabled:opacity-disabled"
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
-          <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-        New run
-      </button>
-      {open && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            start();
-          }}
-          className="absolute left-0 top-[68px] z-30 flex w-[300px] flex-col gap-2 rounded-panel border border-line2 bg-panel2 p-3 shadow-overlay"
-        >
-          <label htmlFor="new-run-pz" className="num text-xs text-ink-muted">Patient zero</label>
-          <select
-            id="new-run-pz"
-            autoFocus
-            value={pz}
-            onChange={(e) => setPz(e.target.value)}
-            className="num h-11 rounded-ctl border border-line2 bg-panel px-3 text-xs text-ink"
-          >
-            <option value="" disabled>Pick the first infected device</option>
-            {hospital.rooms.map((room) => (
-              <optgroup key={room.id} label={room.name}>
-                {hospital.devices
-                  .filter((d) => d.roomId === room.id)
-                  .map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setOpen(false)} className="num min-h-9 px-2 text-xs text-ink-muted hover:text-ink">
-              Cancel
-            </button>
-            <button disabled={!pz || busy} className="btn btn-primary min-h-9 px-3 text-xs">
-              {busy ? "Starting…" : "Start run"}
-            </button>
-          </div>
-          {err && <p role="alert" className="num m-0 text-[11px] text-ink-muted">{err}</p>}
-        </form>
-      )}
-    </div>
+    <button
+      type="button"
+      disabled={!!blocker || !onNewRun}
+      title={blocker ?? "Click a device on the building to start the next attack"}
+      onClick={onNewRun}
+      className="num flex min-h-[60px] items-center gap-2.5 rounded-ctl border border-dashed border-line2 px-4 text-[14px] text-ink enabled:hover:border-ink-faint disabled:cursor-not-allowed disabled:opacity-disabled"
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+        <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+      New run
+    </button>
   );
 }
 

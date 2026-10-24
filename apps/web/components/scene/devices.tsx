@@ -56,6 +56,8 @@ export function DeviceBox({
   onHover,
   flashAt,
   distanceFactor = 22,
+  onPick,
+  pickable,
 }: {
   device: Device;
   level: number;
@@ -68,6 +70,10 @@ export function DeviceBox({
   flashAt?: number;
   /** drei Html distance factor, chosen by the scene so a chip is ~30px at the default camera. */
   distanceFactor?: number;
+  /** Picking patient zero: a click on this device starts the attack from it. */
+  onPick?: (id: string) => void;
+  /** While picking, false dims a device the engine won't accept as patient zero. */
+  pickable?: boolean;
 }) {
   const infected = !!state?.infected;
   const hot = infected || !!zero;
@@ -107,7 +113,17 @@ export function DeviceBox({
 
       {/* the device marker: an icon chip that always faces the camera */}
       <Html position={[0, CHIP_LIFT, 0]} center distanceFactor={distanceFactor} zIndexRange={[30, 20]} pointerEvents="auto">
-        <div style={{ position: "relative", width: CHIP_PX, height: CHIP_PX }}>
+        <div
+          onClick={onPick && pickable !== false ? () => onPick(device.id) : undefined}
+          style={{
+            position: "relative",
+            width: CHIP_PX,
+            height: CHIP_PX,
+            opacity: pickable === false ? 0.28 : 1,
+            cursor: onPick && pickable !== false ? "pointer" : undefined,
+            transition: "opacity 160ms ease",
+          }}
+        >
           {zero && (
             <span
               className="num"

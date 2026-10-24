@@ -29,6 +29,8 @@ export function HospitalScene({
   hovered,
   onHover,
   floorId,
+  onPick,
+  pickable,
 }: {
   session: SessionSnapshot;
   index: SessionIndex;
@@ -36,6 +38,10 @@ export function HospitalScene({
   onHover: (id: string | null) => void;
   /** Show one floor, brought down to ground height; all floors when unset. */
   floorId?: string;
+  /** Picking patient zero: clicking a device starts the attack from it. */
+  onPick?: (id: string) => void;
+  /** While picking, which devices the engine accepts as patient zero (others dim). */
+  pickable?: (id: string) => boolean;
 }) {
   const { hospital } = session;
   const run = session.activeRun ?? session.runs.find((r) => r.id === session.activeRunId);
@@ -213,6 +219,8 @@ export function HospitalScene({
               onHover={onHover}
               flashAt={timing.flashAt.get(d.id)}
               distanceFactor={HTML_FACTOR}
+              onPick={onPick}
+              pickable={pickable ? pickable(d.id) : undefined}
             />
           );
         })}
