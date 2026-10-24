@@ -27,6 +27,21 @@ The simulation runs inside the SpacetimeDB module. A scheduled reducer, `run_tic
 
 The same engine (`sim-core`) is built into the `hippo-sim` CLI, which the agents use for fast test runs.
 
+## Backtest engine (`engine/`)
+
+Separate from the live `sim-core`, [`engine/`](../engine/README.md) is a standalone, deterministic Python model that backtests a segmentation plan against the real 2021 Conti campaign and scores it — credentials, trust hops, and clinical dependencies, not just connectivity. It is a research / credibility tool: it does **not** compute visible runs and is **not** wired into SpacetimeDB.
+
+```bash
+cd engine
+uv sync --python 3.11 --group dev
+uv run pytest -q                                  # 106 checks
+uv run hippo-backtest replay \
+  --scenario ../claude_instructions/data/scenarios/cuh_hospital.json \
+  --campaign examples/cuh_campaign.json --plan examples/cuh_plan.json
+```
+
+Design and evidence limits are in [`engine/RESEARCH_DECISIONS.md`](../engine/RESEARCH_DECISIONS.md); remaining UI wiring is in [`engine/HANDOFF.md`](../engine/HANDOFF.md).
+
 ## How the agents work (Fetch.ai)
 
 | Agent | Goal | Decides with |

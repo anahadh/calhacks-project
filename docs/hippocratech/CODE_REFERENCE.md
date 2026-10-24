@@ -6,6 +6,45 @@ A map of the repo and who owns each part. Update the matching row in the same ch
 
 ## Repo shape
 
+**Backtest/validation engine (`engine/`):** a standalone, deterministic Python
+implementation of `claude_instructions/IMPLEMENTATION.md` — a causal
+credential/reach/trust replay that backtests a segmentation plan against the real
+2021 campaign and scores it. It is **separate from the live run engine** (the
+TypeScript `packages/sim-core`, which stays authoritative per hard rule 3): it does
+not compute visible runs and is not wired into SpacetimeDB. Its CLI is
+`hippo-backtest`, distinct from the agents' `hippo-sim`. Run from `engine/`
+(`uv sync --python 3.11 --group dev && uv run pytest -q`); see
+[`engine/README.md`](../../engine/README.md),
+[`engine/RESEARCH_DECISIONS.md`](../../engine/RESEARCH_DECISIONS.md) and
+[`engine/HANDOFF.md`](../../engine/HANDOFF.md).
+
+| Path | Owner | Role |
+|---|---|---|
+| `engine/pyproject.toml`, `uv.lock` | Base | Python 3.11 package and locked dependencies |
+| `engine/sim_core/__init__.py` | Base | Package identity and rules version for cache invalidation |
+| `engine/sim_core/schema.py` | Base | Strict scenario/campaign/plan and replay output contracts |
+| `engine/sim_core/adapters.py` | Base | Explicit CUH inventory reconstruction and incomplete-data audit |
+| `engine/sim_core/topology.py` | Base | Network, identity, trust and dependency graph; reachability and ranking |
+| `engine/sim_core/engine.py` | Base | Deterministic rule transitions, defenses and service availability |
+| `engine/sim_core/replay.py` | Base | Authored replay, cache key, event effects, counterfactual attribution |
+| `engine/sim_core/generator.py` | Base | Sole seeded synthetic-interior generator |
+| `engine/sim_core/research.py`, `protocols.py` | Base | Sensitivity, ablations, scoring, freeze and one-use hold-out protocols |
+| `engine/sim_core/serialize.py` | Base | One canonical JSON form (`model_dump_json`) shared by every transport |
+| `engine/sim_core/bundle.py` | Base | Freeze an attack (scenario+campaign+plan) into a deterministic, tamper-evident, replayable bundle; `verify` re-runs the frozen inputs |
+| `engine/sim_core/cache.py` | Base | Content-addressed result store keyed by the replay fingerprint; atomic writes, validate-on-read |
+| `engine/sim_core/cli.py` | Base | `hippo-backtest` CLI: deterministic `replay` and separate `sensitivity` command |
+| `engine/sim_core/planner.py` | Base | Planner input boundary: exposes only Scenario + Plan schema; rejects embedded campaign/expected |
+| `engine/sim_core/api.py` | Base | FastAPI `POST /replay` + WebSocket trace stream; optional CUH demo registry (`demo=True`) and CORS for the dev origin; no transport computes a transition |
+| `engine/sim_core/research_runner.py` | Base | Runs `calibration.yaml` checks; CUH exploratory, HSE/BL reported unsupported (never fitted) |
+| `engine/sim_core/freeze_runner.py` | Base | Repo-root content freeze + one-use exploratory study ledger |
+| `engine/scripts/build_runs.py` | Base | Generates the deterministic CUH run grid into `apps/web/public/propagation-runs/` for the offline UI |
+| `engine/tests/` | Base | Causal/research-protocol checks plus cache, CLI, planner, API, runner, freeze, bundle and cross-transport identity suites |
+| `engine/examples/` | Base | Disclosed exploratory CUH campaign and local illustrative plan |
+| `engine/README.md`, `RESEARCH_DECISIONS.md`, `HANDOFF.md` | Base | Usage, research rationale/evidence limits and remaining adapter work |
+
+The tree below is the live product (TypeScript `sim-core` is its engine). The
+`engine/` package above is the separate Python backtest tool and is not part of it.
+
 ```
 spacetime/               SpacetimeDB module (TypeScript, spacetimedb 2.13): tables, reducers, the live simulation
 packages/sim-core/       Spread engine (TypeScript), shared by the module and hippo-sim

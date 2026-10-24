@@ -1,0 +1,3334 @@
+{
+ "meta": {
+  "name": "Cork University Hospital (simplified)",
+  "provenance": "S",
+  "note": "Interior reconstructed on the PwC Hospital A/B pattern. Only the hospital name, group, model and press statements are public [P]. IPs are RFC 5737 documentation ranges."
+ },
+ "departments": [
+  {
+   "id": "edge",
+   "name": "Edge & remote access",
+   "switch": null
+  },
+  {
+   "id": "dc",
+   "name": "IT data centre",
+   "switch": "SW-DC"
+  },
+  {
+   "id": "rad",
+   "name": "Radiology \u00b7 NIMIS",
+   "switch": "SW-RAD"
+  },
+  {
+   "id": "rt",
+   "name": "Radiotherapy",
+   "switch": "SW-RT"
+  },
+  {
+   "id": "lab",
+   "name": "Laboratory",
+   "switch": "SW-LAB"
+  },
+  {
+   "id": "ed",
+   "name": "Emergency dept",
+   "switch": "SW-ED"
+  },
+  {
+   "id": "theatre",
+   "name": "Theatres",
+   "switch": "SW-THR"
+  },
+  {
+   "id": "wards",
+   "name": "Wards",
+   "switch": "SW-WARD"
+  },
+  {
+   "id": "opd",
+   "name": "Outpatients \u00b7 admissions",
+   "switch": "SW-OPD"
+  },
+  {
+   "id": "pharm",
+   "name": "Pharmacy",
+   "switch": "SW-PH"
+  },
+  {
+   "id": "vendor",
+   "name": "Vendor support",
+   "switch": null
+  }
+ ],
+ "nodes": [
+  {
+   "id": "HSE / NHN",
+   "dept": "edge",
+   "kind": "cloud",
+   "label": "HSE national services \u00b7 NHN",
+   "os": "\u2014",
+   "ip": null,
+   "requires": [],
+   "external": true,
+   "windows": false,
+   "host": {
+    "os_family": "none",
+    "os_version": "\u2014",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "Internet",
+   "dept": "edge",
+   "kind": "cloud",
+   "label": "Internet",
+   "os": "\u2014",
+   "ip": null,
+   "requires": [],
+   "external": true,
+   "windows": false,
+   "host": {
+    "os_family": "none",
+    "os_version": "\u2014",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "FW-EDGE",
+   "dept": "edge",
+   "kind": "fw",
+   "label": "Edge firewall",
+   "os": "appliance",
+   "ip": "192.0.2.121",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "appliance",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "GW-REMOTE",
+   "dept": "edge",
+   "kind": "vpn",
+   "label": "Remote-access gateway",
+   "os": "Windows Server 2012 R2",
+   "ip": "198.51.100.158",
+   "requires": [],
+   "internet_exposed": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2012 R2",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {
+     "remote_access": "unpatched_critical"
+    },
+    "service_classes": [
+     "remote_access"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "VPN-VENDOR",
+   "dept": "vendor",
+   "kind": "vpn",
+   "label": "Vendor VPN",
+   "os": "appliance",
+   "ip": "203.0.113.195",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "appliance",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "remote_access"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-VENDOR-01",
+   "dept": "vendor",
+   "kind": "ws",
+   "label": "Vendor jump host",
+   "os": "Windows 10",
+   "ip": "192.0.2.232",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-CORE",
+   "dept": "dc",
+   "kind": "switch",
+   "label": "Core switch",
+   "os": "switch",
+   "ip": "198.51.100.29",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-DC",
+   "dept": "dc",
+   "kind": "switch",
+   "label": "Data-centre switch",
+   "os": "switch",
+   "ip": "203.0.113.66",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "DC-01",
+   "dept": "dc",
+   "kind": "dc",
+   "label": "Domain controller",
+   "os": "Windows Server 2016",
+   "ip": "192.0.2.103",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2016",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "directory",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "DC-02",
+   "dept": "dc",
+   "kind": "dc",
+   "label": "Domain controller",
+   "os": "Windows Server 2012 R2",
+   "ip": "198.51.100.140",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2012 R2",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "directory",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "FILE-01",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "File server",
+   "os": "Windows Server 2012 R2",
+   "ip": "203.0.113.177",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2012 R2",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "APP-01",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "App server",
+   "os": "Windows Server 2016",
+   "ip": "192.0.2.214",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2016",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "APP-02",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "App server (EOL)",
+   "os": "Windows Server 2008 R2",
+   "ip": "198.51.100.11",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2008 R2",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "DB-01",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "Database server",
+   "os": "Windows Server 2016",
+   "ip": "203.0.113.48",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2016",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "CITRIX-01",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "Citrix (iPMS access)",
+   "os": "Windows Server 2012 R2",
+   "ip": "192.0.2.85",
+   "requires": [
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2012 R2",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "PACS-CACHE",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "Local PACS cache",
+   "os": "Windows Server 2012 R2",
+   "ip": "198.51.100.122",
+   "requires": [
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2012 R2",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "OIS-01",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "Oncology information system",
+   "os": "Windows Server 2016",
+   "ip": "203.0.113.159",
+   "requires": [],
+   "radiotherapy_chain": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2016",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "TPS-SRV",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "Treatment planning server",
+   "os": "Windows Server 2016",
+   "ip": "192.0.2.196",
+   "requires": [],
+   "radiotherapy_chain": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2016",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "LIS-01",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "Lab information system",
+   "os": "Windows Server 2012 R2",
+   "ip": "198.51.100.233",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2012 R2",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "AV-MGMT",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "AV management (monitor-only)",
+   "os": "Windows Server 2008 R2",
+   "ip": "203.0.113.30",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2008 R2",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "BACKUP-01",
+   "dept": "dc",
+   "kind": "srv",
+   "label": "Backup server (online)",
+   "os": "Windows Server 2016",
+   "ip": "192.0.2.67",
+   "requires": [],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows Server 2016",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_monitor_only",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-RAD",
+   "dept": "rad",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "198.51.100.104",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-RT",
+   "dept": "rt",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "203.0.113.141",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-LAB",
+   "dept": "lab",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "192.0.2.178",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-ED",
+   "dept": "ed",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "198.51.100.215",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-THR",
+   "dept": "theatre",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "203.0.113.12",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-WARD",
+   "dept": "wards",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "192.0.2.49",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-OPD",
+   "dept": "opd",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "198.51.100.86",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "SW-PH",
+   "dept": "pharm",
+   "kind": "switch",
+   "label": "Department switch",
+   "os": "switch",
+   "ip": "203.0.113.123",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "switch",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "MRI-1",
+   "dept": "rad",
+   "kind": "mri",
+   "label": "MRI scanner",
+   "os": "vendor Win7 console",
+   "ip": "192.0.2.160",
+   "requires": [
+    "PACS-CACHE",
+    "HSE / NHN"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 console",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "MRI-2",
+   "dept": "rad",
+   "kind": "mri",
+   "label": "MRI scanner",
+   "os": "vendor Win7 console",
+   "ip": "198.51.100.197",
+   "requires": [
+    "PACS-CACHE",
+    "HSE / NHN"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 console",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "CT-1",
+   "dept": "rad",
+   "kind": "ct",
+   "label": "CT scanner",
+   "os": "vendor Win7 console",
+   "ip": "203.0.113.234",
+   "requires": [
+    "PACS-CACHE",
+    "HSE / NHN"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 console",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "CT-2",
+   "dept": "rad",
+   "kind": "ct",
+   "label": "CT scanner",
+   "os": "vendor Win10 console",
+   "ip": "192.0.2.31",
+   "requires": [
+    "PACS-CACHE",
+    "HSE / NHN"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win10 console",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "XR-1",
+   "dept": "rad",
+   "kind": "xr",
+   "label": "Digital X-ray",
+   "os": "vendor console",
+   "ip": "198.51.100.68",
+   "requires": [
+    "PACS-CACHE"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "vendor_embedded",
+    "os_version": "vendor console",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "US-1",
+   "dept": "rad",
+   "kind": "us",
+   "label": "Ultrasound",
+   "os": "vendor console",
+   "ip": "203.0.113.105",
+   "requires": [
+    "PACS-CACHE"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "vendor_embedded",
+    "os_version": "vendor console",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "NIMIS-1",
+   "dept": "rad",
+   "kind": "console",
+   "label": "NIMIS reporting console",
+   "os": "Windows 7",
+   "ip": "192.0.2.142",
+   "requires": [
+    "HSE / NHN",
+    "PACS-CACHE",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "NIMIS-2",
+   "dept": "rad",
+   "kind": "console",
+   "label": "NIMIS reporting console",
+   "os": "Windows 7",
+   "ip": "198.51.100.179",
+   "requires": [
+    "HSE / NHN",
+    "PACS-CACHE",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "NIMIS-3",
+   "dept": "rad",
+   "kind": "console",
+   "label": "NIMIS reporting console",
+   "os": "Windows 7",
+   "ip": "203.0.113.216",
+   "requires": [
+    "HSE / NHN",
+    "PACS-CACHE",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "NIMIS-4",
+   "dept": "rad",
+   "kind": "console",
+   "label": "NIMIS reporting console",
+   "os": "Windows 7",
+   "ip": "192.0.2.13",
+   "requires": [
+    "HSE / NHN",
+    "PACS-CACHE",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-RAD-1",
+   "dept": "rad",
+   "kind": "ws",
+   "label": "Radiology workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.50",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-RAD-2",
+   "dept": "rad",
+   "kind": "ws",
+   "label": "Radiology workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.87",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-RAD-3",
+   "dept": "rad",
+   "kind": "ws",
+   "label": "Radiology workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.124",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "LINAC-1",
+   "dept": "rt",
+   "kind": "linac",
+   "label": "Linear accelerator",
+   "os": "vendor control system",
+   "ip": "198.51.100.161",
+   "requires": [
+    "OIS-01",
+    "TPS-SRV"
+   ],
+   "medical_device": true,
+   "radiotherapy_chain": true,
+   "windows": false,
+   "host": {
+    "os_family": "vendor_embedded",
+    "os_version": "vendor control system",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "LINAC-2",
+   "dept": "rt",
+   "kind": "linac",
+   "label": "Linear accelerator",
+   "os": "vendor control system",
+   "ip": "203.0.113.198",
+   "requires": [
+    "OIS-01",
+    "TPS-SRV"
+   ],
+   "medical_device": true,
+   "radiotherapy_chain": true,
+   "windows": false,
+   "host": {
+    "os_family": "vendor_embedded",
+    "os_version": "vendor control system",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "LINAC-3",
+   "dept": "rt",
+   "kind": "linac",
+   "label": "Linear accelerator",
+   "os": "vendor control system",
+   "ip": "192.0.2.235",
+   "requires": [
+    "OIS-01",
+    "TPS-SRV"
+   ],
+   "medical_device": true,
+   "radiotherapy_chain": true,
+   "windows": false,
+   "host": {
+    "os_family": "vendor_embedded",
+    "os_version": "vendor control system",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "CT-SIM",
+   "dept": "rt",
+   "kind": "ct",
+   "label": "CT simulator",
+   "os": "vendor Win7 console",
+   "ip": "198.51.100.32",
+   "requires": [
+    "TPS-SRV"
+   ],
+   "medical_device": true,
+   "radiotherapy_chain": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 console",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "TPS-1",
+   "dept": "rt",
+   "kind": "console",
+   "label": "Treatment planning console",
+   "os": "Windows 10",
+   "ip": "203.0.113.69",
+   "requires": [
+    "TPS-SRV",
+    "DC-01"
+   ],
+   "radiotherapy_chain": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "TPS-2",
+   "dept": "rt",
+   "kind": "console",
+   "label": "Treatment planning console",
+   "os": "Windows 10",
+   "ip": "192.0.2.106",
+   "requires": [
+    "TPS-SRV",
+    "DC-01"
+   ],
+   "radiotherapy_chain": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-RT-1",
+   "dept": "rt",
+   "kind": "ws",
+   "label": "Oncology workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.143",
+   "requires": [
+    "OIS-01",
+    "DC-01"
+   ],
+   "radiotherapy_chain": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-RT-2",
+   "dept": "rt",
+   "kind": "ws",
+   "label": "Oncology workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.180",
+   "requires": [
+    "OIS-01",
+    "DC-01"
+   ],
+   "radiotherapy_chain": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-RT-3",
+   "dept": "rt",
+   "kind": "ws",
+   "label": "Oncology workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.217",
+   "requires": [
+    "OIS-01",
+    "DC-01"
+   ],
+   "radiotherapy_chain": true,
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "ANL-HAEM",
+   "dept": "lab",
+   "kind": "analyser",
+   "label": "Haematology analyser",
+   "os": "vendor Win7 middleware",
+   "ip": "198.51.100.14",
+   "requires": [
+    "LIS-01"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 middleware",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "ANL-CHEM",
+   "dept": "lab",
+   "kind": "analyser",
+   "label": "Chemistry analyser",
+   "os": "vendor Win7 middleware",
+   "ip": "203.0.113.51",
+   "requires": [
+    "LIS-01"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 middleware",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "ANL-MICRO",
+   "dept": "lab",
+   "kind": "analyser",
+   "label": "Microbiology analyser",
+   "os": "vendor Win7 middleware",
+   "ip": "192.0.2.88",
+   "requires": [
+    "LIS-01"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 middleware",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "ANL-BLOOD",
+   "dept": "lab",
+   "kind": "analyser",
+   "label": "Blood-bank analyser",
+   "os": "vendor Win7 middleware",
+   "ip": "198.51.100.125",
+   "requires": [
+    "LIS-01"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7 middleware",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "vendor"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-LAB-1",
+   "dept": "lab",
+   "kind": "ws",
+   "label": "Lab workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.162",
+   "requires": [
+    "LIS-01",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-LAB-2",
+   "dept": "lab",
+   "kind": "ws",
+   "label": "Lab workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.199",
+   "requires": [
+    "LIS-01",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-LAB-3",
+   "dept": "lab",
+   "kind": "ws",
+   "label": "Lab workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.236",
+   "requires": [
+    "LIS-01",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-LAB-4",
+   "dept": "lab",
+   "kind": "ws",
+   "label": "Lab workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.33",
+   "requires": [
+    "LIS-01",
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ED-1",
+   "dept": "ed",
+   "kind": "ws",
+   "label": "ED workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.70",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ED-2",
+   "dept": "ed",
+   "kind": "ws",
+   "label": "ED workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.107",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ED-3",
+   "dept": "ed",
+   "kind": "ws",
+   "label": "ED workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.144",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ED-4",
+   "dept": "ed",
+   "kind": "ws",
+   "label": "ED workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.181",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ED-5",
+   "dept": "ed",
+   "kind": "ws",
+   "label": "ED workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.218",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-ED-1",
+   "dept": "ed",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "203.0.113.15",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-ED-2",
+   "dept": "ed",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "192.0.2.52",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-ED-3",
+   "dept": "ed",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "198.51.100.89",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-THR-1",
+   "dept": "theatre",
+   "kind": "ws",
+   "label": "Theatre workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.126",
+   "requires": [
+    "DC-01",
+    "PACS-CACHE"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-THR-2",
+   "dept": "theatre",
+   "kind": "ws",
+   "label": "Theatre workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.163",
+   "requires": [
+    "DC-01",
+    "PACS-CACHE"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-THR-3",
+   "dept": "theatre",
+   "kind": "ws",
+   "label": "Theatre workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.200",
+   "requires": [
+    "DC-01",
+    "PACS-CACHE"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-THR-4",
+   "dept": "theatre",
+   "kind": "ws",
+   "label": "Theatre workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.237",
+   "requires": [
+    "DC-01",
+    "PACS-CACHE"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-THR-1",
+   "dept": "theatre",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "192.0.2.34",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-WARD-1",
+   "dept": "wards",
+   "kind": "ws",
+   "label": "Ward workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.71",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-WARD-2",
+   "dept": "wards",
+   "kind": "ws",
+   "label": "Ward workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.108",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-WARD-3",
+   "dept": "wards",
+   "kind": "ws",
+   "label": "Ward workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.145",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-WARD-4",
+   "dept": "wards",
+   "kind": "ws",
+   "label": "Ward workstation",
+   "os": "Windows 7",
+   "ip": "198.51.100.182",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-WARD-5",
+   "dept": "wards",
+   "kind": "ws",
+   "label": "Ward workstation",
+   "os": "Windows 7",
+   "ip": "203.0.113.219",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-WARD-6",
+   "dept": "wards",
+   "kind": "ws",
+   "label": "Ward workstation",
+   "os": "Windows 7",
+   "ip": "192.0.2.16",
+   "requires": [
+    "DC-01",
+    "CITRIX-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-WARD-1",
+   "dept": "wards",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "198.51.100.53",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-WARD-2",
+   "dept": "wards",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "203.0.113.90",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-WARD-3",
+   "dept": "wards",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "192.0.2.127",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "COW-WARD-4",
+   "dept": "wards",
+   "kind": "cow",
+   "label": "Computer on wheels",
+   "os": "Windows 10",
+   "ip": "198.51.100.164",
+   "requires": [
+    "DC-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-1",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Reception / registration",
+   "os": "Windows 7",
+   "ip": "203.0.113.201",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-2",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Reception / registration",
+   "os": "Windows 7",
+   "ip": "192.0.2.238",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-3",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Reception / registration",
+   "os": "Windows 7",
+   "ip": "198.51.100.35",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-4",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Scheduling & admissions (iPMS via Citrix)",
+   "os": "Windows 7",
+   "ip": "203.0.113.72",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-5",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Scheduling & admissions (iPMS via Citrix)",
+   "os": "Windows 7",
+   "ip": "192.0.2.109",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-6",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Scheduling & admissions (iPMS via Citrix)",
+   "os": "Windows 7",
+   "ip": "198.51.100.146",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-7",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Scheduling & admissions (iPMS via Citrix)",
+   "os": "Windows 7",
+   "ip": "203.0.113.183",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-ADM-8",
+   "dept": "opd",
+   "kind": "ws",
+   "label": "Scheduling & admissions (iPMS via Citrix)",
+   "os": "Windows 7",
+   "ip": "192.0.2.220",
+   "requires": [
+    "DC-01",
+    "CITRIX-01",
+    "HSE / NHN"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 7",
+    "end_of_life": true,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "PRN-OPD-1",
+   "dept": "opd",
+   "kind": "printer",
+   "label": "Label / wristband printer",
+   "os": "embedded",
+   "ip": "198.51.100.17",
+   "requires": [],
+   "windows": false,
+   "host": {
+    "os_family": "appliance",
+    "os_version": "embedded",
+    "end_of_life": false,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-PH-1",
+   "dept": "pharm",
+   "kind": "ws",
+   "label": "Pharmacy workstation",
+   "os": "Windows 10",
+   "ip": "203.0.113.54",
+   "requires": [
+    "DC-01",
+    "APP-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-PH-2",
+   "dept": "pharm",
+   "kind": "ws",
+   "label": "Pharmacy workstation",
+   "os": "Windows 10",
+   "ip": "192.0.2.91",
+   "requires": [
+    "DC-01",
+    "APP-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "WS-PH-3",
+   "dept": "pharm",
+   "kind": "ws",
+   "label": "Pharmacy workstation",
+   "os": "Windows 10",
+   "ip": "198.51.100.128",
+   "requires": [
+    "DC-01",
+    "APP-01"
+   ],
+   "windows": true,
+   "host": {
+    "os_family": "windows",
+    "os_version": "Windows 10",
+    "end_of_life": false,
+    "domain_joined": true,
+    "endpoint_protection": "av_block_commodity",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "remote_desktop"
+    ],
+    "vendor_managed": false,
+    "provenance": "S"
+   }
+  },
+  {
+   "id": "PH-ROBOT",
+   "dept": "pharm",
+   "kind": "srv",
+   "label": "Dispensing robot",
+   "os": "vendor Win7",
+   "ip": "203.0.113.165",
+   "requires": [
+    "APP-01"
+   ],
+   "medical_device": true,
+   "windows": false,
+   "host": {
+    "os_family": "windows",
+    "os_version": "vendor Win7",
+    "end_of_life": true,
+    "domain_joined": false,
+    "endpoint_protection": "none",
+    "patch_state": {},
+    "service_classes": [
+     "admin",
+     "app",
+     "file_share"
+    ],
+    "vendor_managed": true,
+    "provenance": "S"
+   }
+  }
+ ],
+ "links": [
+  {
+   "a": "HSE / NHN",
+   "b": "FW-EDGE",
+   "layer": "network"
+  },
+  {
+   "a": "Internet",
+   "b": "FW-EDGE",
+   "layer": "network"
+  },
+  {
+   "a": "Internet",
+   "b": "GW-REMOTE",
+   "layer": "network"
+  },
+  {
+   "a": "GW-REMOTE",
+   "b": "SW-CORE",
+   "layer": "network"
+  },
+  {
+   "a": "FW-EDGE",
+   "b": "SW-CORE",
+   "layer": "network"
+  },
+  {
+   "a": "VPN-VENDOR",
+   "b": "SW-CORE",
+   "layer": "network"
+  },
+  {
+   "a": "WS-VENDOR-01",
+   "b": "VPN-VENDOR",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-DC",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "DC-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "DC-02",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "FILE-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "APP-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "APP-02",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "DB-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "CITRIX-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "PACS-CACHE",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "OIS-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "TPS-SRV",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "LIS-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "AV-MGMT",
+   "layer": "network"
+  },
+  {
+   "a": "SW-DC",
+   "b": "BACKUP-01",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-RAD",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "MRI-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "MRI-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "CT-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "CT-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "XR-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "US-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "NIMIS-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "NIMIS-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "NIMIS-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "NIMIS-4",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "WS-RAD-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "WS-RAD-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RAD",
+   "b": "WS-RAD-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-RT",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "LINAC-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "LINAC-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "LINAC-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "CT-SIM",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "TPS-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "TPS-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "WS-RT-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "WS-RT-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-RT",
+   "b": "WS-RT-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-LAB",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "ANL-HAEM",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "ANL-CHEM",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "ANL-MICRO",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "ANL-BLOOD",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "WS-LAB-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "WS-LAB-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "WS-LAB-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-LAB",
+   "b": "WS-LAB-4",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-ED",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "WS-ED-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "WS-ED-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "WS-ED-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "WS-ED-4",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "WS-ED-5",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "COW-ED-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "COW-ED-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-ED",
+   "b": "COW-ED-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-THR",
+   "layer": "network"
+  },
+  {
+   "a": "SW-THR",
+   "b": "WS-THR-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-THR",
+   "b": "WS-THR-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-THR",
+   "b": "WS-THR-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-THR",
+   "b": "WS-THR-4",
+   "layer": "network"
+  },
+  {
+   "a": "SW-THR",
+   "b": "COW-THR-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-WARD",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "WS-WARD-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "WS-WARD-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "WS-WARD-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "WS-WARD-4",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "WS-WARD-5",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "WS-WARD-6",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "COW-WARD-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "COW-WARD-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "COW-WARD-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-WARD",
+   "b": "COW-WARD-4",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-OPD",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-4",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-5",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-6",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-7",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "WS-ADM-8",
+   "layer": "network"
+  },
+  {
+   "a": "SW-OPD",
+   "b": "PRN-OPD-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-CORE",
+   "b": "SW-PH",
+   "layer": "network"
+  },
+  {
+   "a": "SW-PH",
+   "b": "WS-PH-1",
+   "layer": "network"
+  },
+  {
+   "a": "SW-PH",
+   "b": "WS-PH-2",
+   "layer": "network"
+  },
+  {
+   "a": "SW-PH",
+   "b": "WS-PH-3",
+   "layer": "network"
+  },
+  {
+   "a": "SW-PH",
+   "b": "PH-ROBOT",
+   "layer": "network"
+  },
+  {
+   "a": "VPN-VENDOR",
+   "b": "MRI-1",
+   "layer": "network"
+  },
+  {
+   "a": "VPN-VENDOR",
+   "b": "LINAC-1",
+   "layer": "network"
+  }
+ ],
+ "services": [
+  {
+   "name": "Emergency department",
+   "requires_all": [
+    "WS-ED-1",
+    "DC-01"
+   ],
+   "when_down": "triage & tracking on paper",
+   "paper_fallback": true
+  },
+  {
+   "name": "Radiology (X-ray, CT, MRI)",
+   "requires_all": [
+    "PACS-CACHE",
+    "NIMIS-1",
+    "HSE / NHN"
+   ],
+   "when_down": "scanners work; no NIMIS, no reporting",
+   "paper_fallback": false
+  },
+  {
+   "name": "Radiotherapy",
+   "requires_all": [
+    "OIS-01",
+    "TPS-SRV"
+   ],
+   "when_down": "linacs fine; OIS and planning gone",
+   "paper_fallback": false
+  },
+  {
+   "name": "Laboratory (GP bloods)",
+   "requires_all": [
+    "LIS-01",
+    "WS-LAB-1"
+   ],
+   "when_down": "emergency bloods only, handwritten",
+   "paper_fallback": false
+  },
+  {
+   "name": "Theatres & surgery",
+   "requires_all": [
+    "WS-THR-1",
+    "PACS-CACHE"
+   ],
+   "when_down": "lists run from paper",
+   "paper_fallback": true
+  },
+  {
+   "name": "Outpatients & chemotherapy",
+   "requires_all": [
+    "CITRIX-01",
+    "HSE / NHN",
+    "WS-ADM-4"
+   ],
+   "when_down": "iPMS gone; clinics run from printed lists",
+   "paper_fallback": true
+  },
+  {
+   "name": "Pharmacy",
+   "requires_all": [
+    "APP-01",
+    "WS-PH-1"
+   ],
+   "when_down": "manual dispensing",
+   "paper_fallback": true
+  },
+  {
+   "name": "Email & comms (HSE)",
+   "requires_all": [
+    "HSE / NHN"
+   ],
+   "when_down": "on-prem Exchange encrypted nationally",
+   "paper_fallback": false
+  }
+ ],
+ "snapshot_date": "2021-05-13",
+ "domains": [
+  {
+   "id": "CUH",
+   "dcs": [
+    "DC-01",
+    "DC-02"
+   ],
+   "provenance": "S"
+  },
+  {
+   "id": "HSE",
+   "external": true,
+   "provenance": "R",
+   "note": "HSE domain, reached over the NHN"
+  }
+ ],
+ "trusts": [
+  {
+   "a": "HSE",
+   "b": "CUH",
+   "direction": "bidirectional",
+   "provenance": "R",
+   "note": "PwC: bidirectional AD trusts between HSE and hospital domains"
+  }
+ ],
+ "posture": {
+  "provenance": "R for the pattern (PwC eve-of-incident posture), S for which CUH node has which value",
+  "av_mode": {
+   "servers": "monitor_only",
+   "workstations": "block_commodity_only"
+  },
+  "edr": false,
+  "mfa_remote_access": false,
+  "siem": false,
+  "unpatched_edge": {
+   "GW-REMOTE": "critical_cvss10"
+  },
+  "segmentation": "flat",
+  "network_note": "every department switch hangs off SW-CORE; no ACLs between departments",
+  "backups": "online, same domain (encryptable)"
+ },
+ "levers": [
+  {
+   "id": "segment_departments",
+   "type": "segmentation",
+   "effect": "remove network edges between department zones except listed allow-flows"
+  },
+  {
+   "id": "cut_hse_trust",
+   "type": "trust",
+   "effect": "delete HSE<->CUH trust edge"
+  },
+  {
+   "id": "tier_admin_accounts",
+   "type": "identity",
+   "effect": "split domain_admin into tiers; workstation sessions no longer cache DA creds"
+  },
+  {
+   "id": "patch_gateway",
+   "type": "patch",
+   "effect": "GW-REMOTE no longer exploitable"
+  },
+  {
+   "id": "mfa_remote",
+   "type": "identity",
+   "effect": "stolen creds alone cannot use GW-REMOTE/VPN-VENDOR"
+  },
+  {
+   "id": "edr_servers",
+   "type": "endpoint",
+   "effect": "has_edr on servers; R6 blocked there"
+  },
+  {
+   "id": "offline_backup",
+   "type": "recovery",
+   "effect": "BACKUP-01 out of reach; affects recovery time only"
+  }
+ ],
+ "accounts": [
+  {
+   "id": "cuh\\da-admin1",
+   "domain": "CUH",
+   "tier": "domain_admin",
+   "admin_to": [
+    "*"
+   ],
+   "sessions_on": [
+    "DC-01",
+    "FILE-01",
+    "APP-01"
+   ],
+   "provenance": "S"
+  },
+  {
+   "id": "cuh\\da-admin2",
+   "domain": "CUH",
+   "tier": "domain_admin",
+   "admin_to": [
+    "*"
+   ],
+   "sessions_on": [
+    "DC-02",
+    "CITRIX-01",
+    "GW-REMOTE"
+   ],
+   "provenance": "S"
+  },
+  {
+   "id": "cuh\\svc-backup",
+   "domain": "CUH",
+   "tier": "service",
+   "admin_to": [
+    "GW-REMOTE",
+    "DC-01",
+    "DC-02",
+    "FILE-01",
+    "APP-01",
+    "APP-02",
+    "DB-01",
+    "CITRIX-01",
+    "PACS-CACHE",
+    "OIS-01",
+    "TPS-SRV",
+    "LIS-01",
+    "AV-MGMT",
+    "BACKUP-01"
+   ],
+   "sessions_on": [
+    "BACKUP-01"
+   ],
+   "provenance": "S",
+   "note": "over-privileged service account (PwC: excessive privileges known since Nov 2020)"
+  },
+  {
+   "id": "cuh\\helpdesk",
+   "domain": "CUH",
+   "tier": "service_desk_admin",
+   "admin_to": [
+    "WS-VENDOR-01",
+    "NIMIS-1",
+    "NIMIS-2",
+    "NIMIS-3",
+    "NIMIS-4",
+    "WS-RAD-1",
+    "WS-RAD-2",
+    "WS-RAD-3",
+    "TPS-1",
+    "TPS-2",
+    "WS-RT-1",
+    "WS-RT-2",
+    "WS-RT-3",
+    "WS-LAB-1",
+    "WS-LAB-2",
+    "WS-LAB-3",
+    "WS-LAB-4",
+    "WS-ED-1",
+    "WS-ED-2",
+    "WS-ED-3",
+    "WS-ED-4",
+    "WS-ED-5",
+    "COW-ED-1",
+    "COW-ED-2",
+    "COW-ED-3",
+    "WS-THR-1",
+    "WS-THR-2",
+    "WS-THR-3",
+    "WS-THR-4",
+    "COW-THR-1",
+    "WS-WARD-1",
+    "WS-WARD-2",
+    "WS-WARD-3",
+    "WS-WARD-4",
+    "WS-WARD-5",
+    "WS-WARD-6",
+    "COW-WARD-1",
+    "COW-WARD-2",
+    "COW-WARD-3",
+    "COW-WARD-4",
+    "WS-ADM-1",
+    "WS-ADM-2",
+    "WS-ADM-3",
+    "WS-ADM-4",
+    "WS-ADM-5",
+    "WS-ADM-6",
+    "WS-ADM-7",
+    "WS-ADM-8",
+    "WS-PH-1",
+    "WS-PH-2",
+    "WS-PH-3"
+   ],
+   "sessions_on": [
+    "WS-VENDOR-01",
+    "NIMIS-1",
+    "NIMIS-2",
+    "NIMIS-3",
+    "NIMIS-4",
+    "WS-RAD-1",
+    "WS-RAD-2",
+    "WS-RAD-3",
+    "TPS-1",
+    "TPS-2",
+    "WS-RT-1",
+    "WS-RT-2"
+   ],
+   "provenance": "S"
+  },
+  {
+   "id": "cuh\\rt-physicist",
+   "domain": "CUH",
+   "tier": "user",
+   "admin_to": [
+    "TPS-1",
+    "TPS-2"
+   ],
+   "sessions_on": [
+    "TPS-1",
+    "WS-RT-1"
+   ],
+   "provenance": "S"
+  },
+  {
+   "id": "hse\\da-national",
+   "domain": "HSE",
+   "tier": "domain_admin",
+   "admin_to": [
+    "*@CUH"
+   ],
+   "sessions_on": [],
+   "provenance": "I",
+   "note": "HSE privileged account valid in CUH over the trust; how the attacker held it is HSE-side history, not in this snapshot"
+  },
+  {
+   "id": "vendor\\svc-imaging",
+   "domain": "CUH",
+   "tier": "vendor",
+   "admin_to": [
+    "MRI-1",
+    "LINAC-1",
+    "WS-VENDOR-01"
+   ],
+   "sessions_on": [
+    "WS-VENDOR-01"
+   ],
+   "provenance": "S"
+  }
+ ]
+}

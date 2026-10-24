@@ -1,0 +1,127 @@
+{
+ "meta": {
+  "name": "Conti campaign against the HSE, 2021",
+  "held_out": true,
+  "provenance": "R unless marked",
+  "rule": "The agents and any plan generator must never read this file. Only the replay harness does."
+ },
+ "steps": [
+  {
+   "t": "2021-03-18",
+   "org": "HSE",
+   "rule": "R1",
+   "label": "T1566 phishing (lure sent 16 Mar, opened 18 Mar)",
+   "target": "patient_zero_workstation"
+  },
+  {
+   "t": "2021-03-23",
+   "org": "HSE",
+   "rule": "persistence",
+   "label": "persistence on patient zero (mechanism redacted)"
+  },
+  {
+   "t": "2021-03-31",
+   "org": "HSE",
+   "rule": "R2",
+   "label": "T1003 credential dumping logged by AV, not actioned"
+  },
+  {
+   "t": "2021-04-01/2021-05-06",
+   "org": "HSE",
+   "rule": "idle",
+   "label": "dormancy, likely broker-to-operator handoff [I]"
+  },
+  {
+   "t": "2021-05-07",
+   "org": "HSE",
+   "rule": "R3+R4",
+   "label": "domain recon, first privileged accounts, first HSE servers (6 logged)"
+  },
+  {
+   "t": "2021-05-08",
+   "org": "K",
+   "rule": "R5",
+   "label": "T1199 trust hop"
+  },
+  {
+   "t": "2021-05-08",
+   "org": "D",
+   "rule": "R5",
+   "label": "T1199 trust hop"
+  },
+  {
+   "t": "2021-05-09",
+   "org": "J",
+   "rule": "R5",
+   "label": "T1199 trust hop"
+  },
+  {
+   "t": "2021-05-10",
+   "org": "C",
+   "rule": "R5",
+   "label": "T1199 trust hop; DC alert, vendor said low risk"
+  },
+  {
+   "t": "2021-05-10",
+   "org": "L",
+   "rule": "R5",
+   "label": "T1199 trust hop"
+  },
+  {
+   "t": "2021-05-11",
+   "org": "A",
+   "rule": "R1",
+   "label": "T1190 edge exploit after numerous failed logons"
+  },
+  {
+   "t": "2021-05-12",
+   "org": "B",
+   "rule": "R1",
+   "label": "T1190 edge exploit"
+  },
+  {
+   "t": "2021-05-12/2021-05-13",
+   "org": [
+    "A",
+    "B",
+    "D",
+    "HSE"
+   ],
+   "rule": "exfil",
+   "label": "T1560/T1567 archive and upload to file-sharing site (no state change for encryption)"
+  },
+  {
+   "t": "2021-05-13",
+   "org": "DoH",
+   "rule": "R4/R5",
+   "label": "activity on DoH detected by its provider; entry route not public [X]"
+  },
+  {
+   "t": "2021-05-14T01:00",
+   "org": "*",
+   "rule": "R6",
+   "label": "T1486 detonation on everything controlled"
+  }
+ ],
+ "historical_defender_actions": [
+  {
+   "t": "2021-05-12",
+   "org": "A",
+   "action": "D1",
+   "detail": "own IR firm, 4,500 password reset, firewall changes"
+  },
+  {
+   "t": "2021-05-13",
+   "org": "DoH",
+   "action": "D2",
+   "coverage": "majority",
+   "detail": "EDR deployed, NCSC called, IR firm engaged"
+  },
+  {
+   "t": "2021-05-14T05:10",
+   "org": "HSE",
+   "action": "D3",
+   "detail": "decision to remove all NHN internal and external connectivity"
+  }
+ ]
+}

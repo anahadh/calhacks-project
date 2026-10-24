@@ -1,0 +1,25 @@
+{
+  "plan_id": "layered-local-defense-example",
+  "levers": [
+    {
+      "id": "segment_departments",
+      "zones": {"edge": ["edge"], "vendor": ["vendor"], "dc": ["dc"], "rad": ["rad"], "rt": ["rt"], "lab": ["lab"], "ed": ["ed"], "theatre": ["theatre"], "wards": ["wards"], "opd": ["opd"], "pharm": ["pharm"]},
+      "allow": [
+        ["rad", "dc", "imaging"], ["rad", "dc", "directory"], ["rad", "edge", "imaging"],
+        ["rt", "dc", "oncology"], ["rt", "dc", "directory"],
+        ["lab", "dc", "app"], ["lab", "dc", "directory"],
+        ["ed", "dc", "app"], ["ed", "dc", "directory"],
+        ["theatre", "dc", "app"], ["theatre", "dc", "directory"],
+        ["wards", "dc", "app"], ["wards", "dc", "directory"],
+        ["opd", "dc", "app"], ["opd", "dc", "directory"], ["opd", "edge", "app"],
+        ["pharm", "dc", "app"], ["pharm", "dc", "directory"], ["dc", "edge", "app"]
+      ]
+    },
+    {"id": "cut_hse_trust"},
+    {"id": "tier_admin_accounts"},
+    {"id": "patch_gateway"},
+    {"id": "mfa_remote"},
+    {"id": "edr_servers"},
+    {"id": "offline_backup"}
+  ]
+}

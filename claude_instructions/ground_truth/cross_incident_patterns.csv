@@ -1,0 +1,13 @@
+incident,year,pattern,rule_supported,evidence,source
+HSE,2021,EDR stopped encryption,D2/R6,DoH deployed EDR 13 May and was not encrypted,PwC review
+British Library,2023,modern endpoint protection stopped encryption; old server AV failed,D2/R6,laptops and desktops protected; much of server estate encrypted or destroyed,BL review 8 Mar 2024 p6
+HSE,2021,cloud service insulated,reachability (SaaS outside graph),COVID vaccination system unaffected,PwC review
+British Library,2023,cloud service insulated,reachability (SaaS outside graph),finance and payroll ran normally,BL review
+Waikato DHB,2021,cloud service insulated,reachability (SaaS outside graph),Teams and Office 365 kept working,InPhySec review 6 Dec 2022
+HSE,2021,servers restored != services restored,dependency roll-up,iPMS reported green but unusable behind AD and Citrix,PwC review
+Waikato DHB,2021,servers restored != services restored,dependency roll-up,servers recovered from backup did not restore clinical services; apps-to-services mapping missing,InPhySec review
+British Library,2023,network shape widened access,R4,historically complex network allowed attackers wider access,BL review
+British Library,2023,remote access without MFA as entry,R1,third-party Terminal Services server without MFA,BL review
+Dusseldorf University Hospital,2020,unpatched edge gateway as entry,R1,Citrix gateway flaw; 30 servers encrypted,press reports of state report
+Newfoundland and Labrador,2021,stolen VPN credentials as entry; alerts not investigated,R1 / missed alert,entry 15 Oct; exfil 26-29 Oct; encryption 30 Oct,press reports of OIPC report (May 2023)
+British Library,2023,alert seen but not contained,missed alert,auto-block 26 Oct 00:21; password reset and unblock; attack 28 Oct,BL review

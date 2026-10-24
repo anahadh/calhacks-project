@@ -1,0 +1,14 @@
+org,targeted,date_compromised,entry_route,privileged_accounts_taken,data_exposed,encrypted_14_may,defender_action,provenance,note
+HSE,yes,2021-03-18,phishing (patient zero),yes,yes,yes,none effective before detonation,R,all 9 HSE domains encrypted
+K,yes,2021-05-08,trust hop,yes,not reported,yes,none,R,
+D,yes,2021-05-08,trust hop,not reported,yes,yes,none,R,data posted online; notified data subjects (GDPR Art 34)
+J,yes,2021-05-09,trust hop,yes,not reported,yes,none,R,
+C,yes,2021-05-10,trust hop,not reported,yes,yes,none (DC alert; vendor said low risk),R,
+L,yes,2021-05-10,trust hop,yes,not reported,yes,none,R,
+A,yes,2021-05-11,edge exploit after failed logons,yes,yes,no,D1 on 2021-05-12 (IR firm; 4500 password reset; firewall changes),R,survivor
+B,yes,2021-05-12,edge exploit,yes,yes,yes,none before detonation,R,restored radiotherapy within week 1 by local decision
+DoH,yes,by 2021-05-13,not public,unknown,unknown,no (vast majority blocked),D2 on 2021-05-13 (EDR to majority of systems),R,survivor; a few hosts may still encrypt
+M,unknown,,,,HSE-controlled data in FT leak,unknown,,R,assessed low risk
+E,no evidence,,,,,no evidence,,R,radiotherapy stopped (national disconnect / dependency)
+H,no evidence,,,,,no evidence,,R,radiotherapy stopped
+N,no evidence,,,,,no evidence,,R,radiotherapy stopped

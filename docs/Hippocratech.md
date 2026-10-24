@@ -645,6 +645,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 
 | Date | Decision |
 |---|---|
+| Oct 23, 2026 | User requested `claude_instructions/IMPLEMENTATION.md` and scoped it to research-intensive work. Standalone deterministic Python `engine/` implements causal propagation, service dependencies and research protocols as a **separate backtest/validation tool** (not the live run engine; rule 3's `sim-core` stays authoritative). Its CLI is `hippo-backtest` to avoid colliding with the agents' `hippo-sim`. No SpacetimeDB integration is claimed. |
 | Oct 24, 2026 | **SpacetimeDB module is TypeScript** (2.13), sharing `packages/sim-core` with `hippo-sim`. Verified on a local server: live runs match `sim-core` tick for tick, and two clients stay in sync |
 | Oct 22, 2026 | Product name **Hippocra.tech**; upload in scope; one simulation engine |
 | Oct 23, 2026 | Collaborative review; human approval gate; table judging with the whole team present |
