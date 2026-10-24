@@ -32,6 +32,31 @@ Rules for any coding agent (Claude Code or another) working in this repo. These 
 17. **Stay in your feature's files** once the base app's contracts are frozen. Frozen contracts change only with the lead's approval.
 18. **Update docs in the same change:** `CODE_REFERENCE.md` for files, `HOSPITAL_SCHEMA.md` for contracts.
 
+## Engine wiring
+
+Two engines, on purpose. **Full reference: [`engine.md`](engine.md)** — every endpoint,
+its exact inputs/outputs, and how the app wires in. The essentials:
+
+- **Live engine** = `packages/sim-core` (TypeScript), running in the SpacetimeDB
+  `run_tick` reducer. It drives the visible on-screen run (hard rule 3). Its CLI is `hippo-sim`.
+- **Causal engine** = `engine/` (Python): credentials + reachability + trust, controlled
+  vs encrypted, defender actions, medical devices never encrypt. It is a **separate
+  backtest/validation tool**, not the live run engine, and is not in the reducer. Its CLI
+  is **`hippo-backtest`** (distinct from `hippo-sim`). Run `uvicorn sim_core.api:app` (CORS
+  for `localhost:3000`).
+- **Bridge:** `sim_core.app_bridge` maps the app's `hospital.json` ⇄ the causal engine's
+  `Scenario`, and back to the UI rows / the agents' `RunResult`.
+- **Endpoints (see `engine.md` for shapes):** CLI `hippo-backtest replay|freeze|sensitivity`;
+  HTTP `GET /healthz`, `POST /replay`, `WS /replay/{key}/trace`, `GET /planner/scenario/{id}`,
+  and **`POST /app/run {hospital, patient_zero}` → UI sim rows** — the live path the web uses.
+- **UI wiring:** with `NEXT_PUBLIC_STDB_URI` unset, `apps/web/lib/stdb/use-session.ts`
+  (`useEngineSession`) POSTs the demo hospital to `/app/run` and renders the fresh run, with a
+  baked run as fallback. `NEXT_PUBLIC_ENGINE_URL` overrides the engine server URL.
+- **Why the live SpacetimeDB run can't call it directly:** the reducer is sandboxed WASM
+  (no subprocess, no network — rule 7). Driving the live run with the causal engine means the
+  watcher computes via `app_bridge` and feeds rows in through a reducer; that is a frozen-contract
+  change needing the lead's approval (rule 17).
+
 ## Before you say a task is done
 
 - Typecheck and tests pass in every package you touched (`npm run typecheck --workspaces --if-present`, `npm run test --workspaces --if-present`; `pytest` for `agents/`).
