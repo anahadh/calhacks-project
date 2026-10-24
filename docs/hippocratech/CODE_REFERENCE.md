@@ -13,12 +13,12 @@ packages/hippo-sim/      CLI built from sim-core, for fast test runs (planned)
 packages/optimizer/      Graph optimizer + hippo-opt CLI (planned)
 packages/schema/         zod schemas and shared TypeScript types (planned)
 apps/web/                Next.js app: scene, panels, Agent Room, solution view, server routes
-apps/watcher/            Watchers: SpacetimeDB subscription clients that connect the agents (planned)
+apps/watcher/            Watchers: SpacetimeDB subscription clients that connect the agents
 agents/                  Fetch.ai uAgents (Python)
 data/hospitals/          demo.json, template.json, invalid/
 ```
 
-Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle hook, or the module won't load. Constants live in `spacetime/src/constants.ts`. Feature reducers go in their own `spacetime/src/<feature>.ts` files, re-exported from `index.ts`.
+Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle hook, or the module won't load. Tables live in `spacetime/src/schema.ts`, with the helpers reducer files share (`fail`, `isServer`, `requireServer`, `getSession`). Constants live in `spacetime/src/constants.ts`. Feature reducers go in their own `spacetime/src/<feature>.ts` files, re-exported from `index.ts`.
 
 ## Simulation (SpacetimeDB and sim-core)
 
@@ -29,29 +29,34 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `packages/sim-core/src/rng.ts` | Base | mulberry32, seeded from the run |
 | `packages/sim-core/test/engine.test.ts` | Base | The same inputs give identical ticks. Never skip |
 | `packages/hippo-sim/` (planned) | Base | `hippo-sim --hospital --policy --patient-zero --seed [--challenge]` → RunResult JSON |
-| `spacetime/src/index.ts` | Base | All tables, plus `config` (server identity). Reducers: `config_set_server`, `session_create`, `presence_join`, `presence_heartbeat`, `set_presenter`, `run_start`, scheduled `run_tick`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `annotation_add`, `annotation_clear`. Still to add: `challenge_add`, `run_seek` |
+| `spacetime/src/schema.ts` | Base | All tables, including `config` (server identity), `defend_request_log`, `agent_message`, `agent_status`, `question`, `recommendation`, and the round state on `session` |
+| `spacetime/src/index.ts` | Base | Default-exports the schema and re-exports the feature reducers. Reducers: `config_set_server`, `session_create`, `presence_join`, `presence_heartbeat`, `set_presenter`, `run_start`, scheduled `run_tick`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `annotation_add`, `annotation_clear`. Still to add: `challenge_add`, `run_seek` |
 | `spacetime/src/constants.ts` | Base | Tick length and other module constants |
 | `spacetime/test/module.test.ts` | Base | Module unit tests |
 | `spacetime/test/live.integration.test.ts` | Base | Two live clients against a running server (`STDB_URI=ws://127.0.0.1:3000`) |
 | `spacetime/src/solution.ts` (planned) | F4 | `solution_start`: two runs with a shared `pair_id`, advanced in lockstep |
-| `spacetime/src/agents.ts` (planned) | F1 | `defend_request`, `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
-| `spacetime/src/question.ts` (planned) | F1 | `question_add` (server identity), `question_answer` (allowed roles only) |
-| `spacetime/src/recommendation.ts` (planned) | F2 | `recommendation_upsert` (server identity) |
+| `spacetime/src/agents.ts` | F1 | `defend_request` (any joined human; refused while the active run is `running` or a round is open; writes `defend_request_log`), `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
+| `spacetime/src/question.ts` | F1 | `question_add` (server identity), `question_answer` (allowed roles only, from the caller's presence; never the server) |
+| `spacetime/src/recommendation.ts` | F2 | `recommendation_upsert` (server identity): keyed by session and round; inserts as `draft` and never changes `status` |
 | `spacetime/src/review.ts` (planned) | F3 | `review_submit`, the only writer of `recommendation.status` |
 | `spacetime/src/memo.ts` (planned) | F3 | `memo_save_draft` (server identity), `memo_approve` |
 | `apps/web/lib/stdb/module_bindings/` | Base | Generated with `npm run generate -w hippocratech-module`. Never edit by hand |
 | `apps/web/lib/stdb/connection.ts`, `live-session.ts` | Base | The live subscription |
 | `apps/web/lib/stdb/use-session.ts` | Base | `useSession(id)`: live rows when `NEXT_PUBLIC_STDB_URI` is set, else the mock |
+| `apps/web/lib/stdb/agent-rows.ts` | Base | Reshapes `agent_message`, `agent_status`, `question`, `recommendation` and the session's round state for the Agent Room (sender's copy of each message, plus humans' answers) |
 | `apps/web/lib/stdb/types.ts`, `mock-session.ts` | Base | Row shapes and a fixed mid-run demo snapshot (with a sample agent round) for working without a server |
 
 ## Watchers
 
 | Path | Owner | Role |
 |---|---|---|
-| `apps/watcher/src/index.ts` | F1 | Connects as the server identity and starts every watcher |
+| `apps/watcher/src/index.ts` | F1 | Connects as the server identity and starts every watcher. `npm run dev -w watcher`; reads `.env.local` |
+| `apps/watcher/src/config.ts`, `stdb.ts`, `coordinator.ts` | F1 | Settings (`STDB_URI`, `STDB_SERVER_TOKEN`, `COORDINATOR_URL`, `RELAY_PORT` default 8010, `RELAY_TOKEN`); the connection and subscription; Coordinator REST calls. Failures are written to `session.round_detail` |
 | `apps/watcher/src/round.ts` | F1 | On `defend_request` only: wakes the Sign-off Coordinator (`start_round` or `reassess`). Never on `run` completion or `challenge` alone |
 | `apps/watcher/src/answer.ts` | F1 | On a `question` answer: calls the Coordinator's `resume` |
-| `apps/watcher/src/relay.ts` | F1 | HTTP endpoint the agents post to. Writes `agent_message_add` and `agent_status_set`, and serves live state reads |
+| `apps/watcher/src/relay.ts` | F1 | HTTP endpoint the agents post to (`POST /agent_message`, `/agent_status`, bearer `RELAY_TOKEN`, strict zod). Writes `agent_message_add` and `agent_status_set`; from the sender's copy, also `question_add` (questions to humans), `round_state_set` and `recommendation_upsert`. A reducer's refusal returns HTTP 502, so the agent doesn't send. Live state reads: not built yet |
+| `apps/watcher/test/relay.test.ts` | F1 | Relay contract with fake reducers |
+| `apps/watcher/test/live.integration.test.ts` | F1 | Two clients against the running stack (`E2E_STDB_URI`): no agent traffic while running, a full round after Create aggregate fix, and a question answered by an allowed role |
 
 ## Agents (Python, Fetch.ai uAgents)
 
@@ -126,8 +131,9 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/features/agents/scene-highlights.tsx` | F1 | Scene highlights driven by each `agent_message` |
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
 | `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; disabled while a visible run is `running` |
-| `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles |
-| `apps/web/features/review/*` | F3 | Join modal, avatars, follow, review row, log drawer, memo editor |
+| `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles (basic version, Show the solution still disabled) |
+| `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name and role, `presence_join` (basic version) |
+| `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |
 | `apps/web/app/api/export/[sessionId]/route.ts` | F3 | Memo plus ruleset |
 | `apps/web/server/ruleset.ts` | F3 | Policy → allow-list JSON and ACL text |

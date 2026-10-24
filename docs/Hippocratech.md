@@ -491,8 +491,12 @@ question        { sessionId, round, agent, targetId, text, choices[], allowedRol
 recommendation  { sessionId, round, name, rules[], explanation, diff, verified { … },
                   agentVerdicts[], requiredRoles[], status: draft|ready }
 review          { sessionId, recommendationId, role, author, verdict, reason, createdAt }
+defend_request_log { sessionId, runId, patientZero, seed, challenges[], requestedBy, createdAt }
 config          { serverIdentity }
 ```
+
+- `defend_request_log` holds one row per **Create aggregate fix** press (the `defend_request` reducer; a table can't share a reducer's name). The round watcher wakes the Coordinator on each new row.
+- In the module, `session.roundState` is the columns `round_state`, `round` and `round_detail` (the Coordinator's detail, or a watcher error to show). `agent_message` also stores `direction` (sent or received), `reasonSource` and `fixture` (AGENT_NOTES.md "Relay rows").
 
 - `recommendation.status` is written only by the `review_submit` reducer.
 - `device_state`, `service_state` and `patient_state` hold the current tick only. `tick_snapshot` holds history for scrubbing.
@@ -655,6 +659,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 24, 2026 | **Design system adopted (supersedes the template's look).** Clinical instrument on graphite; monochrome chrome replaces the teal accent, which read too close to healthy blue; state colors retuned as monitor traces (same meanings); Hanken Grotesk + IBM Plex Mono; hairline grid surfaces; breathing motion. Layout unchanged |
 | Oct 23, 2026 | **Factory Droid dropped.** The Flow Agent tests candidates with `hippo-sim` directly. `/api/droid` and the Factory sponsor track are removed |
 | Oct 23, 2026 | `implementation-steps.md` removed. The build plan lives in this spec, plus the owner and file map in `hippocratech/CODE_REFERENCE.md` |
+| Oct 24, 2026 | **Agent loop hooked up.** Tables in `spacetime/src/schema.ts`; agent reducers in `agents.ts`, `question.ts`, `recommendation.ts`; watchers in `apps/watcher`; the Agent Room reads the live rows. The defend table is `defend_request_log` |
 | Oct 24, 2026 | **Simulation and agent rounds decoupled.** Agents message only after the human presses **Create aggregate fix** (`defend_request`). No agent traffic during a visible run; the round watcher does not wake on run completion |
 
 ---

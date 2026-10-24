@@ -262,7 +262,7 @@ HIPPO_SIM_FIXTURES=1 .venv/bin/python run_all.py      # shell 1: the four agents
 - **Beyond the spec's columns:** `direction` (`sent` or `received`) and `fixture`.
   - Rule 9 has both ends post, so every agent-to-agent message appears twice. The Agent Room should animate the `sent` row and can use `received` to confirm delivery.
   - `fixture: true` means the numbers came from fixture files, and the UI should label the run (rule 13).
-- In file mode, `seq` is assigned under a file lock, because four processes append to one file. With `WATCHER_RELAY_URL`, rows are POSTed to `<url>/agent_message` and `<url>/agent_status` with `Authorization: Bearer $RELAY_TOKEN`, and `seq` is left for the reducer to assign. This is the contract `apps/watcher/src/relay.ts` should implement.
+- In file mode, `seq` is assigned under a file lock, because four processes append to one file. With `WATCHER_RELAY_URL`, rows are POSTed to `<url>/agent_message` and `<url>/agent_status` with `Authorization: Bearer $RELAY_TOKEN`, and `seq` is left for the reducer to assign. `apps/watcher/src/relay.ts` implements this contract (port `RELAY_PORT`, default 8010, so `WATCHER_RELAY_URL=http://127.0.0.1:8010`).
 
 ### What each agent does
 
