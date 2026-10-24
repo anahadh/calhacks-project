@@ -447,9 +447,10 @@ Skip auth, Postgres, Redis, Docker, physics, rigged characters, and PDF librarie
 - Use blue and orange, never red and green, and always pair color with a badge or shape.
 - **Agents:** each has a neutral node and an icon (Inventory: tag; Flow: network; Clinical Workflow: heartbeat line; Coordinator: checklist). Message particles use one shape per type (proposal ◆, accept ●, reject ✕, revision ↻, question ?), so type never depends on color alone.
 - **Motion budget:** spread pulses, device flashes, room tints, agent message particles, the camera follow, and the split-screen replay. Nothing else animates.
-- Fonts: IBM Plex Sans, plus IBM Plex Mono for numbers and ids.
+- Chrome follows the console template: navy panels (`#0C131C` background, `#14202D` panels), a teal accent (`#58C6D8`) for controls and selection, and uppercase mono captions. State colors above are unchanged.
+- Fonts: Space Grotesk for headings and big numbers, Inter for body text, IBM Plex Mono for numbers, ids and captions.
 - Lead with the human number. Never write "deaths," "lives," "fatal," or "mortality."
-- The reference design is the canvas "Hippocra.tech screens."
+- The reference design is the console template (timeline rail, demo steps, scene panel with a side column, and an Agents view).
 
 ---
 
@@ -634,6 +635,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 23, 2026 | **The simulation runs in SpacetimeDB** (scheduled `run_tick`), replacing the browser-only sim. The browser renders subscribed state. `sim-core` also builds `hippo-sim` for fast agent tests |
 | Oct 23, 2026 | **Watchers** (SpacetimeDB subscription clients) connect the Fetch.ai agents to the live world and mirror their conversation into `agent_message` |
 | Oct 23, 2026 | Three must-see moments: the visible spread, the visible agent conversation (Agent Room), and the solution view (lockstep split screen) |
+| Oct 24, 2026 | **Console design template adopted.** Two views (Simulation, Agents); timeline rail on top; Space Grotesk, Inter and IBM Plex Mono; teal chrome accent. State colors unchanged |
 | Oct 23, 2026 | **Factory Droid dropped.** The Flow Agent tests candidates with `hippo-sim` directly. `/api/droid` and the Factory sponsor track are removed |
 | Oct 23, 2026 | `implementation-steps.md` removed. The build plan lives in this spec, plus the owner and file map in `hippocratech/CODE_REFERENCE.md` |
 
