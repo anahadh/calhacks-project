@@ -3,10 +3,11 @@
 import { useMemo } from "react";
 import { STDB_URI } from "./connection";
 import { useLiveSession } from "./live-session";
-import { mockSession } from "./mock-session";
+import { engineSession } from "./engine-session";
 import type { SessionSnapshot } from "./types";
 
-const useMock = (_sessionId: string): SessionSnapshot => mockSession;
+// Offline mock now shows the causal-engine-driven run of the demo hospital.
+const useMock = (_sessionId: string): SessionSnapshot => engineSession;
 
 // Live rows from SpacetimeDB when NEXT_PUBLIC_STDB_URI is set; otherwise the
 // labeled mock snapshot (source: "mock") so the UI can be built offline.

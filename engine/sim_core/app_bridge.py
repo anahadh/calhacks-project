@@ -200,4 +200,86 @@ def to_run_result(hospital: dict, result: ReplayResult, bridge: BridgeResult) ->
     }
 
 
-__all__ = ["BridgeResult", "to_scenario", "to_campaign", "run", "to_run_result", "MEDICAL_TYPES", "PORT_CLASS"]
+def run_session(hospital: dict, patient_zero: str, plan: Plan | None = None) -> dict[str, Any]:
+    """Run our engine and emit the UI's sim rows (devices/services/patients + a
+    per-tick attempts/events/snapshots timeline) so the 3D scene can animate it.
+
+    Note a faithful difference from the probability engine: a merely *controlled*
+    host does not degrade a service here; services fail at encryption (R6) or on a
+    lost dependency. So the animation shows spread during the window, then services
+    drop at detonation, rather than degrading gradually.
+    """
+    result, bridge = run(hospital, patient_zero, plan)
+    flow_id = {}
+    for f in hospital["flows"]:
+        flow_id.setdefault((f["from"], f["to"]), f["id"])
+        flow_id.setdefault((f["to"], f["from"]), f["id"])
+    name = {d["id"]: d["name"] for d in hospital["devices"]}
+
+    infected_at: dict[str, int] = {patient_zero: 0}
+    infected_by: dict[str, str | None] = {patient_zero: None}
+    attempts: list[dict] = []
+    events: list[dict] = [{"tick": 0, "kind": "patient_zero", "targetId": patient_zero, "text": f"{name.get(patient_zero, patient_zero)} infected (patient zero)"}]
+    tick = 0
+    for entry in result.trace:
+        if entry.rule == "R4" and entry.node:
+            if entry.status == "applied" and entry.source:
+                tick += 1
+                infected_at.setdefault(entry.node, tick)
+                infected_by.setdefault(entry.node, entry.source)
+                attempts.append({"tick": tick, "from": entry.source, "to": entry.node, "flowId": flow_id.get((entry.source, entry.node), ""), "success": True})
+                events.append({"tick": tick, "kind": "device_infected", "targetId": entry.node, "text": f"{name.get(entry.node, entry.node)} compromised"})
+
+    det_tick = tick + 1
+    final = result.services[-1].services
+    down_services = [sid for sid in bridge.service_ids if final.get(sid) in {"down", "paper"}]
+    for sid in down_services:
+        events.append({"tick": det_tick, "kind": "service_down", "targetId": sid, "text": f"{sid} offline"})
+
+    infected_ids = {h for h, lvl in result.levels.items() if Level[lvl] >= Level.footholded} | set(infected_at)
+    devices = [
+        {"deviceId": h, "infected": True, "infectedAtTick": infected_at.get(h, 0), "infectedBy": infected_by.get(h) or ""}
+        if h in infected_ids else {"deviceId": h, "infected": False}
+        for h in (d["id"] for d in hospital["devices"])
+    ]
+    services = [{"serviceId": sid, "down": True, "downSinceTick": det_tick} if sid in down_services else {"serviceId": sid, "down": False} for sid in bridge.service_ids]
+
+    groups = {}
+    for group in hospital.get("patients", []):
+        states = [final.get(sid) for sid in group.get("dependsOnServices", [])]
+        if any(s == "down" for s in states):
+            groups[group["id"]] = "diverted" if group.get("type") == "er" else "disrupted"
+        elif any(s == "paper" for s in states):
+            groups[group["id"]] = "delayed"
+        else:
+            groups[group["id"]] = "ok"
+    patients = [{"groupId": gid, "state": st} for gid, st in groups.items()]
+
+    total_ticks = det_tick
+    snapshots = [{"tick": k, "infectedCount": sum(1 for v in infected_at.values() if v <= k)} for k in range(total_ticks + 1)]
+    by_counts: dict[str, int] = {}
+    for src in infected_by.values():
+        if src:
+            by_counts[src] = by_counts.get(src, 0) + 1
+    total_by = sum(by_counts.values()) or 1
+    choke = [{"deviceId": d, "share": round(c / total_by, 2)} for d, c in sorted(by_counts.items(), key=lambda x: -x[1])[:3]]
+    delayed = sum(1 for st in groups.values() if st != "ok")
+
+    return {
+        "patientZero": patient_zero,
+        "finalTick": total_ticks,
+        "devices": devices,
+        "services": services,
+        "patients": patients,
+        "attempts": attempts,
+        "events": events,
+        "snapshots": snapshots,
+        "chokePoints": choke,
+        "delayedProcedures": delayed,
+        "assumptions": bridge.notes,
+        "encryptedHosts": len(result.summary["encrypted_hosts"]),
+        "medicalDevicesEncrypted": result.summary["medical_devices_encrypted"],
+    }
+
+
+__all__ = ["BridgeResult", "to_scenario", "to_campaign", "run", "run_session", "to_run_result", "MEDICAL_TYPES", "PORT_CLASS"]

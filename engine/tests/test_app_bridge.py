@@ -49,6 +49,21 @@ def test_a_non_windows_medical_device_cannot_be_patient_zero():
         run(hospital, "mri_1")
 
 
+def test_run_session_emits_ui_rows_with_a_timeline():
+    from sim_core.app_bridge import run_session
+
+    session = run_session(demo(), "mri_2")
+    assert session["patientZero"] == "mri_2"
+    assert sum(d["infected"] for d in session["devices"]) > 5
+    assert any(s["down"] for s in session["services"])
+    # a per-tick timeline the scene can animate
+    assert len(session["attempts"]) > 0 and len(session["snapshots"]) == session["finalTick"] + 1
+    assert session["snapshots"][-1]["infectedCount"] >= session["snapshots"][0]["infectedCount"]
+    # patient groups cover every group; medical scanners never encrypt
+    assert {p["groupId"] for p in session["patients"]} == {g["id"] for g in demo()["patients"]}
+    assert session["medicalDevicesEncrypted"] == 0
+
+
 def test_a_supplied_identity_layer_is_used_verbatim():
     hospital = demo()
     hospital["accounts"] = [{"id": "H\\real", "domain": "H", "tier": "administrator", "admin_to": ["srv_dc"], "sessions_on": []}]
