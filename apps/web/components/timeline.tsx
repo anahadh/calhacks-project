@@ -1,84 +1,146 @@
 "use client";
 
 import { tickClock } from "@/lib/format";
-import type { SessionSnapshot } from "@/lib/stdb/types";
+import type { SessionIndex } from "@/lib/stdb/use-session";
+import type { SessionSnapshot, SimEventRow } from "@/lib/stdb/types";
 
-// Playback controls and scrubber. History comes from tick_snapshot rows.
+// The timeline rail: playback controls, the scrubber and the current beat.
+// History comes from tick_snapshot rows and markers from sim_event rows.
 // Controls are inert until the run reducers exist.
 const SPAN_TICKS = 48; // 12 simulated hours
+const LABEL_EVERY = 8; // every 2 hours
 
-export function Timeline({ session }: { session: SessionSnapshot }) {
+const DOT: Record<string, string> = {
+  patient_zero: "bg-state-infected ring-[3px] ring-state-infected/40",
+  device_infected: "bg-state-infected",
+  service_down: "bg-ink ring-[3px] ring-ink/25",
+  diversion: "bg-state-disrupted",
+};
+
+export function Timeline({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   const run = session.runs.find((r) => r.id === session.activeRunId)!;
-  const maxInfected = Math.max(1, session.hospital.devices.length);
+  const patientZero = index.device.get(run.patientZero)?.name ?? run.patientZero;
   const pct = (tick: number) => `${(tick / SPAN_TICKS) * 100}%`;
-  const markers = session.events.filter((e) => e.kind === "service_down" || e.kind === "diversion");
+  const total = session.hospital.devices.length;
+
+  // The beat is the latest tick with events, shown as one line.
+  const lastTick = Math.max(...session.events.filter((e) => e.tick <= run.tick).map((e) => e.tick));
+  const beat = session.events.filter((e) => e.tick === lastTick);
 
   return (
-    <footer className="flex h-16 items-center gap-5 border-t border-line px-5">
-      <div className="flex items-center gap-1">
-        <IconButton label={run.status === "running" ? "Pause" : "Play"}>
+    <section className="rounded-panel border border-line bg-panel px-4 pb-4 pt-3.5">
+      <div className="flex flex-wrap items-center gap-3.5">
+        <button
+          aria-label={run.status === "running" ? "Pause" : "Play"}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line2 bg-panel2 text-ink transition hover:border-accent hover:text-accent"
+        >
           {run.status === "running" ? (
-            <path d="M5 3.5v9M11 3.5v9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+              <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
+            </svg>
           ) : (
-            <path d="M5 3l8 5-8 5z" fill="currentColor" />
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+              <path d="M8 5v14l11-7z" />
+            </svg>
           )}
-        </IconButton>
-        <IconButton label="Step">
-          <path d="M4 3l6 5-6 5z M12 3v10" fill="currentColor" stroke="currentColor" strokeWidth="1.4" />
-        </IconButton>
-        <IconButton label="Reset">
-          <path d="M3.5 8a4.5 4.5 0 1 0 1.3-3.2M3.5 2.5v2.8h2.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </IconButton>
+        </button>
+
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="font-disp text-[19px] font-semibold tabular-nums">{tickClock(run.tick)}</span>
+            <span className="num text-[11px] text-ink-faint">tick {run.tick}</span>
+          </div>
+          <div className="num text-[10.5px] uppercase tracking-[0.08em] text-ink-muted">
+            {run.label} · patient zero {patientZero} · {run.status}
+          </div>
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
+          {([0.5, 1, 2, 4] as const).map((s) => (
+            <button
+              key={s}
+              aria-pressed={s === run.speed}
+              className={`num rounded-md border px-2 py-1 text-[10.5px] ${
+                s === run.speed ? "border-accent bg-accent text-bg" : "border-line2 bg-panel2 text-ink-muted"
+              }`}
+            >
+              {s === 0.5 ? "½" : s}×
+            </button>
+          ))}
+          <label className="num ml-3 inline-flex cursor-pointer select-none items-center gap-2 text-[10.5px] text-ink-muted">
+            <span className="relative h-[17px] w-[30px] rounded-full bg-accent-dim">
+              <span className="absolute left-[15px] top-[2px] h-[13px] w-[13px] rounded-full bg-accent" />
+            </span>
+            Following {session.presenterName}
+          </label>
+        </div>
       </div>
 
-      <div className="flex rounded-md border border-line p-0.5 text-xs">
-        {[0.5, 1, 2, 4].map((s) => (
-          <span key={s} className={`num rounded px-1.5 py-0.5 ${s === run.speed ? "bg-raised text-ink" : "text-ink-faint"}`}>
-            {s}×
+      {/* Track */}
+      <div className="relative mt-3.5 h-[42px]">
+        {Array.from({ length: SPAN_TICKS / LABEL_EVERY + 1 }, (_, i) => i * LABEL_EVERY).map((t) => (
+          <span key={t} className="num absolute top-0 -translate-x-1/2 text-[9.5px] text-ink-faint" style={{ left: pct(t) }}>
+            {tickClock(t)}
+            <span className="absolute left-1/2 top-[14px] h-[5px] w-px bg-line2" />
           </span>
         ))}
-      </div>
 
-      {/* Scrubber: heat strip of infected count, event markers, playhead */}
-      <div className="relative h-8 flex-1">
-        <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-line" />
-        <div className="absolute inset-x-0 bottom-0 flex h-3 items-end">
+        <EventDots events={session.events} pct={pct} />
+
+        <div className="absolute inset-x-0 top-[33px] flex h-1 overflow-hidden rounded-full bg-line2">
           {session.snapshots.map((s) => (
             <span
               key={s.tick}
               className="block h-full bg-state-infected"
-              style={{ width: pct(1), opacity: 0.15 + (s.infectedCount / maxInfected) * 0.85 }}
+              style={{ width: pct(1), opacity: 0.25 + (s.infectedCount / total) * 3 }}
             />
           ))}
         </div>
-        {markers.map((e, i) => (
-          <span
-            key={i}
-            title={`${tickClock(e.tick)} · ${e.text}`}
-            className="absolute top-0 h-2.5 w-px bg-ink-muted"
-            style={{ left: pct(e.tick + 0.5) }}
-          />
-        ))}
         <span
-          className="absolute top-0 h-full w-0.5 -translate-x-1/2 rounded bg-ink"
+          className="absolute top-[26px] h-[18px] w-[18px] -translate-x-1/2 rounded-full border-[3px] border-accent bg-ink shadow-[0_2px_8px_rgba(0,0,0,.5)]"
           style={{ left: pct(run.tick + 1) }}
           aria-label={`Tick ${run.tick}`}
         />
       </div>
 
-      <span className="num w-24 text-right text-xs text-ink-faint">
-        {tickClock(run.tick)} / {tickClock(SPAN_TICKS)}
-      </span>
-    </footer>
+      {/* Current beat */}
+      <div className="mt-4 flex min-h-[40px] items-start gap-3">
+        <span className="num min-w-[52px] shrink-0 pt-px text-xs font-semibold text-accent">{tickClock(lastTick)}</span>
+        <p className="text-[13px] leading-snug text-ink-muted">
+          {beat.map((e, i) => (
+            <span key={i}>
+              {i > 0 && " · "}
+              <b className="font-semibold text-ink">{e.text}</b>
+            </span>
+          ))}
+          <span className="mt-1 block text-[11px] text-ink-faint">
+            Illustrative simulation. Spread rates are not measured from real incidents.
+          </span>
+        </p>
+      </div>
+    </section>
   );
 }
 
-function IconButton({ label, children }: { label: string; children: React.ReactNode }) {
+function EventDots({ events, pct }: { events: SimEventRow[]; pct: (t: number) => string }) {
+  // One dot per tick and kind, so stacked events stay readable.
+  const seen = new Set<string>();
+  const dots = events.filter((e) => {
+    const k = `${e.tick}:${e.kind}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
   return (
-    <button aria-label={label} title={label} className="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-raised hover:text-ink">
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
-        {children}
-      </svg>
-    </button>
+    <>
+      {dots.map((e) => (
+        <span
+          key={`${e.tick}:${e.kind}`}
+          title={`${tickClock(e.tick)} · ${e.text}`}
+          className={`absolute top-[20px] h-[9px] w-[9px] -translate-x-1/2 rounded-full border-2 border-bg ${DOT[e.kind] ?? "bg-ink-faint"}`}
+          style={{ left: pct(e.tick + 0.5) }}
+        />
+      ))}
+    </>
   );
 }
