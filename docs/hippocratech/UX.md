@@ -11,7 +11,7 @@ A hospital team has to agree on a network change, and each member sees a differe
 **Show, don't tell.** The product earns trust by letting people *watch* three things:
 
 1. **The attack spreading** through their building.
-2. **The agents talking** their way to a defense.
+2. **The aggregate fix** — after the attack, the agents talk their way to a defense (never while the simulation is running).
 3. **The solution holding** against the same attack.
 
 Every screen exists to make one of those three visible. The demo walks them in order on two laptops.
@@ -47,10 +47,10 @@ A modal over the live, blurred session scene, so the hospital is visible right a
 - **Header:** hospital name, two view tabs (**1 Simulation**, **2 Agents**; the keys 1 and 2 switch), presence avatars, and **Log**.
 - **Simulation tab**, top to bottom:
   - **Timeline rail:** play/pause, the sim clock with the run and patient zero, speed, **Following [name]** / **Rejoin**, a track with event markers and an infected-count heat strip, and the current beat (the latest events) with "Illustrative simulation…" under it. Only the presenter's controls change the shared run.
-  - **Demo steps:** 1 Run the attack → 2 Agents defend → 3 Show the solution, with one line saying what to do next.
+  - **Demo steps:** 1 Run the attack → 2 Create aggregate fix (agents negotiate) → 3 Show the solution, with one line saying what to do next. Step 2 is disabled while a run is `running`.
   - **Scene (about 65%):** the live 3D hospital (see "The attack spreading" below), with **Change conditions** and the 3D/2D toggle in its header and a legend under it.
   - **Side column (about 35%):** **Patients affected** (headline and split, then devices compromised and delayed procedures), **Clinical services** (one tile per service, running or down), and **Inspector** (the hovered device's record; choke points when nothing is hovered).
-- **Agents tab:** a counter strip (patients affected first and largest), then three columns: the agents and the humans in the session, with **Defend** and **Skip to result**; the Agent Room thread (see "The agents talking" below); and **Recommendations**, up to three cards. Each card shows its rules, the "why this works" explanation, verified numbers, each agent's verdict, the required roles with their review status, and **Show the solution**.
+- **Agents tab:** a counter strip (patients affected first and largest), then three columns: the agents and the humans in the session, with **Create aggregate fix** (writes `defend_request`; disabled while a visible run is `running`) and **Skip to result**; the Agent Room thread (see "The agents talking" below); and **Recommendations**, up to three cards. Each card shows its rules, the "why this works" explanation, verified numbers, each agent's verdict, the required roles with their review status, and **Show the solution**.
 - **Question banner:** when an agent asks a human something, a banner appears across the top of every screen until it is answered.
 - **Log drawer:** human decisions, the memo editor, **Approve memo**, and **Export**. This is the only drawer allowed.
 
@@ -66,6 +66,7 @@ A modal over the live, blurred session scene, so the hospital is visible right a
 
 #### The agents talking (Agent Room)
 
+- **When it is live:** only during an aggregate-fix round, after **Create aggregate fix**. While a simulation run is `running`, all agent nodes stay **idle** and no new messages appear.
 - **Map:** four agent nodes in a diamond (Inventory, Flow, Clinical Workflow, Sign-off Coordinator), plus a Humans node. Each node shows its icon, its name, and a live status from `agent_status`: idle, thinking (animated dots), speaking, or waiting for a human.
 - **Particles:** each message travels sender → receiver as a shaped particle, then lands in the thread.
 - **Thread:** a speech bubble per message, with the sender's icon, a one- or two-sentence reason, the constraint added (for rejections), and an expandable payload (the rules, or what a revision changed, as a diff).
@@ -96,6 +97,7 @@ A printable page: the hospital, patient zero, and seed; the chosen plan and its 
 ## What would make the UX wrong
 
 - The spread happens with no visible pulses, or devices change color without a cause on screen.
+- Agent messages appear while a visible simulation is still running.
 - The agents' messages are hidden, summarized, or shown only as a final answer.
 - Messages scroll by faster than someone can read them.
 - An agent message refers to a device or flow and the scene doesn't show which one.
@@ -111,7 +113,7 @@ A printable page: the hospital, patient zero, and seed; the chosen plan and its 
 Open the demo session on two laptops with different roles, and walk the demo script:
 
 1. Infect MRI 2 and run. Both laptops show the same pulses, flashes, and services going down.
-2. Press **Defend** and expand the Agent Room. Follow the particles and bubbles; check that each message highlights its target in the scene.
+2. Let the run finish (or pause it). Press **Create aggregate fix** and expand the Agent Room. Follow the particles and bubbles; check that each message highlights its target in the scene.
 3. Open **Show the solution**. The split screen runs in lockstep, and the right side stops at the zone edge.
 4. Apply **Change conditions → unidentified device**. The question banner appears on both laptops; answer it on laptop 2.
 5. Approve from each required role, then draft, approve, and export the memo.

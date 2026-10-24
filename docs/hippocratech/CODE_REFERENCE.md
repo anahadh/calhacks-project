@@ -49,7 +49,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | Path | Owner | Role |
 |---|---|---|
 | `apps/watcher/src/index.ts` | F1 | Connects as the server identity and starts every watcher |
-| `apps/watcher/src/round.ts` | F1 | On `run` done, `defend_request`, or `challenge`: wakes the Sign-off Coordinator (`start_round` or `reassess`) |
+| `apps/watcher/src/round.ts` | F1 | On `defend_request` only: wakes the Sign-off Coordinator (`start_round` or `reassess`). Never on `run` completion or `challenge` alone |
 | `apps/watcher/src/answer.ts` | F1 | On a `question` answer: calls the Coordinator's `resume` |
 | `apps/watcher/src/relay.ts` | F1 | HTTP endpoint the agents post to. Writes `agent_message_add` and `agent_status_set`, and serves live state reads |
 
@@ -125,7 +125,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/features/agents/agents.ts`, `agent-icon.tsx` | F1 | Agent names and objectives, message-type shapes, agent icons |
 | `apps/web/features/agents/scene-highlights.tsx` | F1 | Scene highlights driven by each `agent_message` |
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
-| `apps/web/features/agents/defend-button.tsx` | F1 | Calls `defend_request` |
+| `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; disabled while a visible run is `running` |
 | `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles |
 | `apps/web/features/review/*` | F3 | Join modal, avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |

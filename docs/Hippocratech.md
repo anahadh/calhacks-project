@@ -58,7 +58,7 @@ Each agent handles one of the four reasons real segmentation plans stall: an inc
 Every design and build decision serves these three moments. If something doesn't make one of them clearer, it waits.
 
 1. **The attack, visibly spreading.** Infection travels along network links, devices flash and turn orange, rooms fill, services go dark, patients' badges change, and ambulances turn away. See [7.3](#73-watch-the-attack-spread).
-2. **The agents, visibly talking.** Every message between agents animates from sender to receiver and lands in a readable conversation. The 3D scene highlights whatever each message is about. See [7.4](#74-watch-the-agents-talk).
+2. **The agents, visibly talking — after the attack.** While a simulation is running, agents stay idle. When a human asks for an **aggregate fix**, the four agents negotiate in the Agent Room: every message animates from sender to receiver and lands in a readable conversation, and the 3D scene highlights whatever each message is about. See [7.4](#74-create-an-aggregate-fix-agents-talk).
 3. **The solution, visibly working.** A split screen replays the same attack with and without the plan, in lockstep. The zones, kept connections and cut connections are drawn on the building, and the before/after numbers sit underneath. See [7.6](#76-see-the-solution).
 
 ---
@@ -80,7 +80,7 @@ Every design and build decision serves these three moments. If something doesn't
 
 ## Hackathon Scope
 
-The loop: **load a hospital → infect a device → watch it spread → watch the agents talk → see the solution contain the same attack → a new challenge comes in, and the agents adapt → humans approve → export.**
+The loop: **load a hospital → infect a device → watch it spread (no agent traffic during this) → press Create aggregate fix and watch the agents negotiate → see the solution contain the same attack → optionally add a new challenge and create an aggregate fix again → humans approve → export.**
 
 **In**
 
@@ -90,7 +90,7 @@ The loop: **load a hospital → infect a device → watch it spread → watch th
 - Four Fetch.ai uAgents on Agentverse, connected to SpacetimeDB through **watchers**. Their whole conversation is stored and animated live.
 - A graph-based policy optimizer, `hippo-sim` test runs for every candidate, and Claude for proposals, explanations and questions.
 - A solution view: synchronized before/after replay, the zones drawn on the building, and the plan in plain language.
-- **New challenge:** an unidentified device appears, the agents pause to ask a human, then adapt.
+- **New challenge:** an unidentified device appears; the human creates an aggregate fix again, and the agents pause to ask a human if needed, then adapt.
 - Human review: role approvals, then a memo and ruleset export.
 
 **Out**
@@ -167,9 +167,13 @@ What judges see each tick (one tick is 15 simulated minutes; at 1× a tick lasts
 
 Playback controls: play, pause, step, speed (0.5×, 1×, 2×, 4×), reset, and scrub. The presenter controls playback for everyone.
 
-### 7.4 Watch the agents talk
+### 7.4 Create an aggregate fix (agents talk)
 
-Pressing **Defend**, or the end of a run, starts a negotiation round (see [The Agents](#the-agents)). The point of this feature is that judges can follow the agents' reasoning as a conversation.
+**Simulation and agent rounds are separate.** While a visible run is `running`, agents do not message each other; the Agent Room stays idle (or shows the last finished round only). Fast `hippo-sim` test runs inside an agent round are not shown in the 3D scene.
+
+When the human is ready — after the baseline attack has finished or been paused — they press **Create aggregate fix**. That writes `defend_request` and starts one negotiation round (see [The Agents](#the-agents)). The agents read the **completed baseline run** (infected devices, services down, active challenges), not live ticks. The point of this feature is that judges can follow the agents' reasoning as a conversation without it overlapping the spreading attack.
+
+**Create aggregate fix** is disabled while a visible run is `running`. It does not fire automatically when a run ends.
 
 **The Agent Room** (right panel, Agents tab; expands to a large overlay with one click):
 
@@ -208,9 +212,9 @@ Pressing **Defend**, or the end of a run, starts a negotiation round (see [The A
   - an unidentified device appears on the network in Imaging (`unknown_device_imaging`, the demo preset);
   - a vendor remote-access link to MRI 3 (`vendor_link_mri3`);
   - a device marked vulnerable (`mark_vulnerable_ehr`).
-- The change appears in 3D (the new device drops in, outlined, marked "Unidentified"), and the agents reassess on their own.
+- The change appears in 3D (the new device drops in, outlined, marked "Unidentified"). Nothing starts an agent round until the human presses **Create aggregate fix** again.
 
-**Done well:** the agreed policy is challenged, the agents pause to ask a human, adapt, and the solution view updates.
+**Done well:** the human challenges the agreed policy, creates a new aggregate fix, the agents pause to ask a human if needed, adapt, and the solution view updates.
 
 ### 7.6 See the solution
 
@@ -239,7 +243,7 @@ Pressing **Defend**, or the end of a run, starts a negotiation round (see [The A
 
 ## The Agents
 
-Four independent Fetch.ai **uAgents**, registered on **Agentverse**, talk to each other with typed messages. **Watchers** connect them to the live SpacetimeDB world (see [Watchers](#watchers)), so every message is stored and every laptop sees the conversation as it happens.
+Four independent Fetch.ai **uAgents**, registered on **Agentverse**, talk to each other with typed messages when a human starts an **aggregate fix** round. **Watchers** connect them to the live SpacetimeDB world (see [Watchers](#watchers)), so every message is stored and every laptop sees the conversation as it happens. They do not talk during a visible simulation run.
 
 Agents decide with code and explain with Claude. Every accept, reject, or question is computed from the inventory, simulation results, and constraints. Claude writes the text in plain language.
 
@@ -264,14 +268,15 @@ Agents decide with code and explain with Claude. Every accept, reject, or questi
 | `Answer` | question id, author, role, choice |
 | `Recommendation` | policy, test result, verdicts, explanation, required roles |
 
-**Round:**
+**Round** (one **aggregate fix** attempt):
+0. A human presses **Create aggregate fix** (`defend_request`). The round watcher wakes the Sign-off Coordinator with the latest completed baseline run and active challenges.
 1. The Inventory Agent checks the infection path and sends `Question`s for anything unidentified.
 2. The Coordinator asks the Flow Agent for a proposal. The Flow Agent asks the optimizer and tests the candidate with `hippo-sim`.
 3. The Clinical Workflow and Inventory agents return verdicts.
 4. The Coordinator adds each rejection's constraint and asks the Flow Agent to revise.
 5. If a question is open, the round pauses (`waiting_for_human`) until a human answers, then resumes.
 
-The round ends when both guardians accept, or after `MAX_ROUNDS = 4`. The Coordinator attaches the required roles and publishes the recommendation.
+The round ends when both guardians accept, or after `MAX_ROUNDS = 4`. The Coordinator attaches the required roles and publishes the recommendation (the **aggregate fix** as one or more recommendation cards).
 
 **Human approval:** agents create and test policies only inside the simulation. Nothing reaches a real network. Approval and export are human actions.
 
@@ -336,14 +341,14 @@ A **watcher** is a long-running SpacetimeDB client. It subscribes to specific ta
 
 | Watcher | Subscribes to | Does |
 |---|---|---|
-| **Round watcher** | `run` (status → `done`), `defend_request`, `challenge` | Wakes the Sign-off Coordinator uAgent to start or reassess a round |
+| **Round watcher** | `defend_request` only | Wakes the Sign-off Coordinator uAgent to start a round (`start_round`) or reassess after a new challenge (`reassess`). Does **not** subscribe to `run` completion |
 | **Answer watcher** | `question` (answer set) | Sends the `Answer` to the Coordinator, which resumes the round |
 | **Message relay** | — (receives from uAgents) | Every message a uAgent sends or receives is written to `agent_message` through `agent_message_add`. The UI animates it from there |
 | **Status relay** | — (receives from uAgents) | Writes each agent's live status (idle, thinking, speaking, waiting) to `agent_status`, which drives the Agent Room nodes |
 
 - Watchers run in one Node process, `apps/watcher`, using the SpacetimeDB TypeScript SDK. They connect with the server identity stored in the module's `config` table, and only that identity can call the server-only reducers.
 - **Agent-to-agent traffic still goes over Fetch.ai** (uAgents messaging via Agentverse). The relay mirrors it into SpacetimeDB, so the conversation is persistent and visible.
-- **Agents read the live world through the watcher.** For example, the Clinical Workflow Agent can ask for the current `service_state` of a visible run.
+- **Agents read baseline run outcomes through the watcher** when a round starts (device, service, and challenge state from the run the human chose for the aggregate fix). They do not subscribe to live `run_tick` updates during a spreading attack.
 
 ---
 
@@ -546,7 +551,7 @@ When two laptops show the same spreading attack, the shared contracts are frozen
 2. The agents finish one round with a rejection and a revision, visible in the Agent Room.
 3. The solution view shows the split-screen replay containing the attack.
 4. Approval and export work. Record the first demo video.
-5. The new-challenge beat works, including the human question.
+5. The new-challenge beat works: human adds a challenge, presses **Create aggregate fix** again, including the human question.
 
 **If behind, cut in this order:**
 1. The 3D key-equipment models (keep boxes).
@@ -565,12 +570,12 @@ The brief's script runs **3:00**. The official guide says about **2 minutes**. F
 
 1. **(0:00–0:30) The hospital.** The 3D hospital, everything healthy and blue. "[Quote from the hospital IT/biomed person.] One bad rule can stop scans reaching radiologists, so hospitals don't segment."
 2. **(0:30–1:00) The attack.** Infect MRI 2. Pulses race along the links, devices flash orange, PACS falls ("Radiology reading offline"), and the camera follows the infection across both floors. Ambulances turn away at the ER. "212 patients affected." *(Placeholder: use the real number.)*
-3. **(1:00–1:40) The agents talk.** Open the Agent Room. Messages fly between the agents:
+3. **(1:00–1:40) The aggregate fix.** The run finishes. Press **Create aggregate fix** and open the Agent Room. Messages fly between the agents:
    - the Flow Agent proposes, and the cut lines flash in the building;
    - the Clinical Workflow Agent **rejects** it, and MRI → PACS glows "keep: scans to radiologists";
    - the Flow Agent's test result lands in the thread, and it revises.
 4. **(1:40–2:20) The solution.** Press **Show the solution**. On the split screen, the left side spreads everywhere while the right side stops at the purple zone edge, tick for tick. "212 → 9 patients affected. Every protected flow still working." *(Placeholder.)*
-5. **(2:20–3:00) A new challenge.** An unidentified device drops into Imaging. The Inventory Agent pauses: "Is this a workstation or a scanner?" Clinical engineering answers on the second laptop. The agents resume, update the plan, and route it to Security and Clinical engineering, who both approve. Export. "Agents do the homework. Humans decide."
+5. **(2:20–3:00) A new challenge.** An unidentified device drops into Imaging. Press **Create aggregate fix** again. The Inventory Agent pauses: "Is this a workstation or a scanner?" Clinical engineering answers on the second laptop. The agents resume, update the plan, and route it to Security and Clinical engineering, who both approve. Export. "Agents do the homework. Humans decide."
 
 **Backup:** a recorded run, plus a cached agent round for the demo seed.
 
@@ -650,6 +655,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 24, 2026 | **Design system adopted (supersedes the template's look).** Clinical instrument on graphite; monochrome chrome replaces the teal accent, which read too close to healthy blue; state colors retuned as monitor traces (same meanings); Hanken Grotesk + IBM Plex Mono; hairline grid surfaces; breathing motion. Layout unchanged |
 | Oct 23, 2026 | **Factory Droid dropped.** The Flow Agent tests candidates with `hippo-sim` directly. `/api/droid` and the Factory sponsor track are removed |
 | Oct 23, 2026 | `implementation-steps.md` removed. The build plan lives in this spec, plus the owner and file map in `hippocratech/CODE_REFERENCE.md` |
+| Oct 24, 2026 | **Simulation and agent rounds decoupled.** Agents message only after the human presses **Create aggregate fix** (`defend_request`). No agent traffic during a visible run; the round watcher does not wake on run completion |
 
 ---
 
@@ -659,7 +665,8 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 - **Watcher.** A long-running SpacetimeDB client that subscribes to tables and acts when rows change.
 - **Reducer.** A SpacetimeDB server function. A **scheduled reducer** runs on a timer; `run_tick` advances the simulation.
 - **Visible run.** A simulation run inside SpacetimeDB that everyone watches. A **test run** is a fast `hippo-sim` run the agents use, never animated.
-- **Round.** One cycle of inventory check, proposal, test run, verdicts, constraints, and revision, pausing for human answers when needed.
+- **Aggregate fix.** The combined segmentation plan the agents negotiate in one round, published as recommendation card(s). Started only when a human presses **Create aggregate fix**.
+- **Round.** One aggregate-fix cycle: inventory check, proposal, test run, verdicts, constraints, and revision, pausing for human answers when needed.
 - **Constraint.** What a rejecting agent requires: keep a flow, keep a service, confirm a device, stay under a rule count.
 - **Question.** An agent asking a human for a fact it can't compute, usually what an unidentified device is.
 - **Agent Room.** The UI that shows the agents as nodes, their messages in flight, and the conversation thread.

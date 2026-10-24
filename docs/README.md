@@ -3,7 +3,7 @@
 An autonomous, multi-agent hospital cyber-defense simulator.
 
 1. **Watch the attack.** Load a synthetic hospital, infect one device, and watch ransomware spread through a 3D model of the building, tick by tick, live on every screen.
-2. **Watch the agents talk.** Four Fetch.ai agents argue out a defense on screen. A graph optimizer finds candidates, the Flow Agent tests each one against the same attack, and Claude explains every move.
+2. **Create an aggregate fix.** After the attack finishes, four Fetch.ai agents argue out a defense on screen (no agent traffic while the simulation is running). A graph optimizer finds candidates, the Flow Agent tests each one against the same attack, and Claude explains every move.
 3. **See the solution.** The same attack replays side by side, with and without the plan. Humans approve before anything is exported.
 
 Built at Cal Hacks 13.0. All hospital data is synthetic. Sponsor tracks: **Fetch.ai, Armadin, Microsoft, Anthropic, SpacetimeDB.**
@@ -19,7 +19,7 @@ npm run dev -w watcher                # terminal 3: watchers connecting Spacetim
 cd agents && python run_all.py        # terminal 4: the four uAgents
 ```
 
-Open the app and choose **Demo hospital**. Infect MRI 2, press **Run**, then **Defend**, then **Show the solution**.
+Open the app and choose **Demo hospital**. Infect MRI 2, press **Run**, wait for the run to finish, press **Create aggregate fix**, then **Show the solution**.
 
 ## How the simulation runs (SpacetimeDB)
 
