@@ -4,8 +4,10 @@
 
 The user-requested `claude_instructions/IMPLEMENTATION.md` is implemented by the
 strict Pydantic models in [`engine/sim_core/schema.py`](../../engine/sim_core/schema.py).
-It is separate from the planned scene/upload contract below. No automatic
-conversion to the legacy `infected` boolean is provided.
+These are the engine-native, lever-based backtest contract. The app's visible runs
+use the same engine through `sim_core.app_bridge`, which **does** convert the
+engine's five-level state to the app's `infected`/`down` booleans and the per-tick
+frames — see [App run contract](#app-run-contract) below.
 
 - `Scenario`: hosts/profiles, typed consumer→provider dependencies, network links,
   domains, directed trusts, account grants/sessions/optional org ownership,
@@ -52,10 +54,11 @@ all export the same deterministic replay (`ReplayResult.model_dump_json()`).
 - **Planner boundary.** A planner receives only the canonical `Scenario` and
   `Plan.model_json_schema()`; a scenario upload embedding `campaign`/`expected` is rejected, not
   stripped, so a held-out answer cannot ride in through the planner surface.
-- **Console adapter** (render contract; files land on the UI branch, see `engine/HANDOFF.md`). Maps level→colour (controlled = amber,
+- **Console adapter** (the separate CUH backtest `/replay` viewer, `apps/web/app/replay`; see `engine/HANDOFF.md`). Maps level→colour (controlled = amber,
   encrypted = red), device `dependency_outage` = violet, and service up/paper/down, keeping
-  labels. It renders bundled replay output only; it never coerces the five-level state into the
-  live `infected`/`down` booleans and never ticks in the browser.
+  labels. It renders bundled `ReplayResult` output only and never ticks in the browser. (The app's
+  visible run is a different path: `app_bridge.run_session` converts the five-level state to the
+  `infected`/`down` booleans and per-tick frames — see [App run contract](#app-run-contract).)
 
 ## Earlier scene/upload contract
 
@@ -202,17 +205,167 @@ What the agent returns and the simulation applies. Anything not allowed by a rul
 - `fastest_deploy` rules may select only by `vlan` and `port`, since that is what existing ACLs express. The validator enforces this.
 - Maximum 40 rules per policy.
 
-## RunResult (draft, needs lead approval)
+## App run contract
 
-What `hippo-sim` prints for one test run, as one JSON object on stdout. The agents read it (`agents/protocol.py`, `RunResult`), and it is the `testResult` on `Proposal`, `Revision` and `Recommendation`. Every number comes from `sim-core`. Unknown fields are rejected.
+The live visible run. The run watcher POSTs this to the engine
+(`POST /app/session`, `engine/sim_core/api.py`), which returns the sim rows plus a
+per-tick `frames[]` timeline; the watcher drips the frames into SpacetimeDB. Full
+engine reference: [`../engine.md`](../engine.md) and
+[`INTEGRATION.md`](INTEGRATION.md) §5a.
+
+**Request** — `AppSessionRequest`, strict (any extra key is `422 invalid_request`):
 
 ```jsonc
 {
-  "ticks": 48,                       // ticks simulated
-  "infectedCount": 11,               // devices infected at the end
+  "hospital": { /* the app hospital object: this file's "hospital" */ },
+  "patient_zero": "mri_2",      // an executing Windows host (IT, or a Windows medical console)
+  "policy": null,               // optional: the agents' by-alias Policy; null/omitted = no segmentation
+  "challenges": []              // optional: supported ids, e.g. ["unknown_device_imaging"]
+}
+```
+
+`POST /app/run_result` takes the same request and returns the `RunResult` below
+(the HTTP twin of the `hippo-sim` CLI). `POST /app/entry_points {hospital}` returns
+`{ "entryPoints": [deviceId, …] }`, the device ids the engine accepts as patient
+zero, in file order.
+
+**Response** (`200`) — the `run_session` output (`app_bridge.run_session`):
+
+```jsonc
+{
+  "patientZero": "mri_2",
+  "finalTick": 15,
+  "removedFlows": [],                 // flow ids the policy removed; [] with no policy
+  "protectedBroken": [],              // removed ∩ protected
+  "frames": [ /* TickFrame, finalTick + 1 of them, ticks 0..finalTick */ ],
+  "devices":  [ { "deviceId", "infected": true, "infectedAtTick": 3, "infectedBy": "mri_2" }, … ],
+  "services": [ { "serviceId": "svc_mri", "down": true, "downSinceTick": 15 }, … ],
+  "patients": [ { "groupId": "pg_er", "state": "ok|delayed|disrupted|diverted" }, … ],
+  "attempts": [ { "tick", "from", "to", "flowId", "success" }, … ],
+  "events":   [ { "tick", "kind", "targetId", "text" }, … ],
+  "snapshots":[ { "tick", "infectedCount" }, … ],
+  "chokePoints": [ { "deviceId", "share" }, … ],
+  "delayedProcedures": 6,
+  "assumptions": [ "[S] …", … ],
+  "encryptedHosts": 14,
+  "medicalDevicesEncrypted": 0
+}
+```
+
+Errors use one envelope, `{ "error": { "type", "detail" } }`: `413`
+`body_too_large`/`too_many_nodes`; `422` `invalid_request`, `invalid_hospital`,
+`invalid_policy` (an `apply_policy` error), `invalid_app_input` (e.g. a refused
+patient zero). The top-level `devices`/`services`/… arrays are the final-state
+aggregate; the watcher replays `frames` instead.
+
+### Run frames (`TickFrame`)
+
+One frame per tick, `0..finalTick` in order. Tick 0 lists every device, service and
+group (the baseline the module inserts); every later tick carries only what changed.
+Only frame 0 carries `run`; `final` is true only on tick `finalTick`. The watcher
+parses it in `apps/watcher/src/engine.ts` and the module in `spacetime/src/ingest.ts`.
+
+```jsonc
+{
+  "tick": 3,                          // 0..finalTick, contiguous
+  "final": false,                     // true only on tick == finalTick
+  "devices":  [ { "deviceId": "ws_lab", "infected": true, "infectedAtTick": 3, "infectedBy": "ws_img_1" } ],
+                                      // tick 0: EVERY device; later: only devices that changed
+                                      // not infected: { "infected": false, "infectedAtTick": -1, "infectedBy": "" }
+  "services": [ { "serviceId": "svc_mri", "down": true, "downSinceTick": 15 } ],   // tick 0: every service; up = down:false, downSinceTick:-1
+  "patients": [ { "groupId": "pg_er", "state": "diverted" } ],                    // tick 0: every group; later: changed only
+  "attempts": [ { "from": "ws_img_1", "to": "ws_lab", "flowId": "fl_12", "success": true } ],
+  "events":   [ { "kind": "device_infected", "targetId": "ws_lab", "text": "Lab workstation compromised" } ],
+  "snapshot": { "infectedCount": 4, "patientsAffected": 0,
+                "infectedIds": ["…sorted"], "servicesDown": ["…sorted"], "patients": { "pg_er": "ok" } },
+  "summary":  { "patientsAffected": 0, "devicesCompromised": 4, "servicesDown": 0,
+                "delayedProcedures": 0, "chokePoints": [ { "deviceId": "ws_img_1", "share": 0.5 } ] },
+  "run":      { "finalTick": 15, "removedFlows": [], "protectedBroken": [], "assumptions": ["[S] …"] }
+                                      // present on tick 0 only
+}
+```
+
+- `events[].kind` is one of `patient_zero`, `device_infected`, `service_down`,
+  `diversion`; its `targetId` names a device (first two), service, or room (`diversion`).
+- Patient state comes from each tick's service state; services fail only at
+  detonation, so groups are `ok` until `finalTick`. No duration escalation.
+- Every successful attempt names a real `flowId`; a blocked attempt (`success:false`)
+  marks a removed `smb`/`rdp` flow out of a compromised device, disclosed by an `[S]`
+  note.
+
+## Run ingestion
+
+How a visible run reaches SpacetimeDB. The module stores and reveals; it computes
+nothing. Reducers and columns are in `spacetime/src/schema.ts`,
+`ingest.ts`, `solution.ts` and `index.ts`.
+
+**`run` columns** (public; new engine columns default so an existing database
+migrates):
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | string PK | — |
+| `session_id` | string | the session |
+| `pair_id` | string | `""` unless part of a solution-view pair |
+| `label`, `patient_zero`, `policy_json` | string | `policy_json` `""` = no segmentation; opaque to the module |
+| `seed` | u32 | accepted and ignored (the engine has no RNG) |
+| `tick` | u32 | the last frame applied |
+| `status` | string | `requested \| running \| paused \| done \| error` |
+| `speed` | f64 | `0.5 \| 1 \| 2 \| 4` |
+| `patients_affected`, `devices_compromised`, `services_down`, `delayed_procedures` | u32 | the latest frame's summary |
+| `choke_points_json` | string | the latest frame's choke points |
+| `final_tick` | u32 | from frame 0 |
+| `detail` | string | engine/watcher error (rule 14); never `session.round_detail` |
+| `autoplay` | bool | frame 0 leaves the run `running` (true) or `paused` |
+| `step_pending` | bool | the presenter asked for one step while paused |
+| `challenges_json`, `removed_flows_json`, `assumptions_json` | string | `removed_flows_json`/`assumptions_json` from frame 0 |
+| `recommendation_id` | string | set on a solution rerun's plan side |
+| `started_at` | timestamp | — |
+
+The per-tick rows the frames write: `device_state`, `service_state`,
+`patient_state`, `spread_attempt` (pruned after `KEEP_ATTEMPT_TICKS`), `sim_event`,
+`tick_snapshot`.
+
+**Status machine**
+
+```
+run_start / solution_start / run_reset ──► requested ──(watcher: frame 0 via run_frames_apply)──► running | paused  (by autoplay)
+requested ──(watcher: run_fail)──► error
+running ──run_pause──► paused ──run_resume──► running
+paused ──run_step──► paused + step_pending ──(watcher applies one frame)──► paused
+running | paused ──(frame.final)──► done
+any (except requested) ──run_reset──► requested (tick 0, rows cleared, autoplay false)
+```
+
+**Ingestion reducers**
+
+| Reducer | Auth | Args | Behavior |
+|---|---|---|---|
+| `run_frames_apply` | server only | `{ frames_json }` = `[{ runId, frame: TickFrame }]` | One transaction (a pair lands atomically). Checks each frame against the run and the session's hospital, then writes the six row sets and updates the `run` row. Size ≤ 256 KiB. |
+| `run_fail` | server only | `{ run_id, detail }` | Sets `status:'error'` and `detail` (≤ 500 chars). |
+| `solution_start` | presenter | `{ session_id, recommendation_id, speed }` | Inserts **two** `requested` runs under one `pair_id` (`No segmentation` and `With plan: <name>`), both `autoplay`. Leaves `active_run_id` put (rule 9: writes no `recommendation.status`); sets `session.solution_pair_id`. |
+| `solution_close` | presenter | `{ session_id }` | Clears `session.solution_pair_id`; keeps the runs. |
+| `session_entry_points_set` | server only | `{ session_id, entry_points_json }` | Stores the engine's legal patient zeros (device ids in the session's hospital). |
+
+`run_start`, `run_pause`, `run_resume`, `run_set_speed`, `run_step` and `run_reset`
+(presenter) only change flags the watcher obeys; they write no state rows.
+
+## RunResult (the live contract)
+
+What `hippo-sim` prints for one test run, as one JSON object on stdout, and what
+`POST /app/run_result` returns. The agents read it (`agents/protocol.py`,
+`RunResult`), and it is the `testResult` on `Proposal`, `Revision` and
+`Recommendation`. `app_bridge.to_run_result` derives it from the same `run_session`
+output the screen shows, so the agents' numbers equal the visible run's. Every number
+comes from the Python engine. Unknown fields are rejected.
+
+```jsonc
+{
+  "ticks": 15,                       // = finalTick
+  "infectedCount": 14,               // devices infected at the end
   "infectedDevices": [ { "id": "mri_2", "tick": 0 }, { "id": "ws_img_1", "tick": 2 } /* … */ ],
-  "servicesDown": [ { "id": "svc_reading", "downSinceTick": 6, "ticksDown": 42 } ],
-  "patientCounts": { "ok": 30, "delayed": 42, "disrupted": 26, "diverted": 14 },
+  "servicesDown": [ { "id": "svc_mri", "downSinceTick": 15, "ticksDown": 1 } ],
+  "patientCounts": { "ok": 30, "delayed": 0, "disrupted": 26, "diverted": 14 },
   "protectedBroken": [ "fl_2" ],     // protected flow ids the policy removed
   "removedFlows": [ "fl_8", "fl_9" ] // every flow id the policy removed
 }
@@ -220,12 +373,12 @@ What `hippo-sim` prints for one test run, as one JSON object on stdout. The agen
 
 | Field | Type | Rule |
 |---|---|---|
-| `ticks` | integer | ≥ 0 |
+| `ticks` | integer | ≥ 0; the run's `finalTick` |
 | `infectedCount` | integer | ≥ 0; equals the length of `infectedDevices` |
-| `infectedDevices` | `{ id, tick }[]` | device id and the tick it was infected |
-| `servicesDown` | `{ id, downSinceTick, ticksDown }[]` | services down at any point; `ticksDown` counts the ticks it was down |
+| `infectedDevices` | `{ id, tick }[]` | device id and the tick (`infectedAtTick`) it was infected |
+| `servicesDown` | `{ id, downSinceTick, ticksDown }[]` | services down at the end; `ticksDown = ticks - downSinceTick + 1` (down from `downSinceTick` through `ticks` inclusive) |
 | `patientCounts` | `{ ok, delayed, disrupted, diverted }` | patients in each state at the end; the four add up to the hospital's total |
-| `protectedBroken` | string[] | flow ids |
+| `protectedBroken` | string[] | flow ids the policy removed that were `protected` |
 | `removedFlows` | string[] | flow ids; empty when there is no policy |
 
 ## Template

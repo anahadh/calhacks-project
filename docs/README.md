@@ -12,35 +12,35 @@ Built at Cal Hacks 13.0. All hospital data is synthetic. Sponsor tracks: **Fetch
 
 ```bash
 npm install
-cp .env.example .env.local           # fill in keys; see the comments
-spacetime publish hippocratech        # terminal 1: the SpacetimeDB module (simulation + shared state)
-npm run dev -w web                    # terminal 2: the app, memo and export routes
-npm run dev -w watcher                # terminal 3: watchers connecting SpacetimeDB to the agents
-cd agents && python run_all.py        # terminal 4: the four uAgents
+cp .env.example .env.local                      # fill in keys; see the comments
+spacetime start                                 # SpacetimeDB on :3000 (local)
+spacetime publish --server local hippocratech   # publish the module (shared state bus)
+cd engine && uv run uvicorn sim_core.api:app     # the Python engine on :8000 (computes every run)
+npm run dev -w watcher                           # the run watcher, relay and round watcher
+npm run dev -w web                               # the app, memo and export routes
+cd agents && python run_all.py                   # the four uAgents
 ```
 
 Open the app and choose **Demo hospital**. Infect MRI 2, press **Run**, wait for the run to finish, press **Create aggregate fix**, then **Show the solution**.
 
-## How the simulation runs (SpacetimeDB)
+## How the simulation runs (one engine + SpacetimeDB)
 
-The simulation runs inside the SpacetimeDB module. A scheduled reducer, `run_tick`, advances the attack one tick at a time and writes device, service and patient state, plus every spread attempt. Every laptop subscribes to the same rows, so everyone watches the same attack live.
+One Python engine, [`engine/sim_core`](../engine/README.md), computes every run: spread, impact, patient states and policy effects (deterministic, no RNG). The run watcher asks it for a whole run (`POST /app/session`) and feeds the per-tick frames into SpacetimeDB through the server-only `run_frames_apply` reducer, paced at the run's speed. Every laptop subscribes to the same rows, so everyone watches the same attack live. The SpacetimeDB module stores and reveals rows; it computes nothing. The agents call the engine's `hippo-sim` CLI for fast test runs. Full reference: [`engine.md`](engine.md).
 
-The same engine (`sim-core`) is built into the `hippo-sim` CLI, which the agents use for fast test runs.
+## Backtest the real campaign (`engine/`)
 
-## Backtest engine (`engine/`)
-
-Separate from the live `sim-core`, [`engine/`](../engine/README.md) is a standalone, deterministic Python model that backtests a segmentation plan against the real 2021 Conti campaign and scores it — credentials, trust hops, and clinical dependencies, not just connectivity. It is a research / credibility tool: it does **not** compute visible runs and is **not** wired into SpacetimeDB.
+The same engine also backtests a segmentation plan against the real 2021 Conti campaign and scores it — credentials, trust hops, and clinical dependencies, not just connectivity. This runs on canonical `Scenario`/`Campaign`/`Plan` inputs through its own CLI, `hippo-backtest` (distinct from the app's `hippo-sim`), and `POST /replay`.
 
 ```bash
 cd engine
 uv sync --python 3.11 --group dev
-uv run pytest -q                                  # 106 checks
+uv run pytest -q                                  # the engine suite
 uv run hippo-backtest replay \
   --scenario ../claude_instructions/data/scenarios/cuh_hospital.json \
   --campaign examples/cuh_campaign.json --plan examples/cuh_plan.json
 ```
 
-Design and evidence limits are in [`engine/RESEARCH_DECISIONS.md`](../engine/RESEARCH_DECISIONS.md); remaining UI wiring is in [`engine/HANDOFF.md`](../engine/HANDOFF.md).
+Design and evidence limits are in [`engine/RESEARCH_DECISIONS.md`](../engine/RESEARCH_DECISIONS.md); adapter notes are in [`engine/HANDOFF.md`](../engine/HANDOFF.md).
 
 ## How the agents work (Fetch.ai)
 
@@ -81,7 +81,7 @@ Addresses come from the team's shared seed phrases, and the profile URLs from Ag
 
 | Feature | Owner | Sponsor(s) |
 |---|---|---|
-| Base app (schema, `sim-core`, SpacetimeDB sim, 3D scene) | Lead | SpacetimeDB |
+| Base app (schema, the Python engine, SpacetimeDB state bus, 3D scene) | Lead | SpacetimeDB |
 | F1 Agent network and conversation (uAgents, watchers, Agent Room) | Teammate 1 | Fetch.ai, SpacetimeDB |
 | F2 Policy engine (optimizer, Claude) | Teammate 2 | Anthropic |
 | F3 Review and export | Teammate 3 | SpacetimeDB, Microsoft, Anthropic |

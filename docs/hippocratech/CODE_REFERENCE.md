@@ -6,14 +6,16 @@ A map of the repo and who owns each part. Update the matching row in the same ch
 
 ## Repo shape
 
-**Backtest/validation engine (`engine/`):** a standalone, deterministic Python
-implementation of `claude_instructions/IMPLEMENTATION.md` — a causal
-credential/reach/trust replay that backtests a segmentation plan against the real
-2021 campaign and scores it. It is **separate from the live run engine** (the
-TypeScript `packages/sim-core`, which stays authoritative per hard rule 3): it does
-not compute visible runs and is not wired into SpacetimeDB. Its CLI is
-`hippo-backtest`, distinct from the agents' `hippo-sim`. Run from `engine/`
+**The engine (`engine/`, package `sim_core`):** the one deterministic Python engine.
+It is the only thing that computes spread, impact, patient states and policy effects
+(hard rule 3). It drives visible runs — the run watcher calls `POST /app/session` and
+feeds the engine's per-tick frames into SpacetimeDB through `run_frames_apply` — and
+the agents' test runs, through its `hippo-sim` CLI. The same package also backtests a
+segmentation plan against the real 2021 campaign
+(`claude_instructions/IMPLEMENTATION.md`) through a separate CLI, `hippo-backtest`, on
+canonical `Scenario`/`Campaign`/`Plan` inputs. Run from `engine/`
 (`uv sync --python 3.11 --group dev && uv run pytest -q`); see
+[`docs/engine.md`](../engine.md),
 [`engine/README.md`](../../engine/README.md),
 [`engine/RESEARCH_DECISIONS.md`](../../engine/RESEARCH_DECISIONS.md) and
 [`engine/HANDOFF.md`](../../engine/HANDOFF.md).
@@ -34,69 +36,78 @@ not compute visible runs and is not wired into SpacetimeDB. Its CLI is
 | `engine/sim_core/cache.py` | Base | Content-addressed result store keyed by the replay fingerprint; atomic writes, validate-on-read |
 | `engine/sim_core/cli.py` | Base | `hippo-backtest` CLI: deterministic `replay` and separate `sensitivity` command |
 | `engine/sim_core/planner.py` | Base | Planner input boundary: exposes only Scenario + Plan schema; rejects embedded campaign/expected |
-| `engine/sim_core/app_bridge.py` | Base | Translate the app `hospital.json` ⇄ the causal engine (console split, SMB/RDP lateral, synthesized identity); `run_session` emits the UI sim rows |
-| `engine/sim_core/api.py` | Base | FastAPI `POST /replay`, `POST /app/run` (live UI run), WebSocket trace stream; CUH demo registry (`demo=True`), CORS for the dev origin; see [`docs/engine.md`](../engine.md) |
+| `engine/sim_core/app_bridge.py` | Base | Translate the app `hospital.json` ⇄ the engine (console split, SMB/RDP lateral, synthesized identity); `run_session` emits the UI sim rows with a per-tick `frames[]` timeline; `to_run_result(session, hospital)` and `run_result` give the agents' `RunResult`; `entry_points` lists legal patient zeros |
+| `engine/sim_core/app_policy.py` | Base | Apply the agents' `Policy` to an app hospital: kept/removed/protected-broken flows and challenge activation (a line-for-line port of the retired `sim-core` `policy.ts`); `SUPPORTED_CHALLENGES`, strict `AppPolicy` |
+| `engine/sim_core/app_cli.py` | Base | `hippo-sim` CLI (`[project.scripts]`): one engine test run over an app hospital → one `RunResult` on stdout; what the uAgents call |
+| `engine/sim_core/api.py` | Base | FastAPI `POST /replay`, `POST /app/session` (live UI run + frames), `POST /app/run_result`, `POST /app/entry_points`, WebSocket trace stream; CUH demo registry (`demo=True`), CORS for the dev origin; see [`docs/engine.md`](../engine.md) |
 | `engine/sim_core/research_runner.py` | Base | Runs `calibration.yaml` checks; CUH exploratory, HSE/BL reported unsupported (never fitted) |
 | `engine/sim_core/freeze_runner.py` | Base | Repo-root content freeze + one-use exploratory study ledger |
 | `engine/scripts/build_runs.py` | Base | Generates the deterministic CUH run grid into `apps/web/public/propagation-runs/` for the offline UI |
-| `engine/tests/` | Base | Causal/research-protocol checks plus cache, CLI, planner, API, runner, freeze, bundle and cross-transport identity suites |
+| `engine/scripts/build_frames_fixture.py` | Base | Writes the app run's frames fixture (`spacetime/test/fixtures/frames.demo.mri_2.json`) to stdout from the engine |
+| `engine/tests/` | Base | Causal/research-protocol checks plus cache, CLI, planner, API, runner, freeze, bundle and cross-transport identity suites; the app path: `test_app_bridge.py`, `test_app_policy.py`, `test_app_determinism.py` (byte identity + `run_result`/`to_run_result` parity), `test_api.py` (`/app/session`, `/app/run_result`, `/app/entry_points`) |
 | `engine/examples/` | Base | Disclosed exploratory CUH campaign and local illustrative plan |
 | `engine/README.md`, `RESEARCH_DECISIONS.md`, `HANDOFF.md` | Base | Usage, research rationale/evidence limits and remaining adapter work |
 | `engine/ENGINE_RESEARCH_PAPER.md` | Base | Paper-style explanation, exhibits, results, validity limits and presentation script |
 
-The tree below is the live product (TypeScript `sim-core` is its engine). The
-`engine/` package above is the separate Python backtest tool and is not part of it.
+The tree below is the rest of the product. The `engine/` package above is the one
+engine; nothing here computes spread.
 
 ```
-spacetime/               SpacetimeDB module (TypeScript, spacetimedb 2.13): tables, reducers, the live simulation
-packages/sim-core/       Spread engine (TypeScript), shared by the module and hippo-sim
-packages/hippo-sim/      CLI built from sim-core, for fast test runs (planned)
+spacetime/               SpacetimeDB module (TypeScript, spacetimedb 2.13): tables and reducers, a pure state bus
 packages/optimizer/      Graph optimizer + hippo-opt CLI (planned)
 packages/schema/         zod schemas and shared TypeScript types (planned)
 apps/web/                Next.js app: scene, panels, Agent Room, solution view, server routes
-apps/watcher/            Watchers: SpacetimeDB subscription clients that connect the agents
+apps/watcher/            Watchers: SpacetimeDB subscription clients (run driver, relay, round, answer, entry points)
 agents/                  Fetch.ai uAgents (Python)
 data/hospitals/          demo.json, template.json, invalid/
 ```
 
 Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle hook, or the module won't load. Tables live in `spacetime/src/schema.ts`, with the helpers reducer files share (`fail`, `isServer`, `requireServer`, `getSession`). Constants live in `spacetime/src/constants.ts`. Feature reducers go in their own `spacetime/src/<feature>.ts` files, re-exported from `index.ts`.
 
-## Simulation (SpacetimeDB and sim-core)
+## Simulation (SpacetimeDB module)
+
+The module is a pure state bus: the Python engine computes every run, the run watcher
+feeds its frames in through `run_frames_apply`, and clients subscribe. Nothing here
+computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 
 | Path | Owner | Role |
 |---|---|---|
-| `packages/sim-core/src/engine.ts`, `run.ts` | Base | `step(state, hospital, policy, rng) → TickResult`: spread, services, patients, choke points |
-| `packages/sim-core/src/policy.ts` | Base | Apply allow rules, report `protectedBroken` |
-| `packages/sim-core/src/rng.ts` | Base | mulberry32, seeded from the run |
-| `packages/sim-core/test/engine.test.ts` | Base | The same inputs give identical ticks. Never skip |
-| `packages/hippo-sim/` (planned) | Base | `hippo-sim --hospital --policy --patient-zero --seed [--challenge]` → RunResult JSON |
-| `spacetime/src/schema.ts` | Base | All tables, including `config` (server identity), `defend_request_log`, `agent_message`, `agent_status`, `question`, `recommendation`, and the round state on `session` |
-| `spacetime/src/index.ts` | Base | Default-exports the schema and re-exports the feature reducers. Reducers: `config_set_server`, `session_create`, `presence_join`, `presence_heartbeat`, `set_presenter`, `run_start`, scheduled `run_tick`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `annotation_add`, `annotation_clear`. Still to add: `challenge_add`, `run_seek` |
-| `spacetime/src/constants.ts` | Base | Tick length and other module constants |
-| `spacetime/test/module.test.ts` | Base | Module unit tests |
-| `spacetime/test/live.integration.test.ts` | Base | Two live clients against a running server (`STDB_URI=ws://127.0.0.1:3000`) |
-| `spacetime/src/solution.ts` (planned) | F4 | `solution_start`: two runs with a shared `pair_id`, advanced in lockstep |
-| `spacetime/src/agents.ts` | F1 | `defend_request` (any joined human; refused while the active run is `running` or a round is open; writes `defend_request_log`), `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
+| `spacetime/src/schema.ts` | Base | All tables: `config` (server identity), `session` (round state + `entry_points_json`, `solution_pair_id`), `run` (status `requested\|running\|paused\|done\|error`, engine columns), `device_state`/`service_state`/`patient_state`/`spread_attempt`/`sim_event`/`tick_snapshot`, `defend_request_log`, `agent_message`, `agent_status`, `question`, `recommendation`, plus run/auth helpers. (`run_state` and `tick_timer` are gone.) |
+| `spacetime/src/ingest.ts` | Base | `run_frames_apply` (server only): checks each `TickFrame` against the run and the session's hospital, then writes the six per-tick row sets and the `run` row, one transaction per call; `run_fail` (server only): `status:'error'` + `detail` |
+| `spacetime/src/hospital.ts` | Base | Hospital file types and `validateHospital`/`hospitalOf`/`hospitalIndex`; types and validation only (not re-exported, so it may export helpers) |
+| `spacetime/src/index.ts` | Base | Default-exports the schema and re-exports the feature reducers (`ingest`, `solution`, `agents`, `question`, `recommendation`). Reducers here: `config_set_server`, `session_create`, `session_entry_points_set` (server), `presence_join`, `presence_heartbeat`, `set_presenter`, `run_start`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `annotation_add`, `annotation_clear`. Still to add: `challenge_add` |
+| `spacetime/src/constants.ts` | Base | `TICK_MS`, `SPEEDS`, `RUN_STATUSES`, `EVENT_TARGETS`, `PATIENT_STATES`, `FRAMES_MAX`, `KEEP_ATTEMPT_TICKS` and other module constants |
+| `spacetime/test/module.test.ts` | Base | Module unit tests; the oracle is the checked-in engine frames fixture |
+| `spacetime/test/fixtures/frames.demo.mri_2.json` | Base | Engine frames for the demo attack (patient zero `mri_2`); feeds the module and live tests in place of the retired `sim-core` oracle |
+| `spacetime/test/live.integration.test.ts` | Base | Two live clients against a running server (`STDB_URI=ws://127.0.0.1:3000`); frames from the fixture |
+| `spacetime/src/solution.ts` | F4 | `solution_start`: two `requested` runs with a shared `pair_id` (no segmentation vs the plan), `active_run_id` untouched; `solution_close` clears `session.solution_pair_id` |
+| `spacetime/src/agents.ts` | F1 | `defend_request` (any joined human; refused while any run in the session is `requested` or `running`, or a round is open; writes `defend_request_log`), `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
 | `spacetime/src/question.ts` | F1 | `question_add` (server identity), `question_answer` (allowed roles only, from the caller's presence; never the server) |
 | `spacetime/src/recommendation.ts` | F2 | `recommendation_upsert` (server identity): keyed by session and round; inserts as `draft` and never changes `status` |
 | `spacetime/src/review.ts` (planned) | F3 | `review_submit`, the only writer of `recommendation.status` |
 | `spacetime/src/memo.ts` (planned) | F3 | `memo_save_draft` (server identity), `memo_approve` |
 | `apps/web/lib/stdb/module_bindings/` | Base | Generated with `npm run generate -w hippocratech-module`. Never edit by hand |
-| `apps/web/lib/stdb/connection.ts`, `live-session.ts` | Base | The live subscription |
-| `apps/web/lib/stdb/use-session.ts` | Base | `useSession(id)`: live rows when `NEXT_PUBLIC_STDB_URI` is set, else the mock |
+| `apps/web/lib/stdb/connection.ts`, `live-session.ts` | Base | The live subscription (session-scoped and run-scoped rows); `useLiveSession` and `useLiveRunRows` (a run's rows by id, e.g. each side of a solution pair) |
+| `apps/web/lib/stdb/snapshot.ts`, `run-status.ts`, `actions.ts` | Base | `snapshotOf(rows)`/`runViewOf` map the generated bindings onto the UI row shapes (no computation); run status helpers; the reducer-calling `SessionActions` |
+| `apps/web/lib/stdb/use-session.ts` | Base | `useSession(id)`/`useRunRows(id)`: live rows when `NEXT_PUBLIC_STDB_URI` is set; the explicit mock only with `NEXT_PUBLIC_MOCK=1`; otherwise `source:'error'` ("Not connected"). No silent fallback (rule 14) |
 | `apps/web/lib/stdb/agent-rows.ts` | Base | Reshapes `agent_message`, `agent_status`, `question`, `recommendation` and the session's round state for the Agent Room (sender's copy of each message, plus humans' answers) |
-| `apps/web/lib/stdb/types.ts`, `mock-session.ts` | Base | Row shapes and a fixed mid-run demo snapshot (with a sample agent round) for working without a server |
+| `apps/web/lib/stdb/types.ts`, `mock-session.ts` | Base | Row shapes (incl. the new `RunRow` columns and `SessionActions`) and a fixed mid-run demo snapshot (with a sample agent round) for working without a server |
 
 ## Watchers
 
 | Path | Owner | Role |
 |---|---|---|
-| `apps/watcher/src/index.ts` | F1 | Connects as the server identity and starts every watcher. `npm run dev -w watcher`; reads `.env.local` |
-| `apps/watcher/src/config.ts`, `stdb.ts`, `coordinator.ts` | F1 | Settings (`STDB_URI`, `STDB_SERVER_TOKEN`, `COORDINATOR_URL`, `RELAY_PORT` default 8010, `RELAY_TOKEN`); the connection and subscription; Coordinator REST calls. Failures are written to `session.round_detail` |
-| `apps/watcher/src/round.ts` | F1 | On `defend_request` only: wakes the Sign-off Coordinator (`start_round` or `reassess`). Never on `run` completion or `challenge` alone |
+| `apps/watcher/src/index.ts` | F1 | Connects as the server identity and starts every watcher (relay, round, answer, run driver, entry points). `npm run dev -w watcher`; reads `.env.local` |
+| `apps/watcher/src/config.ts`, `stdb.ts`, `coordinator.ts` | F1 | Settings (`STDB_URI`, `STDB_SERVER_TOKEN`, `COORDINATOR_URL`, `ENGINE_URL` default `http://127.0.0.1:8000`, `RELAY_PORT` default 8010, `RELAY_TOKEN`); the connection and subscription (`session`, `defend_request_log`, `question`, `run`); `ServerReducers` (now incl. `runFramesApply`, `runFail`, `sessionEntryPointsSet`); Coordinator REST calls. Failures are written to `session.round_detail` |
+| `apps/watcher/src/engine.ts` | F1 | Engine HTTP client: `callEngine` (`POST /app/session` → strict-parsed `AppSession`/`TickFrame`), `callEntryPoints` (`POST /app/entry_points`); maps the engine's error envelope to a readable detail; never throws |
+| `apps/watcher/src/run.ts` | F1 | Run driver: on a `requested` run calls the engine, applies frame 0 through `run_frames_apply`, then sends one frame per beat at `TICK_MS / speed`; obeys pause/resume/step/speed/reset; a pair's frames go in one call; engine/module refusals become `run_fail` (never `session.round_detail`); recomputes in-flight runs after a restart |
+| `apps/watcher/src/entry.ts` | F1 | Entry-point watcher: for each new session calls `POST /app/entry_points` and writes `session_entry_points_set`; failures go to `session.round_detail` |
+| `apps/watcher/src/round.ts` | F1 | On `defend_request` only: wakes the Sign-off Coordinator (`POST /start_round`; `reassess` is a stub). Never on `run` completion or `challenge` alone. Guards `JSON.parse(challengesJson)` |
 | `apps/watcher/src/answer.ts` | F1 | On a `question` answer: calls the Coordinator's `resume` |
 | `apps/watcher/src/relay.ts` | F1 | HTTP endpoint the agents post to (`POST /agent_message`, `/agent_status`, bearer `RELAY_TOKEN`, strict zod). Writes `agent_message_add` and `agent_status_set`; from the sender's copy, also `question_add` (questions to humans), `round_state_set` and `recommendation_upsert`. A reducer's refusal returns HTTP 502, so the agent doesn't send. Live state reads: not built yet |
 | `apps/watcher/test/relay.test.ts` | F1 | Relay contract with fake reducers |
+| `apps/watcher/test/run.test.ts`, `entry.test.ts` | F1 | Run driver and entry-point watcher with fake reducers, a fake engine and fake timers: the exact reducer call sequence, pause/resume/speed/step, reset → recompute, a pair in one call, and an engine 422 becoming `run_fail` |
+| `apps/watcher/test/engine.test.ts`, `engine.contract.test.ts` | F1 | The engine client against fixture replies and the `AppSession`/`TickFrame` contract |
 | `apps/watcher/test/live.integration.test.ts` | F1 | Two clients against the running stack (`E2E_STDB_URI`): no agent traffic while running, a full round after Create aggregate fix, and a question answered by an allowed role |
 
 ## Agents (Python, Fetch.ai uAgents)
@@ -110,7 +121,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `agents/coordinator.py` | F1 | Coordinator uAgent: one `Round` per session; REST `/start_round`, `/resume`, `/reassess` (not implemented yet); carries out every Action; chat protocol (ASI:One): starts rounds and sends summaries |
 | `agents/chat.py` | F1 | The Coordinator's chat in code: parse commands, resolve devices by name or id, help, status and round-summary text |
 | `agents/profiles/*.md` | F1 | Agentverse README for each agent (`readme_path`): stall point, messages, code vs. Claude, human approval, synthetic data |
-| `agents/tools.py` | F1 | `run_sim` (hippo-sim or fixture results), `optimize` (hippo-opt or fixture candidates), `relay` (agent_message/agent_status rows: HTTP or `logs/<session>.jsonl`) |
+| `agents/tools.py` | F1 | `run_sim` (the Python engine's `hippo-sim` via `HIPPO_SIM_BIN`, or `HIPPO_SIM_FIXTURES=1` results), `optimize` (hippo-opt or fixture candidates), `relay` (agent_message/agent_status rows: HTTP or `logs/<session>.jsonl`) |
 | `agents/llm.py` | F2 (implemented by F1) | `explain()` and `question_text()`: Claude words verdict reasons, Question text, Flow's "why this plan" and the recommendation's explanation, with number, word and length checks, one retry, and a labeled template fallback; `with_text()` changes only the text. `propose()` still to come (F2) |
 | `agents/facts.py` | F1 | The facts each message may state: human names and purposes, and the numbers, built by code from the RunResult, constraint and hospital |
 | `agents/cache/demo_round.json` | F1 | Cached demo-seed conversation, question and answer included |
@@ -127,13 +138,15 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `agents/logic/flow.py` | F1 | `violates`, `rank`, `diff`/`apply_diff` for candidates (pure) |
 | `agents/logic/coordinator.py` | F1 | `Round` state machine (events in, `Action`s out), `MAX_ROUNDS`, `required_roles` (pure) |
 | `agents/requirements.txt`, `agents/pytest.ini` | F1 | Python 3.11 deps (venv in `agents/.venv`, gitignored) and pytest config |
-| `agents/fixtures/hospital.json` | F1 | Test hospital until `data/hospitals/demo.json` exists: the mock hospital plus `dev_unknown_7`, whose flow is inactive until the `unknown_device_imaging` challenge. Generated, don't edit |
+| `agents/fixtures/hospital.json` | F1 | The agents' test fixture: `data/hospitals/demo.json` plus `dev_unknown_7` and its inactive `fl_unknown_7_smb` for the challenge tests. At runtime the agents load `data/hospitals/demo.json` via `HOSPITAL_PATH`. Generated, don't edit |
 | `agents/scripts/export_fixture.mjs` | F1 | Regenerates `fixtures/hospital.json` from `mock-session.ts` |
+| `agents/scripts/refresh_fixtures.py` | F1 | Runs `HIPPO_SIM_BIN` for the baseline and each candidate, with and without each supported challenge, and rewrites `agents/fixtures/results/*.json` from the engine |
 | `agents/tests/test_protocol.py` | F1 | Every model round-trips; extra fields and bad values are rejected |
 | `agents/tests/test_fixture.py` | F1 | The fixture loads and its references (flows → devices, etc.) exist |
 | `agents/tests/test_logic.py` | F1 | Guardians, ranking, and Coordinator scenarios a–g; `pytest -s` prints the a→b transcript |
 | `agents/tests/fixtures/results/test_*.json` | F1 | Hand-written RunResults for `test_logic.py`. Test-only, never loaded at runtime |
-| `agents/tests/test_runtime.py` | F1 | Config, local resolver, `make_agent`, `run_sim`/`optimize` fixtures and errors, fixture consistency, relay rows |
+| `agents/tests/test_runtime.py` | F1 | Config, local resolver, `make_agent`, `run_sim`/`optimize` fixtures and errors, fixture consistency (engine semantics: `infectedCount == len(infectedDevices)`, `ticksDown == ticks - downSinceTick + 1`), relay rows |
+| `agents/tests/test_engine_edge.py` | F1 | Runs the real `HIPPO_SIM_BIN` when set (skipped otherwise): `hippo-sim` returns a `RunResult`, and the baseline/candidate numbers match the refreshed fixtures |
 | `agents/tests/test_live_round.py` | F1 | Four real agent processes over uAgents, checked from the relay log: a full round with no questions; the challenge round that pauses for a human and resumes on `/resume`; a round in mailbox mode over local `/submit`; a chat that starts a round and gets the summary |
 | `agents/tests/test_llm.py` | F1 | `llm.py` with a mocked client: good answer, invented number (retry, template), forbidden words, API errors and timeouts, missing key, and decisions unchanged by model output |
 | `agents/tests/test_chat.py` | F1 | Chat parsing, device lookup, help, status and summary text |
@@ -152,27 +165,29 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | Path | Owner | Role |
 |---|---|---|
 | `apps/web/app/page.tsx` | Base | Load screen |
-| `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (rail, demo steps, scene, side column) and Agents tab |
+| `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (rail, one row-driven stepper, scene, side column) and Agents tab |
+| `apps/web/app/s/[sessionId]/solution/[recommendationId]/page.tsx` | F4 | The solution rerun route: opens the solution view for a recommendation's pair |
 | `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence, Log |
 | `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
 | `apps/web/components/panel/impact.tsx`, `services.tsx`, `inspector.tsx` | Base | Simulation side column: patients affected, service tiles, hovered-device record and choke points |
 | `apps/web/components/panel/counters.tsx` | Base | Counter strip on the Agents tab |
 | `apps/web/components/scene/*` | Base | Floors, rooms, device boxes, patients, arcs, subscribed to live state |
+| `apps/web/components/scene/scene-boundary.tsx` | Base | WebGL error boundary: falls back to the 2D plan when the 3D scene can't render |
 | `apps/web/components/timeline.tsx` | Base | Timeline rail: playback, speed, follow, scrubber with event markers and heat strip, current beat (reads `tick_snapshot`, `sim_event`) |
 | `apps/web/features/scene/spread-fx.tsx` | F4 | Pulses and fizzles from `spread_attempt`, device flashes, room tints |
 | `apps/web/features/scene/service-icons.tsx` | F4 | Service icons, "down" badges, event toasts from `sim_event` |
 | `apps/web/features/scene/patients-fx.tsx` | F4 | Patient badges, ambulance diversion |
 | `apps/web/features/scene/camera.ts` | F4 | Follows the infection front, then a wide shot |
 | `apps/web/features/scene/equipment.tsx` | F4 | Key-equipment models |
-| `apps/web/features/solution/solution-view.tsx` | F4 | Lockstep split screen, plan on the building, before/after strip, what keeps working |
+| `apps/web/features/solution/solution-view.tsx`, `pair.ts` | F4 | Lockstep split screen fed by the pair's rows, plan on the building, before/after strip from the two run rows, what keeps working; `pair.ts` resolves the pair's two runs by `pairId` |
 | `apps/web/features/scene/challenge-menu.tsx` | F4 | **Change conditions** presets |
 | `apps/web/components/plan/plan-2d.tsx` | F4 | 2D fallback |
 | `apps/web/features/agents/agent-room.tsx` | F1 | Agents tab: agent list and status, conversation thread, round header, recommendations column. Still to add: agent map, message particles, readable pace |
 | `apps/web/features/agents/agents.ts`, `agent-icon.tsx` | F1 | Agent names and objectives, message-type shapes, agent icons |
 | `apps/web/features/agents/scene-highlights.tsx` | F1 | Scene highlights driven by each `agent_message` |
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
-| `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; disabled while a visible run is `running` |
-| `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles (basic version, Show the solution still disabled) |
+| `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; blocked while any session run is `requested` or `running`, or a round is open (mirrors the reducer) |
+| `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles, and **Show the solution** (`solution_start`) |
 | `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name and role, `presence_join` (basic version) |
 | `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |
@@ -183,15 +198,15 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 
 | Path | Owner | Role |
 |---|---|---|
-| `data/hospitals/demo.json` | Base | Demo hospital: critical services, `observed` flags, an inactive unknown device and vendor link for challenges |
+| `data/hospitals/demo.json` | Base | Demo hospital: critical services and `observed` flags (48 devices, 55 flows). No unknown device or inactive flow; the agents' challenge fixture adds those in `agents/fixtures/hospital.json` |
 | `data/hospitals/template.json`, `invalid/` | Base | Template and validation fixtures |
 | `hippocratech/AGENT_NOTES.md` | F1 | uAgents, Agentverse, and watcher notes |
 | `hippocratech/AGENTVERSE_SETUP.md` | F1 | Laptop steps: register the four agents on Agentverse (mailbox, profiles) and test the Coordinator on ASI:One |
 
 ## Invariants
 
-- Spread, impact and patient numbers come only from `sim-core` (`packages/sim-core`), in the module or `hippo-sim`. The browser renders subscribed rows.
-- Visible runs advance only through `run_tick`. Reducers make no network calls.
+- Spread, impact and patient numbers come only from the Python engine (`engine/sim_core`): visible runs through the run watcher, the agents' test runs through `hippo-sim`. The module and the browser never compute; the browser renders subscribed rows.
+- Visible runs advance only when the run watcher writes the engine's next frame through `run_frames_apply`. Reducers make no network calls.
 - Every agent message is in `agent_message`. The Agent Room shows only that table.
 - `recommendation.status` is written only by `review_submit`. Agent acceptance never sets it.
 - Agents touch no real network.

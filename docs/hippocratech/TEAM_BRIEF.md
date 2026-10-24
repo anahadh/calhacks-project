@@ -8,7 +8,7 @@ Updated Friday, Oct 23, 2026.
 
 - Nothing is built. The spec, the schema, the UX rules, and a design canvas ("Hippocra.tech screens") exist.
 - **Sponsor tracks: Fetch.ai, Armadin, Microsoft, Anthropic, SpacetimeDB.** Nothing else.
-- **The simulation runs inside SpacetimeDB.** Watchers connect it to the Fetch.ai agents.
+- **One Python engine** (`engine/sim_core`) computes every run. The run watcher feeds its frames into SpacetimeDB, and every laptop subscribes. Watchers also connect it to the Fetch.ai agents.
 - **Open:** the required-roles rule; `MAX_SERVICE_LOSS`; Live Site criteria; pitch length (the guide says 2:00, our script is 3:00).
 
 ## What judges must see
@@ -19,7 +19,7 @@ Updated Friday, Oct 23, 2026.
 
 ## How the build works
 
-1. **Base app (lead).** The schema, the demo hospital, `sim-core`, the SpacetimeDB module with the scheduled `run_tick`, `hippo-sim`, and a 3D scene subscribed to live state. When two laptops show the same spreading attack, the shared contracts freeze.
+1. **Base app (lead).** The schema, the demo hospital, the Python engine (`engine/sim_core`, CLI `hippo-sim`), the SpacetimeDB module (a state bus) with the run watcher feeding engine frames, and a 3D scene subscribed to live state. When two laptops show the same spreading attack, the shared contracts freeze.
 2. **Handoff.** Each teammate takes their feature and works only in their files ([`CODE_REFERENCE.md`](CODE_REFERENCE.md)).
 3. **Integration.** The lead merges, builds F4, and runs the pitch.
 
@@ -51,7 +51,13 @@ Updated Friday, Oct 23, 2026.
 ## Setup
 
 1. Run `npm install`, then `cp .env.example .env.local`, then fill in the keys.
-2. Run `spacetime publish hippocratech` (or `spacetime start` for local), `npm run dev -w web`, and `npm run dev -w watcher`. Start the agents with `cd agents && python run_all.py`.
+2. Start the stack, in order:
+   - `spacetime start` (local SpacetimeDB on :3000)
+   - `spacetime publish --server local hippocratech` (publish the module)
+   - `cd engine && uv run uvicorn sim_core.api:app` (the Python engine on :8000)
+   - `npm run dev -w watcher` (the run watcher, relay and round watcher)
+   - `npm run dev -w web` (the app, memo and export routes)
+   - `cd agents && python run_all.py` (the four uAgents)
 3. Read [`../AGENTS.md`](../AGENTS.md) before pointing a coding agent at the repo.
 
 ## If you change the plan
