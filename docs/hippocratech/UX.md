@@ -40,7 +40,7 @@ Two cards: **Demo hospital** and **Upload JSON**. **Start session** creates a ne
 
 ### Join modal (first visit to `/s/[sessionId]`)
 
-A modal over the live, blurred session scene, so the hospital is visible right away. It asks for a name and a role (Security, Clinical engineering, Operations, or Observer), and shows who is already here. The presenter also sees the session link with **Copy link**; **Invite** in the header copies it any time. A reload rejoins with the same name.
+A modal over the live, blurred session scene, so the hospital is visible right away. It asks only for a name, and shows who is already here. The person who started the session sees "Your session is ready": their name, plus the session link with **Copy link** to send to others; **Invite** in the header copies it any time. A reload rejoins with the same name. There is no role picker: everyone joins with the same role, so anyone in the session can answer an agent's question.
 
 ### Session view `/s/[sessionId]`
 

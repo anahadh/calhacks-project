@@ -660,6 +660,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 24, 2026 | **Design system adopted (supersedes the template's look).** Clinical instrument on graphite; monochrome chrome replaces the teal accent, which read too close to healthy blue; state colors retuned as monitor traces (same meanings); Hanken Grotesk + IBM Plex Mono; hairline grid surfaces; breathing motion. Layout unchanged |
 | Oct 23, 2026 | **Factory Droid dropped.** The Flow Agent tests candidates with `hippo-sim` directly. `/api/droid` and the Factory sponsor track are removed |
 | Oct 23, 2026 | `implementation-steps.md` removed. The build plan lives in this spec, plus the owner and file map in `hippocratech/CODE_REFERENCE.md` |
+| Oct 24, 2026 | **Join by name only.** The people joining are real people; the join modal asks no role. Everyone joins with the same role (`security`), so anyone can answer an agent's question. Per-role sign-off needs roles back later |
 | Oct 24, 2026 | **Agent loop hooked up.** Tables in `spacetime/src/schema.ts`; agent reducers in `agents.ts`, `question.ts`, `recommendation.ts`; watchers in `apps/watcher`; the Agent Room reads the live rows. The defend table is `defend_request_log` |
 | Oct 24, 2026 | **Simulation and agent rounds decoupled.** Agents message only after the human presses **Create aggregate fix** (`defend_request`). No agent traffic during a visible run; the round watcher does not wake on run completion |
 

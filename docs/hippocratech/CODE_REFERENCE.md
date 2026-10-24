@@ -173,7 +173,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
 | `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; disabled while a visible run is `running` |
 | `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles (basic version, Show the solution still disabled) |
-| `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name and role (presenter defaults to Security, link joiners to Observer), who is here, the invite link for the presenter; `presence_join`. Remembers the name per session in localStorage and rejoins after a reload |
+| `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name only (everyone joins as `security`, so anyone can answer questions), who is here, and for the session's creator the invite link; `presence_join`. Remembers the name per session in localStorage and rejoins after a reload |
 | `apps/web/features/review/invite.tsx` | F3 | The session link (`/s/<id>`) with Copy, and the header's Invite button |
 | `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |

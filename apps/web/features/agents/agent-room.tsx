@@ -1,6 +1,5 @@
 "use client";
 
-import { ROLE_LABEL } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
 import { RecommendationCard } from "@/features/policy/card-body";
@@ -77,7 +76,6 @@ function AgentList({ session }: { session: SessionSnapshot }) {
                 {p.name[0]}
               </span>
               <span>{p.name}</span>
-              <span className="num ml-auto text-[10px] text-ink-faint">{ROLE_LABEL[p.role]}</span>
             </li>
           ))}
         </ul>

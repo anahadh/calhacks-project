@@ -1,7 +1,6 @@
 "use client";
 
 import { InviteButton } from "@/features/review/invite";
-import { ROLE_LABEL } from "@/lib/format";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
 export type ViewId = "simulation" | "agents";
@@ -61,7 +60,7 @@ export function SessionHeader({
             {session.presence.map((p, i) => (
               <span
                 key={`${p.name}-${i}`}
-                title={`${p.name} · ${ROLE_LABEL[p.role]}`}
+                title={p.name}
                 className="grid h-7 w-7 place-items-center rounded-full border-2 border-bg bg-panel2 font-disp text-[11px] font-bold text-ink-muted"
               >
                 {p.name[0]}
