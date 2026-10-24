@@ -18,19 +18,18 @@ Rules for any coding agent (Claude Code or another) working in this repo. These 
 3. **One engine.** All spread logic lives in `sim-core`. The SpacetimeDB module uses it for visible runs, and `hippo-sim` is built from it for test runs. Nothing else computes spread, impact, or patient states, and the browser only renders.
 4. **The simulation runs in SpacetimeDB.** Visible runs advance only through the scheduled `run_tick` reducer. Clients never compute ticks; they subscribe.
 5. **Deterministic.** `sim-core` uses only the seeded RNG stored on the run: no wall-clock time, no other randomness. Keep the test that the module and `hippo-sim` give identical results for the same inputs.
-6. **Reducers make no network calls.** Anything needing Claude, the Droid, or an agent goes through the Node server or a watcher, then writes back through a reducer.
+6. **Reducers make no network calls.** Anything needing Claude or an agent goes through the Node server or a watcher, then writes back through a reducer.
 7. **uAgents decide with code.** A Verdict's accept or reject comes from `hippo-sim` results, the inventory, and constraints. Whether to ask a `Question` is decided in code. Claude writes only the `reason` and question text. Never let model output set a verdict, a required role, or an answer.
 8. **Humans decide deployment.** Only the `review_submit` reducer writes `recommendation.status`, and only humans answer `Question`s. uAgent acceptance never marks anything ready, and no code path applies a policy to any network.
 9. **Every uAgent message reaches SpacetimeDB.** Each message sent or received goes through the watcher's message relay into `agent_message`. Never send a message that skips it. The Agent Room shows only what is in that table.
-10. **The Droid sandbox is fixed.** It may read the workspace, write only to `policies/`, and run only `hippo-sim`. It has no network access.
-11. **Server-only reducers** (`agent_message_add`, `agent_status_set`, `question_add`, `recommendation_upsert`, `round_state_set`, `memo_save_draft`) check the caller against the server identity in `config`.
-12. **Schemas are strict.** Every zod object uses `.strict()`. Pydantic models forbid extra fields.
-13. **Secrets stay server-side.** Keys are read only in `apps/web/server/`, `apps/web/app/api/`, `apps/watcher/`, and `agents/`. Never in client code, never in `NEXT_PUBLIC_*`, never committed.
-14. **No faking a sponsor.** If an integration fails, show the error. The only exception is the cached demo agent round, labeled "Cached run."
-15. **Sponsor scope.** Integrate only Fetch.ai, Factory, Anthropic (Claude), SpacetimeDB, and the tech in the spec's Tech Stack.
-16. **Visuals come from data.** Every animation (pulses, fizzles, flashes, message particles, highlights) is driven by rows: `spread_attempt`, `sim_event`, `agent_message`, `agent_status`. Never fake an animation that has no row behind it.
-17. **Stay in your feature's files** once the base app's contracts are frozen. Frozen contracts change only with the lead's approval.
-18. **Update docs in the same change:** `CODE_REFERENCE.md` for files, `HOSPITAL_SCHEMA.md` for contracts.
+10. **Server-only reducers** (`agent_message_add`, `agent_status_set`, `question_add`, `recommendation_upsert`, `round_state_set`, `memo_save_draft`) check the caller against the server identity in `config`.
+11. **Schemas are strict.** Every zod object uses `.strict()`. Pydantic models forbid extra fields.
+12. **Secrets stay server-side.** Keys are read only in `apps/web/server/`, `apps/web/app/api/`, `apps/watcher/`, and `agents/`. Never in client code, never in `NEXT_PUBLIC_*`, never committed.
+13. **No faking a sponsor.** If an integration fails, show the error. The only exception is the cached demo agent round, labeled "Cached run."
+14. **Sponsor scope.** Integrate only Fetch.ai, Anthropic (Claude), SpacetimeDB, and the tech in the spec's Tech Stack.
+15. **Visuals come from data.** Every animation (pulses, fizzles, flashes, message particles, highlights) is driven by rows: `spread_attempt`, `sim_event`, `agent_message`, `agent_status`. Never fake an animation that has no row behind it.
+16. **Stay in your feature's files** once the base app's contracts are frozen. Frozen contracts change only with the lead's approval.
+17. **Update docs in the same change:** `CODE_REFERENCE.md` for files, `HOSPITAL_SCHEMA.md` for contracts.
 
 ## Before you say a task is done
 
@@ -40,12 +39,11 @@ Rules for any coding agent (Claude Code or another) working in this repo. These 
 
 ## Prompt rules
 
-For `agents/llm.py` (`propose()`, `explain()`), the Droid task prompt (`apps/web/server/droid/`), and `apps/web/app/api/memo/`:
+For `agents/llm.py` (`propose()`, `explain()`) and `apps/web/app/api/memo/`:
 
 - Give the exact output schema and validate it (Pydantic or zod). On a failure, retry once with the errors, then drop the item.
 - `propose()`: return 2–3 policies as allow rules over existing zones, types, roles, and VLANs. Say that any numbers in the output are ignored and the policies will be tested.
 - `explain()` and the memo: use only numbers present in the input. Code rejects any other number. Reasons are one or two sentences, written to be read in a chat bubble.
-- Droid task: write only `policies/<id>.json`, run only `hippo-sim`, refine at most twice, and state which constraint each refinement addresses.
 - Never use the words "approved," "ready," or "safe to deploy" for an agent's output. Humans approve.
 - Forbid outcome language. Code rejects outputs containing `death`, `died`, `fatal`, or `mortality`.
 
