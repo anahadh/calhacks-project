@@ -22,7 +22,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
         <SidePanel session={session} index={index} />
       </main>
 
-      <Timeline session={session} />
+      <Timeline session={session} index={index} />
     </div>
   );
 }
