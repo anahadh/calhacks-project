@@ -6,6 +6,39 @@ A map of the repo and who owns each part. Update the matching row in the same ch
 
 ## Repo shape
 
+**Current propagation-engine implementation:** the user-requested
+`claude_instructions/IMPLEMENTATION.md` supersedes the older planned stochastic
+Rust engine for this standalone backtest. Implemented code is in `engine/`;
+transport and UI integration remain a handoff task. See
+[`engine/HANDOFF.md`](../../engine/HANDOFF.md).
+
+| Path | Owner | Role |
+|---|---|---|
+| `engine/pyproject.toml`, `uv.lock` | Base | Python 3.11 package and locked dependencies |
+| `engine/sim_core/__init__.py` | Base | Package identity and rules version for cache invalidation |
+| `engine/sim_core/schema.py` | Base | Strict scenario/campaign/plan and replay output contracts |
+| `engine/sim_core/adapters.py` | Base | Explicit CUH inventory reconstruction and incomplete-data audit |
+| `engine/sim_core/topology.py` | Base | Network, identity, trust and dependency graph; reachability and ranking |
+| `engine/sim_core/engine.py` | Base | Deterministic rule transitions, defenses and service availability |
+| `engine/sim_core/replay.py` | Base | Authored replay, cache key, event effects, counterfactual attribution |
+| `engine/sim_core/generator.py` | Base | Sole seeded synthetic-interior generator |
+| `engine/sim_core/research.py`, `protocols.py` | Base | Sensitivity, ablations, scoring, freeze and one-use hold-out protocols |
+| `engine/sim_core/serialize.py` | Base | One canonical JSON form (`model_dump_json`) shared by every transport |
+| `engine/sim_core/bundle.py` | Base | Freeze an attack (scenario+campaign+plan) into a deterministic, tamper-evident, replayable bundle; `verify` re-runs the frozen inputs |
+| `engine/sim_core/cache.py` | Base | Content-addressed result store keyed by the replay fingerprint; atomic writes, validate-on-read |
+| `engine/sim_core/cli.py` | Base | `hippo-sim` CLI: deterministic `replay` and separate `sensitivity` command |
+| `engine/sim_core/planner.py` | Base | Planner input boundary: exposes only Scenario + Plan schema; rejects embedded campaign/expected |
+| `engine/sim_core/api.py` | Base | FastAPI `POST /replay` + WebSocket trace stream; optional CUH demo registry (`demo=True`) and CORS for the dev origin; no transport computes a transition |
+| `engine/sim_core/research_runner.py` | Base | Runs `calibration.yaml` checks; CUH exploratory, HSE/BL reported unsupported (never fitted) |
+| `engine/sim_core/freeze_runner.py` | Base | Repo-root content freeze + one-use exploratory study ledger |
+| `engine/scripts/build_runs.py` | Base | Generates the deterministic CUH run grid into `apps/web/public/propagation-runs/` for the offline UI |
+| `engine/tests/` | Base | Causal/research-protocol checks plus cache, CLI, planner, API, runner, freeze, bundle and cross-transport identity suites |
+| `engine/examples/` | Base | Disclosed exploratory CUH campaign and local illustrative plan |
+| `engine/README.md`, `RESEARCH_DECISIONS.md`, `HANDOFF.md` | Base | Usage, research rationale/evidence limits and remaining adapter work |
+
+The tree and Rust paths below describe the earlier product plan, not an existing
+second simulation backend.
+
 ```
 spacetime/               SpacetimeDB module: tables, reducers, the live simulation
 crates/sim-core/         Spread engine (shared by the module and hippo-sim)
@@ -77,6 +110,10 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 |---|---|---|
 | `apps/web/app/page.tsx` | Base | Load screen |
 | `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: header, scene (65%), right panel (35%), timeline |
+| `apps/web/app/replay/page.tsx` | Base | Explicitly-selected, render-only propagation replay view; separate route, leaves the live session untouched |
+| `apps/web/components/propagation/replay-view.tsx` | Base | Interactive view: offline frozen-run grid + live lever toggles (mode toggle), runs-compare strip, levels/services/devices/blockers/assumptions |
+| `apps/web/lib/propagation/` | Base | Render-only adapter + loaders: `ReplayResult` TS types, colour/label mapping (no boolean coercion), offline fetch + live `POST /replay` |
+| `apps/web/public/propagation-runs/` | Base | Pre-generated deterministic CUH runs + `index.json` for offline mode (built by `engine/scripts/build_runs.py`) |
 | `apps/web/components/shell/header.tsx` | Base | Hospital name, run selector, sim clock, session controls |
 | `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
 | `apps/web/components/panel/side-panel.tsx` | Base | Damage / Agents / Recommendations tabs; F1 and F2 mount their views here |

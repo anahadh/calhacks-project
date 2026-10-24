@@ -1,0 +1,31 @@
+datetime,event,provenance
+2020-11-24,other HSE workstations infected by the same broker's lures (not part of this chain),R
+2020-12-14/2021-02-09,same user sent the same-subject lure 4 times without infection,R
+2021-03-16,phishing email with malicious Excel attachment sent,R
+2021-03-18,attachment opened on patient zero,R
+2021-03-23,persistence on patient zero,R
+2021-03-31,AV logs Cobalt Strike and Mimikatz on patient zero (monitor mode; no action),R
+2021-04-01/2021-05-06,no significant activity (36 days),R
+2021-05-07,new persistence; AD and domain recon; first privileged accounts; first HSE servers; Cobalt Strike on 6 servers,R
+2021-05-08,hops to K and D,R
+2021-05-09,hop to J,R
+2021-05-10,hops to C and L; Hospital C DC alert (vendor: low risk),R
+2021-05-11,Hospital A compromised after numerous failed logons (likely CVSS 10 exploit); A's AV deletes malware,R
+2021-05-12,Hospital B compromised (exploit); AV reseller emails HSE 'Threat Not Handled' on 2 servers,R
+2021-05-12,Hospital A engages own IR; resets 4500 passwords; firewall changes,R
+2021-05-12 23:36,Hospital A emails HSE: 'Recognise these addresses??',R
+2021-05-12/2021-05-13,folder browsing via RDP; .zip/.rar archiving; upload to file-sharing site (A B D on 12th; HSE on 13th),R
+2021-05-13,AV reseller: unhandled threats since 7 May on >=16 systems; servers restarted,R
+2021-05-13 12:47,HSE email concludes it is 'under threat from Hospital A',R
+2021-05-13,DoH engages NCSC and IR firm; deploys EDR to majority of systems,R
+2021-05-14 01:00,Conti executed in HSE and Hospitals C K D L J B,R
+2021-05-14 02:50,National Service Desk receives first reports of encryption,R
+2021-05-14 04:41,Critical Incident Process invoked,R
+2021-05-14 05:10,decision to remove all NHN internal and external connectivity,R
+2021-05-14,radiotherapy stopped at all 5 HSE centres; 31 of 54 acute hospitals announce cancellations,R
+2021-05-20,attacker posts decryptor link,R
+2021-05-21,decryption key validated,R
+2021-06-14,47% servers decrypted; 51% apps restored,R
+2021-07-20,94% servers decrypted; 86% apps,R
+2021-08-17,100% servers decrypted; 95% apps,R
+2021-09-21,100% servers; 1075 of 1087 apps; 87000+ systems recovered,R

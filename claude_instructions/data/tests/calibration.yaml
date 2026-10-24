@@ -1,0 +1,59 @@
+# Expected outcomes the engine must reproduce. Pure data; any test runner can read it.
+# Levels of evidence: R = PwC reported, P = public press, S = our reconstruction.
+
+frozen_rules_required: true   # rules + generator are committed BEFORE running the held-out checks (4, 5)
+
+check_1_hse_calibration:      # org-level, data/scenarios/hse_national_orgs.json + hse_conti_campaign.json
+  spread_order_by_day:        # R
+    "2021-05-07": [HSE]
+    "2021-05-08": [K, D]
+    "2021-05-09": [J]
+    "2021-05-10": [C, L]
+    "2021-05-11": [A]
+    "2021-05-12": [B]
+  encrypted_at_detonation: [HSE, C, K, D, L, J, B]          # R
+  not_encrypted: [A, DoH]                                     # R
+  detonation: "2021-05-14T01:00"                              # R
+  privileged_accounts_by_13_may: {min: 33}                    # R
+  privileged_accounts_before_7_may: 0                         # S (curve rule from pack)
+  no_rule_fires_between: ["2021-04-01", "2021-05-06"]         # R dormancy
+  services_down_after_05_10_cut: [email, radiology_national]  # R / D3
+
+check_2_right_reasons:
+  ablations:                  # remove one historical defender action, outcome must flip
+  - remove: {org: A, action: D1}
+    expect: {A: encrypted}
+  - remove: {org: DoH, action: D2}
+    expect: {DoH: encrypted}
+  - remove: {org: HSE, action: D3}
+    expect: {email: "still down (on-prem Exchange encrypted)"}
+  baselines_must_fail:        # at least one of A/DoH wrong, while the engine gets both right
+    - encrypt_everything_reached
+    - sir_epidemic_on_reachability_graph
+
+check_3_robustness:           # host-level, data/scenarios/cuh_hospital.json
+  seeds: 100
+  perturb: [account sessions_on, which workstations hold DA sessions, os mix within pack ranges, extra allow-flows]
+  report: share of seeds in which each outcome below holds
+  expected_majority:
+    Radiotherapy: down            # P
+    Radiology: down               # P
+    Laboratory (GP bloods): down  # P (emergency only)
+    Emergency department: paper   # P (open, delays)
+    Outpatients & chemotherapy: paper  # P (going ahead)
+    Theatres & surgery: paper     # P (going ahead)
+  medical_devices_encrypted: 0    # rule: devices lose servers, never encrypt
+
+check_4_cuh_press_holdout:    # run once, compare to ground_truth/cuh_press_outcomes.csv
+  map: {cancelled: down, "do not attend": down, "not processed": down, "going ahead": paper_or_up, "open with delays": paper}
+
+check_5_out_of_sample:        # data/scenarios/british_library_2023.json, no tuning
+  expect:
+    servers: majority encrypted_or_destroyed
+    workstations: not encrypted
+    Finance and payroll: up
+    Email: up
+    Catalogue and reading rooms: down
+
+check_6_agents_plan_known_limit:
+  under_any_local_plan_still_down: [Radiology, Email]   # national 05:10 disconnect

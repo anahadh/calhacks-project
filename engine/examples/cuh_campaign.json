@@ -1,0 +1,30 @@
+{
+  "campaign_id": "cuh-explicit-reconstruction-v1",
+  "initial_creds": ["hse\\da-national"],
+  "initial_privileges": ["hse\\da-national"],
+  "initial_domains": ["HSE"],
+  "targeted_orgs": ["CUH"],
+  "entry_routes": [
+    {
+      "id": "national-trust-alternative",
+      "target": "DC-01",
+      "mode": "trust",
+      "source_domain": "HSE",
+      "target_domain": "CUH",
+      "source_foothold": "HSE / NHN"
+    }
+  ],
+  "detour_budget": 1,
+  "events": [
+    {"t": "2021-05-13T12:00", "order": 0, "rule": "R1", "target": "GW-REMOTE", "mode": "edge", "label": "Synthetic local gateway entry"},
+    {"t": "2021-05-13T12:01", "order": 0, "rule": "tick", "budget": 100, "label": "Synthetic bounded host-level window"},
+    {"t": "2021-05-14T01:00", "order": 0, "rule": "R6", "label": "National campaign detonation time"},
+    {"t": "2021-05-14T05:10", "order": 0, "rule": "D3", "org": "HSE", "cut_links": [["HSE / NHN", "FW-EDGE"]], "label": "National network disconnect"}
+  ],
+  "assumptions": [
+    {"id": "cuh-not-a-pwc-letter", "provenance": "S", "statement": "This is an exploratory reconstructed CUH campaign, not a mapping to PwC Hospital A or B and not a recovered CUH intrusion timeline."},
+    {"id": "cuh-authored-subday-window", "provenance": "S", "statement": "The local gateway attempt and 100-microstep window at 12:00/12:01 on 13 May are authored deterministic ordering choices, not observed timings or measured attack speeds."},
+    {"id": "cuh-external-credential-boundary", "provenance": "I", "statement": "The attacker already possesses the inventory's hse\\da-national credential from separate HSE history. Its cross-CUH grant comes from the snapshot. The external HSE execution context activates only if the alternate trust door is attempted; no rule manufactures either the credential or the grant."},
+    {"id": "cuh-national-cut-projection", "provenance": "S", "statement": "The reported 05:10 national disconnect is projected onto the supplied HSE / NHN to FW-EDGE link. It applies to every local plan. No synthetic vendor entry is added: the snapshot supplies neither exposed vendor entry nor initial vendor credentials."}
+  ]
+}

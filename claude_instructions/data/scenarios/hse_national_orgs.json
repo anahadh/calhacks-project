@@ -1,0 +1,194 @@
+{
+ "meta": {
+  "name": "HSE national org-level snapshot",
+  "snapshot_date": "2021-05-13",
+  "provenance": "R for structure and posture pattern; letters as in PwC, identities redacted [X] and never mapped to real hospitals",
+  "use": "Org-level calibration. Each org is one aggregated node; host-level detail lives in per-hospital scenarios like cuh_hospital.json."
+ },
+ "orgs": [
+  {
+   "id": "HSE",
+   "type": "national_centre",
+   "domains": 9,
+   "note": "9 HSE domains; patient zero is a statutory-site workstation [I]",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  },
+  {
+   "id": "A",
+   "type": "hospital",
+   "model": "4",
+   "governance": "voluntary",
+   "radiotherapy": true,
+   "unpatched_edge": true
+  },
+  {
+   "id": "B",
+   "type": "hospital",
+   "model": "3",
+   "radiotherapy": true,
+   "unpatched_edge": true
+  },
+  {
+   "id": "C",
+   "type": "hospital",
+   "model": "specialty",
+   "governance": "voluntary",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  },
+  {
+   "id": "D",
+   "type": "hospital",
+   "governance": "section_38_voluntary",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  },
+  {
+   "id": "E",
+   "type": "hospital",
+   "model": "maternity",
+   "radiotherapy": true,
+   "note": "MN-CMS site",
+   "unpatched_edge": null
+  },
+  {
+   "id": "H",
+   "type": "hospital",
+   "model": "4",
+   "radiotherapy": true,
+   "unpatched_edge": null
+  },
+  {
+   "id": "J",
+   "type": "hospital",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  },
+  {
+   "id": "K",
+   "type": "hospital",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  },
+  {
+   "id": "L",
+   "type": "hospital",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  },
+  {
+   "id": "M",
+   "type": "hospital",
+   "governance": "statutory",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  },
+  {
+   "id": "N",
+   "type": "hospital",
+   "model": "4",
+   "radiotherapy": true,
+   "unpatched_edge": null
+  },
+  {
+   "id": "DoH",
+   "type": "government_department",
+   "note": "third party to HSE, connected to HSE network [I]",
+   "radiotherapy": false,
+   "unpatched_edge": null
+  }
+ ],
+ "network": {
+  "model": "flat",
+  "note": "NHN primarily flat and unsegmented; every org reaches every other [R]"
+ },
+ "trusts": [
+  {
+   "a": "HSE",
+   "b": "A",
+   "direction": "bidirectional",
+   "provenance": "R"
+  },
+  {
+   "a": "HSE",
+   "b": "B",
+   "direction": "bidirectional",
+   "provenance": "R"
+  },
+  {
+   "a": "HSE",
+   "b": "C",
+   "direction": "bidirectional",
+   "provenance": "R"
+  },
+  {
+   "a": "HSE",
+   "b": "D",
+   "direction": "bidirectional",
+   "provenance": "R"
+  },
+  {
+   "a": "HSE",
+   "b": "E",
+   "direction": "bidirectional",
+   "provenance": "I"
+  },
+  {
+   "a": "HSE",
+   "b": "H",
+   "direction": "bidirectional",
+   "provenance": "I"
+  },
+  {
+   "a": "HSE",
+   "b": "J",
+   "direction": "bidirectional",
+   "provenance": "R"
+  },
+  {
+   "a": "HSE",
+   "b": "K",
+   "direction": "bidirectional",
+   "provenance": "R"
+  },
+  {
+   "a": "HSE",
+   "b": "L",
+   "direction": "bidirectional",
+   "provenance": "R"
+  },
+  {
+   "a": "HSE",
+   "b": "M",
+   "direction": "bidirectional",
+   "provenance": "I"
+  },
+  {
+   "a": "HSE",
+   "b": "N",
+   "direction": "bidirectional",
+   "provenance": "I"
+  }
+ ],
+ "posture": {
+  "HSE": {
+   "av_servers": "monitor_only",
+   "av_patient_zero_signatures": ">1 year stale",
+   "edr": false,
+   "siem": false,
+   "mfa": false,
+   "privileged_accounts_excessive": true
+  },
+  "default_hospital": {
+   "edr": false,
+   "mfa": false,
+   "note": "assume HSE-like posture unless stated [I]"
+  },
+  "DoH": {
+   "edr": false,
+   "note": "EDR only arrives 13 May, which is a defender action, not snapshot posture"
+  }
+ },
+ "warning": "Trusts to E, H, M, N are inferred. Not every trusted org was attacked: target choice is in the campaign file, so score org outcomes conditional on being targeted."
+}

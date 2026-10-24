@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hippocratech-sim-core"
+version = "0.1.0"
+description = "Deterministic, abstract propagation and service-dependency model"
+requires-python = ">=3.11"
+dependencies = ["networkx>=3.3,<4", "pydantic>=2.9,<3"]
+
+[project.optional-dependencies]
+# Transport only. Importing sim_core.api requires these; the causal core does not.
+api = ["fastapi>=0.115,<0.116", "uvicorn[standard]>=0.30,<0.35"]
+# The research runner reads calibration.yaml; the causal core does not need YAML.
+research = ["pyyaml>=6,<7"]
+
+[project.scripts]
+hippo-sim = "sim_core.cli:main"
+
+[dependency-groups]
+# Dev installs the API stack too, so the full test suite (including the HTTP and
+# WebSocket transport tests) runs under `uv run pytest`.
+dev = [
+    "pytest>=8.3,<9",
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.30,<0.35",
+    "httpx>=0.27,<0.29",
+    "pyyaml>=6,<7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["sim_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

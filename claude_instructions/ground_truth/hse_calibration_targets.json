@@ -1,0 +1,13 @@
+{
+ "provenance": "R (PwC Independent Post Incident Review, 3 Dec 2021)",
+ "pre_detonation": {"systems_compromised": 180, "privileged_accounts_min": 33,
+   "privileged_breakdown": {"enterprise_admin": 2, "domain_admin": 26, "administrator": 2, "admin": 1, "service_desk_admin": 2},
+   "orgs_with_privileged_accounts_taken": ["HSE","A","K","L","J","B"], "organisations": 8, "domains_traversed": 19},
+ "detonation": {"time": "2021-05-14T01:00", "orgs_encrypted": ["HSE","C","K","D","L","J","B"], "orgs_not_encrypted": ["A","DoH"],
+   "servers_encrypted_min": 2800, "workstations_encrypted_min": 3500, "domains_encrypted_min": 15, "hse_domains_encrypted": 9,
+   "share_of_environment_encrypted_estimate": 0.8, "note": "server/workstation counts are a forensic lower bound"},
+ "alerts": {"2021-03-31": "patient zero, 2 detections", "2021-05-07": "6 servers", "2021-05-13": ">=16 systems unhandled", "2021-05-10": "Hospital C, 2 systems incl a DC", "2021-05-11": "Hospital A, several, auto-remediated"},
+ "clinical_day_one": {"hospitals_cancelling": 31, "acute_hospitals": 54, "radiotherapy_centres_stopped": 5, "emergency_care": "continued", "ambulance_service": "unaffected"},
+ "insulated": ["cloud-hosted COVID vaccination system", "HSE.ie public website"],
+ "privileged_curve": "0 before 7 May; 33 by 13 May; enterprise admins late"
+}

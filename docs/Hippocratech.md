@@ -626,6 +626,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 
 | Date | Decision |
 |---|---|
+| Oct 23, 2026 | User requested `claude_instructions/IMPLEMENTATION.md`, then scoped this change to research-intensive work. Standalone deterministic Python `engine/sim_core` implements causal propagation, service dependencies and research protocols; API/WebSocket/CLI/UI adapters remain in `engine/HANDOFF.md`. This supersedes the earlier stochastic Rust spread design for the backtest; no SpacetimeDB integration is claimed. |
 | Oct 22, 2026 | Product name **Hippocra.tech**; upload in scope; one simulation engine |
 | Oct 23, 2026 | Collaborative review; human approval gate; table judging with the whole team present |
 | Oct 23, 2026 | Sponsor tracks: Fetch.ai, Armadin, Microsoft, Factory, Anthropic, SpacetimeDB. All others dropped |

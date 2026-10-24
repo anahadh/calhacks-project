@@ -1,0 +1,936 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.2945,
+     53.3397
+    ]
+   },
+   "properties": {
+    "id": "H01",
+    "name": "St. James's Hospital",
+    "hospital_group_2021": "Dublin Midlands Hospital Group",
+    "wiki_title": "St. James's Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/St._James's_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.2891,
+     53.3349
+    ]
+   },
+   "properties": {
+    "id": "H02",
+    "name": "The Coombe Hospital",
+    "hospital_group_2021": "Dublin Midlands Hospital Group",
+    "wiki_title": "The Coombe Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/The_Coombe_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.37861,
+     53.29111
+    ]
+   },
+   "properties": {
+    "id": "H03",
+    "name": "Tallaght University Hospital",
+    "hospital_group_2021": "Dublin Midlands Hospital Group",
+    "wiki_title": "Tallaght University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Tallaght_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.6616,
+     53.2115
+    ]
+   },
+   "properties": {
+    "id": "H04",
+    "name": "Naas General Hospital",
+    "hospital_group_2021": "Dublin Midlands Hospital Group",
+    "wiki_title": "Naas General Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Naas_General_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.2758,
+     53.0377
+    ]
+   },
+   "properties": {
+    "id": "H05",
+    "name": "Midland Regional Hospital, Portlaoise",
+    "hospital_group_2021": "Dublin Midlands Hospital Group",
+    "wiki_title": "Midland Regional Hospital, Portlaoise",
+    "source_url": "https://en.wikipedia.org/wiki/Midland_Regional_Hospital,_Portlaoise",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.49065,
+     53.2831
+    ]
+   },
+   "properties": {
+    "id": "H06",
+    "name": "Midland Regional Hospital, Tullamore",
+    "hospital_group_2021": "Dublin Midlands Hospital Group",
+    "wiki_title": "Midland Regional Hospital, Tullamore",
+    "source_url": "https://en.wikipedia.org/wiki/Midland_Regional_Hospital,_Tullamore",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.26896,
+     53.35927
+    ]
+   },
+   "properties": {
+    "id": "H07",
+    "name": "Mater Misericordiae University Hospital",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "Mater Misericordiae University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Mater_Misericordiae_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.21274,
+     53.31669
+    ]
+   },
+   "properties": {
+    "id": "H08",
+    "name": "St. Vincent's University Hospital",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "St. Vincent's University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/St._Vincent's_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.24631,
+     53.33968
+    ]
+   },
+   "properties": {
+    "id": "H09",
+    "name": "National Maternity Hospital, Dublin",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "National Maternity Hospital, Dublin",
+    "source_url": "https://en.wikipedia.org/wiki/National_Maternity_Hospital,_Dublin",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.25605,
+     53.33276
+    ]
+   },
+   "properties": {
+    "id": "H10",
+    "name": "Royal Victoria Eye and Ear Hospital",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "Royal Victoria Eye and Ear Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Royal_Victoria_Eye_and_Ear_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.13866,
+     53.29381
+    ]
+   },
+   "properties": {
+    "id": "H11",
+    "name": "St. Michael's Hospital, Dún Laoghaire",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "St. Michael's Hospital (Dún Laoghaire)",
+    "source_url": "https://en.wikipedia.org/wiki/St._Michael's_Hospital_(Dún_Laoghaire)",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.3296,
+     53.3941
+    ]
+   },
+   "properties": {
+    "id": "H12",
+    "name": "National Orthopaedic Hospital Cappagh",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "National Orthopaedic Hospital Cappagh",
+    "source_url": "https://en.wikipedia.org/wiki/National_Orthopaedic_Hospital_Cappagh",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.1347,
+     53.2429
+    ]
+   },
+   "properties": {
+    "id": "H13",
+    "name": "St. Columcille's Hospital",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "St. Columcille's Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/St._Columcille's_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.6992,
+     53.6505
+    ]
+   },
+   "properties": {
+    "id": "H14",
+    "name": "Our Lady's Hospital, Navan",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "Our Lady's Hospital, Navan",
+    "source_url": "https://en.wikipedia.org/wiki/Our_Lady's_Hospital,_Navan",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.34896,
+     53.53419
+    ]
+   },
+   "properties": {
+    "id": "H15",
+    "name": "Midland Regional Hospital, Mullingar",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "Midland Regional Hospital, Mullingar",
+    "source_url": "https://en.wikipedia.org/wiki/Midland_Regional_Hospital,_Mullingar",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.2644,
+     52.6665
+    ]
+   },
+   "properties": {
+    "id": "H16",
+    "name": "St. Luke's General Hospital",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "St. Luke's General Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/St._Luke's_General_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.4824,
+     52.3428
+    ]
+   },
+   "properties": {
+    "id": "H17",
+    "name": "Wexford General Hospital",
+    "hospital_group_2021": "Ireland East Hospital Group",
+    "wiki_title": "Wexford General Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Wexford_General_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.22215,
+     53.39114
+    ]
+   },
+   "properties": {
+    "id": "H18",
+    "name": "Beaumont Hospital, Dublin",
+    "hospital_group_2021": "RCSI Hospitals",
+    "wiki_title": "Beaumont Hospital, Dublin",
+    "source_url": "https://en.wikipedia.org/wiki/Beaumont_Hospital,_Dublin",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.36865,
+     53.38854
+    ]
+   },
+   "properties": {
+    "id": "H19",
+    "name": "Connolly Hospital",
+    "hospital_group_2021": "RCSI Hospitals",
+    "wiki_title": "Connolly Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Connolly_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.2626,
+     53.3526
+    ]
+   },
+   "properties": {
+    "id": "H20",
+    "name": "Rotunda Hospital",
+    "hospital_group_2021": "RCSI Hospitals",
+    "wiki_title": "Rotunda Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Rotunda_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.354,
+     53.7224
+    ]
+   },
+   "properties": {
+    "id": "H21",
+    "name": "Our Lady of Lourdes Hospital, Drogheda",
+    "hospital_group_2021": "RCSI Hospitals",
+    "wiki_title": "Our Lady of Lourdes Hospital, Drogheda",
+    "source_url": "https://en.wikipedia.org/wiki/Our_Lady_of_Lourdes_Hospital,_Drogheda",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.4005,
+     53.988
+    ]
+   },
+   "properties": {
+    "id": "H22",
+    "name": "Louth County Hospital",
+    "hospital_group_2021": "RCSI Hospitals",
+    "wiki_title": "Louth County Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Louth_County_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.3727,
+     53.9994
+    ]
+   },
+   "properties": {
+    "id": "H23",
+    "name": "Cavan General Hospital",
+    "hospital_group_2021": "RCSI Hospitals",
+    "wiki_title": "Cavan General Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Cavan_General_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.9744,
+     54.2502
+    ]
+   },
+   "properties": {
+    "id": "H24",
+    "name": "Monaghan Hospital",
+    "hospital_group_2021": "RCSI Hospitals",
+    "wiki_title": "Monaghan Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Monaghan_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -9.0672,
+     53.2766
+    ]
+   },
+   "properties": {
+    "id": "H25",
+    "name": "University Hospital Galway",
+    "hospital_group_2021": "Saolta University Health Care Group",
+    "wiki_title": "University Hospital Galway",
+    "source_url": "https://en.wikipedia.org/wiki/University_Hospital_Galway",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.72547,
+     54.95654
+    ]
+   },
+   "properties": {
+    "id": "H26",
+    "name": "Letterkenny University Hospital",
+    "hospital_group_2021": "Saolta University Health Care Group",
+    "wiki_title": "Letterkenny University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Letterkenny_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -9.3033,
+     53.8519
+    ]
+   },
+   "properties": {
+    "id": "H27",
+    "name": "Mayo University Hospital",
+    "hospital_group_2021": "Saolta University Health Care Group",
+    "wiki_title": "Mayo University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Mayo_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.9927,
+     53.2775
+    ]
+   },
+   "properties": {
+    "id": "H28",
+    "name": "Merlin Park University Hospital",
+    "hospital_group_2021": "Saolta University Health Care Group",
+    "wiki_title": "Merlin Park University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Merlin_Park_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.2373,
+     53.3269
+    ]
+   },
+   "properties": {
+    "id": "H29",
+    "name": "Portiuncula University Hospital",
+    "hospital_group_2021": "Saolta University Health Care Group",
+    "wiki_title": "Portiuncula University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Portiuncula_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.1773,
+     53.625
+    ]
+   },
+   "properties": {
+    "id": "H30",
+    "name": "Roscommon University Hospital",
+    "hospital_group_2021": "Saolta University Health Care Group",
+    "wiki_title": "Roscommon University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Roscommon_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.4626,
+     54.27422
+    ]
+   },
+   "properties": {
+    "id": "H31",
+    "name": "Sligo University Hospital",
+    "hospital_group_2021": "Saolta University Health Care Group",
+    "wiki_title": "Sligo University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Sligo_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.6561,
+     52.6352
+    ]
+   },
+   "properties": {
+    "id": "H32",
+    "name": "University Hospital Limerick",
+    "hospital_group_2021": "UL Hospitals Group",
+    "wiki_title": "University Hospital Limerick",
+    "source_url": "https://en.wikipedia.org/wiki/University_Hospital_Limerick",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.98317,
+     52.85109
+    ]
+   },
+   "properties": {
+    "id": "H33",
+    "name": "Ennis Hospital",
+    "hospital_group_2021": "UL Hospitals Group",
+    "wiki_title": "Ennis Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Ennis_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.1909,
+     52.8577
+    ]
+   },
+   "properties": {
+    "id": "H34",
+    "name": "Nenagh Hospital",
+    "hospital_group_2021": "UL Hospitals Group",
+    "wiki_title": "Nenagh Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Nenagh_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.61689,
+     52.66327
+    ]
+   },
+   "properties": {
+    "id": "H35",
+    "name": "St. John's Hospital, Limerick",
+    "hospital_group_2021": "UL Hospitals Group",
+    "wiki_title": "St. John's Hospital, Limerick",
+    "source_url": "https://en.wikipedia.org/wiki/St._John's_Hospital,_Limerick",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.6356,
+     52.6676
+    ]
+   },
+   "properties": {
+    "id": "H36",
+    "name": "University Maternity Hospital, Limerick",
+    "hospital_group_2021": "UL Hospitals Group",
+    "wiki_title": "University Maternity Hospital, Limerick",
+    "source_url": "https://en.wikipedia.org/wiki/University_Maternity_Hospital,_Limerick",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.71429,
+     52.52752
+    ]
+   },
+   "properties": {
+    "id": "H37",
+    "name": "Croom Hospital",
+    "hospital_group_2021": "UL Hospitals Group",
+    "wiki_title": "Croom Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Croom_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -9.44967,
+     51.67641
+    ]
+   },
+   "properties": {
+    "id": "H38",
+    "name": "Bantry General Hospital",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "Bantry General Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Bantry_General_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.51074,
+     51.88195
+    ]
+   },
+   "properties": {
+    "id": "H39",
+    "name": "Cork University Hospital",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "Cork University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Cork_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.2761,
+     52.6525
+    ]
+   },
+   "properties": {
+    "id": "H40",
+    "name": "Kilcreene Orthopaedic Hospital",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "Kilcreene Orthopaedic Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Kilcreene_Orthopaedic_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.6657,
+     52.1515
+    ]
+   },
+   "properties": {
+    "id": "H41",
+    "name": "Mallow General Hospital",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "Mallow General Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Mallow_General_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.48272,
+     51.90001
+    ]
+   },
+   "properties": {
+    "id": "H42",
+    "name": "Mercy University Hospital",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "Mercy University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Mercy_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -8.4653,
+     51.8931
+    ]
+   },
+   "properties": {
+    "id": "H43",
+    "name": "South Infirmary-Victoria University Hospital",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "South Infirmary-Victoria University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/South_Infirmary-Victoria_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.7187,
+     52.3553
+    ]
+   },
+   "properties": {
+    "id": "H44",
+    "name": "Tipperary University Hospital",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "Tipperary University Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/Tipperary_University_Hospital",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -9.6874,
+     52.2655
+    ]
+   },
+   "properties": {
+    "id": "H45",
+    "name": "University Hospital Kerry",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "University Hospital Kerry",
+    "source_url": "https://en.wikipedia.org/wiki/University_Hospital_Kerry",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -7.0785,
+     52.2487
+    ]
+   },
+   "properties": {
+    "id": "H46",
+    "name": "University Hospital Waterford",
+    "hospital_group_2021": "South/South West Hospital Group",
+    "wiki_title": "University Hospital Waterford",
+    "source_url": "https://en.wikipedia.org/wiki/University_Hospital_Waterford",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.31722,
+     53.32583
+    ]
+   },
+   "properties": {
+    "id": "H47",
+    "name": "Children's Health Ireland at Crumlin",
+    "hospital_group_2021": "Children's Health Ireland",
+    "wiki_title": "Children's Health Ireland at Crumlin",
+    "source_url": "https://en.wikipedia.org/wiki/Children's_Health_Ireland_at_Crumlin",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.26203,
+     53.35678
+    ]
+   },
+   "properties": {
+    "id": "H48",
+    "name": "Children's Health Ireland at Temple Street",
+    "hospital_group_2021": "Children's Health Ireland",
+    "wiki_title": "Children's Health Ireland at Temple Street",
+    "source_url": "https://en.wikipedia.org/wiki/Children's_Health_Ireland_at_Temple_Street",
+    "provenance": "P",
+    "note": ""
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -6.37861,
+     53.29111
+    ]
+   },
+   "properties": {
+    "id": "H49",
+    "name": "Children's Health Ireland at Tallaght",
+    "hospital_group_2021": "Children's Health Ireland",
+    "wiki_title": "National Children's Hospital",
+    "source_url": "https://en.wikipedia.org/wiki/National_Children's_Hospital",
+    "provenance": "P",
+    "note": "Wikipedia coords are old Harcourt St site; co-located with Tallaght University Hospital in 2021, reuse its coords"
+   }
+  }
+ ]
+}

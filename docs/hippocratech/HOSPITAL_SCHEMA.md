@@ -1,5 +1,64 @@
 # Hospital schema
 
+## Standalone propagation/backtest contract (current)
+
+The user-requested `claude_instructions/IMPLEMENTATION.md` is implemented by the
+strict Pydantic models in [`engine/sim_core/schema.py`](../../engine/sim_core/schema.py).
+It is separate from the planned scene/upload contract below. No automatic
+conversion to the legacy `infected` boolean is provided.
+
+- `Scenario`: hosts/profiles, typed consumer→provider dependencies, network links,
+  domains, directed trusts, account grants/sessions/optional org ownership,
+  services/required consumers, levers and disclosed assumptions.
+- `Campaign`: attacker credentials/prior execution context, intent, authored
+  events with time/order, bounded host-level windows, explicit alternative entry
+  routes and assumptions. It is never planner-visible.
+- `Plan`: `plan_id` and listed levers; segmentation uses directed functional
+  `(source zone, target zone, port class)` allow-flows. Unlisted departments are
+  singleton zones. Only segmentation accepts zones/allow fields.
+- `ReplayResult`: deterministic cache key, ordered transition trace with
+  `event_index`, ordered service/device frames with `pre_attack` phase, final
+  levels, summary, and per-authored-event credential/domain/level effects.
+
+Levels: clean < footholded < cred_holder < controlled < encrypted. Service states
+are up/paper/down; medical-device states are operational/dependency_outage.
+Only encryption or lost dependencies disrupt services. Medical flags override
+Windows profiles. The replay makes no injury/mortality predictions.
+
+CUH's supplied dialect is strictly validated by `load_cuh`; all added flow/domain/
+consumer assumptions are exported. Raw national HSE and British Library data are
+not complete canonical inputs; missing facts must be reported, not derived from
+expected outcomes. [Research decisions](../../engine/RESEARCH_DECISIONS.md) and
+[handoff](../../engine/HANDOFF.md) document these adapters and the decisions behind
+them.
+
+### Transport and console contracts
+
+The adapters serialize the contract above; none of them computes a transition, and
+all export the same deterministic replay (`ReplayResult.model_dump_json()`).
+
+- **CLI.** `hippo-sim replay --scenario S --campaign C [--plan P] [--compare] [--cache-dir D]`
+  prints the `ReplayResult` JSON (or, with `--compare`, a `compare_plan` bundle via a Pydantic
+  encoder) to stdout; validation errors go to stderr with a nonzero exit. `hippo-sim sensitivity
+  --scenario S --seed N` is the only seeded command. The CUH dialect loads via `load_cuh`; a
+  canonical scenario via the strict models, which reject an embedded `campaign`/`expected`.
+- **HTTP.** `POST /replay` takes a strict `{scenario, campaign, plan?}` (or server-owned
+  `{scenario_id, campaign_id}`) and returns the `ReplayResult` body with `X-Cache-Key` and
+  `X-Cache: hit|miss`. Invalid data is 413/422/404; a valid replay whose trace contains `blocked`
+  entries is a normal 200. Explicit bounds cap body bytes, node count and event count.
+- **WebSocket.** `/replay/{cache_key}/trace` streams the already-cached result as ordered
+  messages — `meta`, each `trace`, each `service_frame`, each `event_effect`, then a final
+  `summary` (levels + summary) — which reassemble to a byte-identical `ReplayResult`.
+- **Planner boundary.** A planner receives only the canonical `Scenario` and
+  `Plan.model_json_schema()`; a scenario upload embedding `campaign`/`expected` is rejected, not
+  stripped, so a held-out answer cannot ride in through the planner surface.
+- **Console adapter** (`apps/web/lib/propagation/`). Maps level→colour (controlled = amber,
+  encrypted = red), device `dependency_outage` = violet, and service up/paper/down, keeping
+  labels. It renders bundled replay output only; it never coerces the five-level state into the
+  live `infected`/`down` booleans and never ticks in the browser.
+
+## Earlier scene/upload contract
+
 The contract for the demo hospital and every uploaded file. `packages/schema` implements it in zod. When this file and the code disagree, fix both in the same change.
 
 All data is synthetic. The schema has no field for a person's identity, and unknown fields are rejected, so a real record cannot be uploaded by accident.

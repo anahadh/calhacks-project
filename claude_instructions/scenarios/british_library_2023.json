@@ -1,0 +1,132 @@
+{
+ "meta": {
+  "name": "British Library 2023 (out-of-sample)",
+  "provenance": "P for facts from the BL review of 8 Mar 2024; S for the node structure",
+  "source": "https://www.bl.uk/home/british-library-cyber-incident-review-8-march-2024.pdf",
+  "rule": "Build once, run once with frozen rules. Do not tune rules to this case."
+ },
+ "snapshot_date": "2023-10-24",
+ "nodes": [
+  {
+   "id": "TS-01",
+   "kind": "terminal_server",
+   "internet_exposed": true,
+   "mfa": false,
+   "note": "installed Feb 2020 for third-party and IT admin remote access [P]"
+  },
+  {
+   "id": "DC-01",
+   "kind": "dc"
+  },
+  {
+   "id": "FILE-01",
+   "kind": "srv",
+   "note": "network drives, incl. personal staff drives [P]"
+  },
+  {
+   "id": "DB-01",
+   "kind": "srv",
+   "note": "databases copied with native admin tools [P]"
+  },
+  {
+   "id": "LMS-01",
+   "kind": "srv",
+   "legacy": true,
+   "note": "library services platform, legacy [P]"
+  },
+  {
+   "id": "BACKUP-01",
+   "kind": "srv"
+  },
+  {
+   "id": "LAPTOP-xx",
+   "kind": "ws",
+   "count": "many",
+   "endpoint_protection": "modern",
+   "note": "encryption prevented on laptops and desktops [P]"
+  },
+  {
+   "id": "FIN-CLOUD",
+   "kind": "saas",
+   "external": true,
+   "note": "cloud finance and payroll [P]"
+  },
+  {
+   "id": "EMAIL-CLOUD",
+   "kind": "saas",
+   "external": true
+  }
+ ],
+ "accounts": [
+  {
+   "id": "thirdparty-admin",
+   "tier": "privileged",
+   "admin_to": [
+    "TS-01",
+    "FILE-01",
+    "DB-01"
+   ],
+   "note": "third parties often had privileged admin access to specific servers [P]; most likely entry is a compromised privileged credential [P]"
+  }
+ ],
+ "posture": {
+  "network": "complex legacy, wide access [P]",
+  "server_av": "older, failed to resist [P]",
+  "workstation_protection": "modern, blocked encryption [P]",
+  "mfa_on_prem": false
+ },
+ "services": [
+  {
+   "name": "Finance and payroll",
+   "requires_all": [
+    "FIN-CLOUD"
+   ]
+  },
+  {
+   "name": "Catalogue and reading rooms",
+   "requires_all": [
+    "LMS-01",
+    "DC-01"
+   ]
+  },
+  {
+   "name": "Email",
+   "requires_all": [
+    "EMAIL-CLOUD"
+   ]
+  }
+ ],
+ "campaign": [
+  {
+   "t": "2023-10-25T23:29",
+   "rule": "R1",
+   "label": "external presence, TS-01 first detected unauthorised access"
+  },
+  {
+   "t": "2023-10-25T23:32",
+   "rule": "R4",
+   "label": "first movement around network"
+  },
+  {
+   "t": "2023-10-26T00:21",
+   "rule": "defender",
+   "label": "monitoring auto-blocks activity; later password reset and account unblocked (not containment)"
+  },
+  {
+   "t": "2023-10-28T01:30",
+   "rule": "exfil",
+   "label": "440GB outbound (600GB total exfiltrated)"
+  },
+  {
+   "t": "2023-10-28",
+   "rule": "R6",
+   "label": "encryption and destruction of servers; staff locked out 07:35"
+  }
+ ],
+ "expected": {
+  "servers_encrypted_or_destroyed": "much of the server estate",
+  "workstations_encrypted": false,
+  "cloud_services_up": true,
+  "catalogue_down": true
+ }
+}
