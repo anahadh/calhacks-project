@@ -92,7 +92,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 |---|---|---|
 | `apps/watcher/src/index.ts` | F1 | Connects as the server identity and starts every watcher. `npm run dev -w watcher`; reads `.env.local` |
 | `apps/watcher/src/config.ts`, `stdb.ts`, `coordinator.ts` | F1 | Settings (`STDB_URI`, `STDB_SERVER_TOKEN`, `COORDINATOR_URL`, `RELAY_PORT` default 8010, `RELAY_TOKEN`); the connection and subscription; Coordinator REST calls. Failures are written to `session.round_detail` |
-| `apps/watcher/src/round.ts` | F1 | On `defend_request` only: wakes the Sign-off Coordinator (`start_round` or `reassess`). Never on `run` completion or `challenge` alone |
+| `apps/watcher/src/round.ts` | F1 | On `defend_request` only, with every baseline run listed in the row: wakes the Sign-off Coordinator (`start_round` or `reassess`). Never on `run` completion or `challenge` alone |
 | `apps/watcher/src/answer.ts` | F1 | On a `question` answer: calls the Coordinator's `resume` |
 | `apps/watcher/src/relay.ts` | F1 | HTTP endpoint the agents post to (`POST /agent_message`, `/agent_status`, bearer `RELAY_TOKEN`, strict zod). Writes `agent_message_add` and `agent_status_set`; from the sender's copy, also `question_add` (questions to humans), `round_state_set` and `recommendation_upsert`. A reducer's refusal returns HTTP 502, so the agent doesn't send. Live state reads: not built yet |
 | `apps/watcher/test/relay.test.ts` | F1 | Relay contract with fake reducers |
@@ -158,7 +158,8 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/components/panel/impact.tsx`, `services.tsx`, `inspector.tsx` | Base | Simulation side column: patients affected, service tiles, hovered-device record and choke points |
 | `apps/web/components/panel/counters.tsx` | Base | Counter strip on the Agents tab |
 | `apps/web/components/scene/*` | Base | Floors, rooms, device boxes, patients, arcs, subscribed to live state |
-| `apps/web/components/timeline.tsx` | Base | Timeline rail: playback, speed, follow, scrubber with event markers and heat strip, current beat (reads `tick_snapshot`, `sim_event`) |
+| `apps/web/components/timeline.tsx` | Base | Timeline rail for the selected run: back to start, playback, reset, speed, `T+h:mm` clock, follow, scrubber with event and note markers and heat strip, "Settles T+…", current beat (reads `tick_snapshot`, `sim_event`) |
+| `apps/web/components/runs-strip.tsx` (planned) | Base | One tab per baseline run (number, patient zero, who started it, settles T+…) and **+ New run**; selecting a tab sets the shown run |
 | `apps/web/features/scene/spread-fx.tsx` | F4 | Pulses and fizzles from `spread_attempt`, device flashes, room tints |
 | `apps/web/features/scene/service-icons.tsx` | F4 | Service icons, "down" badges, event toasts from `sim_event` |
 | `apps/web/features/scene/patients-fx.tsx` | F4 | Patient badges, ambulance diversion |
