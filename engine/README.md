@@ -13,6 +13,10 @@ adapter. No adapter computes a transition. See [HANDOFF.md](HANDOFF.md) for the
 item list and status, and [RESEARCH_DECISIONS.md](RESEARCH_DECISIONS.md) for every
 design decision.
 
+For a paper-style explanation with diagrams, equations, current results, oral
+explanation scripts, and an artifact for each claim, read
+[ENGINE_RESEARCH_PAPER.md](ENGINE_RESEARCH_PAPER.md).
+
 From this directory:
 
 ```sh
@@ -97,7 +101,7 @@ incomplete; see the evidence ledger in the research decisions. The supplied
 hold-out descriptions/outcomes were inspected during implementation, so future
 use of those labels must be declared exploratory, not unseen validation.
 
-Verification: 94 pytest cases pass on Python 3.11 (the original causal/protocol
+Verification: 113 pytest cases pass on Python 3.11 (the original causal/protocol
 tests plus cache, CLI, planner-boundary, HTTP/WebSocket, runner, freeze, and a
 cross-transport identity suite). The CUH example replays identically across the
 CLI, the direct call, the cache file and both WebSocket paths, and across separate

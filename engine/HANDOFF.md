@@ -145,7 +145,7 @@ mapping was changed to fit a hold-out. Design decisions are in
 | 7 Freeze workflow | `sim_core/freeze_runner.py` | repo-root freeze; CUH/BL prior-exposed; `require_unseen=False`; one-use ledger; not a pre-inspection freeze |
 | 8 Integration docs | this file, `README.md`, `CODE_REFERENCE.md`, `HOSPITAL_SCHEMA.md` | startup commands and request contracts |
 
-Completion criteria met: 94 pytest cases pass (Python 3.11). `tests/test_cross_transport_identity.py`
+Completion criteria met: 113 pytest cases pass (Python 3.11). `tests/test_cross_transport_identity.py`
 proves the CLI, direct call, cache file, and cached/uncached WebSocket export byte-identical
 `ReplayResult` JSON on the real CUH example, and that replay is stable across separate processes with
 different `PYTHONHASHSEED`. `apps/web` typechecks and builds. Two additive, test-safe library changes

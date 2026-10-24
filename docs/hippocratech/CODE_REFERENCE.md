@@ -42,6 +42,7 @@ not compute visible runs and is not wired into SpacetimeDB. Its CLI is
 | `engine/tests/` | Base | Causal/research-protocol checks plus cache, CLI, planner, API, runner, freeze, bundle and cross-transport identity suites |
 | `engine/examples/` | Base | Disclosed exploratory CUH campaign and local illustrative plan |
 | `engine/README.md`, `RESEARCH_DECISIONS.md`, `HANDOFF.md` | Base | Usage, research rationale/evidence limits and remaining adapter work |
+| `engine/ENGINE_RESEARCH_PAPER.md` | Base | Paper-style explanation, exhibits, results, validity limits and presentation script |
 
 The tree below is the live product (TypeScript `sim-core` is its engine). The
 `engine/` package above is the separate Python backtest tool and is not part of it.
