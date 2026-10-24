@@ -1,0 +1,6 @@
+uagents>=0.25.5
+anthropic
+pydantic
+httpx
+python-dotenv
+pytest

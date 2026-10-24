@@ -54,15 +54,42 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 
 | Path | Owner | Role |
 |---|---|---|
-| `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation` |
-| `agents/inventory.py` | F1 | Unidentified-device check, `confirm_device`, sends `Question`s |
-| `agents/flow.py` | F1 | `hippo-opt` candidates, `llm.propose()` fallback, `hippo-sim` testing and revision |
-| `agents/clinical_workflow.py` | F1 | Protected-flow and service-loss checks, `keep_flow`, `keep_service` |
-| `agents/coordinator.py` | F1 | Rounds, `waiting_for_human`, required roles; `start_round`, `reassess`, `resume` handlers |
-| `agents/tools.py` | F1 | Wrappers for `hippo-sim`, `hippo-opt`, and the watcher relay |
-| `agents/llm.py` | F2 | Claude `propose()` and `explain()`, with number and word checks |
+| `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation`; `Policy`/`PolicyRule`; draft `RunResult`; `Candidate`; REST requests `StartRound`, `Reassess`, `Resume`; Coordinator messages `ProposalRequest`, `RoundState`. All reject extra fields |
+| `agents/inventory.py` | F1 | Inventory uAgent: preflight on round 1's request, `check` on each candidate (Question before Verdict), applies Answers |
+| `agents/flow.py` | F1 | Flow uAgent: `optimize()` without protected-flow info, `run_sim` per candidate, `logic.flow.choose`; Proposal or Revision. `llm.propose()` fallback later |
+| `agents/clinical_workflow.py` | F1 | Clinical Workflow uAgent: `logic.clinical.check` on each Proposal/Revision, replies with a Verdict |
+| `agents/coordinator.py` | F1 | Coordinator uAgent: one `Round` per session; REST `/start_round`, `/resume`, `/reassess` (not implemented yet); carries out every Action; chat protocol (ASI:One): starts rounds and sends summaries |
+| `agents/chat.py` | F1 | The Coordinator's chat in code: parse commands, resolve devices by name or id, help, status and round-summary text |
+| `agents/profiles/*.md` | F1 | Agentverse README for each agent (`readme_path`): stall point, messages, code vs. Claude, human approval, synthetic data |
+| `agents/tools.py` | F1 | `run_sim` (hippo-sim or fixture results), `optimize` (hippo-opt or fixture candidates), `relay` (agent_message/agent_status rows: HTTP or `logs/<session>.jsonl`) |
+| `agents/llm.py` | F2 (implemented by F1) | `explain()` and `question_text()`: Claude words verdict reasons, Question text, Flow's "why this plan" and the recommendation's explanation, with number, word and length checks, one retry, and a labeled template fallback; `with_text()` changes only the text. `propose()` still to come (F2) |
+| `agents/facts.py` | F1 | The facts each message may state: human names and purposes, and the numbers, built by code from the RunResult, constraint and hospital |
 | `agents/cache/demo_round.json` | F1 | Cached demo-seed conversation, question and answer included |
-| `agents/run_all.py` | F1 | Starts all four agents |
+| `agents/run_all.py` | F1 | Starts the four agents as separate processes with `[agent]` prefixes; Ctrl-C stops all |
+| `agents/config.py` | F1 | Settings from `agents/.env`: seeds, ports 8001–8004, `AGENT_MAILBOX`, `LOCAL_RESOLVE`, sim/opt/relay settings |
+| `agents/addresses.py` | F1 | Addresses from seeds; local resolution (address → `127.0.0.1:<port>/submit`, plus `LOCAL_PEERS`), and `LocalFirstResolver` for mailbox mode |
+| `agents/runtime.py` | F1 | Builds each Agent for its mode (`AGENT_MAILBOX` × `LOCAL_RESOLVE`) with its Agentverse profile and `GET /health`; `connect_mailbox` for `AGENTVERSE_API_KEY`; `send`/`received` relay every message and set status |
+| `agents/scripts/start_round.py`, `agents/scripts/answer.py` | F1 | POST `/start_round` and `/resume` to the Coordinator, as the watchers will |
+| `agents/scripts/check_agentverse.py` | F1 | Laptop check: each agent's name, handle, address, port, Inspector URL, and whether `/health` answers locally |
+| `agents/fixtures/candidates/*.json`, `agents/fixtures/results/*.json` | F1 | Runtime fixtures: three candidates and their hand-written results plus `baseline.json`, and `<id>@unknown_device_imaging.json` variants for that challenge; for `HIPPO_SIM_FIXTURES=1` and no `HIPPO_OPT_BIN` |
+| `agents/logic/hospital.py` | F1 | Read-only hospital index: devices, rooms, flows, services by id; room type and zone per device; active flows per device |
+| `agents/logic/inventory.py` | F1 | `flagged_devices`, `preflight`, `check`: unidentified-device decisions and `Question`s (pure) |
+| `agents/logic/clinical.py` | F1 | `check` with `MAX_SERVICE_LOSS`: `keep_flow` and `keep_service` rejections (pure) |
+| `agents/logic/flow.py` | F1 | `violates`, `rank`, `diff`/`apply_diff` for candidates (pure) |
+| `agents/logic/coordinator.py` | F1 | `Round` state machine (events in, `Action`s out), `MAX_ROUNDS`, `required_roles` (pure) |
+| `agents/requirements.txt`, `agents/pytest.ini` | F1 | Python 3.11 deps (venv in `agents/.venv`, gitignored) and pytest config |
+| `agents/fixtures/hospital.json` | F1 | Test hospital until `data/hospitals/demo.json` exists: the mock hospital plus `dev_unknown_7`, whose flow is inactive until the `unknown_device_imaging` challenge. Generated, don't edit |
+| `agents/scripts/export_fixture.mjs` | F1 | Regenerates `fixtures/hospital.json` from `mock-session.ts` |
+| `agents/tests/test_protocol.py` | F1 | Every model round-trips; extra fields and bad values are rejected |
+| `agents/tests/test_fixture.py` | F1 | The fixture loads and its references (flows → devices, etc.) exist |
+| `agents/tests/test_logic.py` | F1 | Guardians, ranking, and Coordinator scenarios a–g; `pytest -s` prints the a→b transcript |
+| `agents/tests/fixtures/results/test_*.json` | F1 | Hand-written RunResults for `test_logic.py`. Test-only, never loaded at runtime |
+| `agents/tests/test_runtime.py` | F1 | Config, local resolver, `make_agent`, `run_sim`/`optimize` fixtures and errors, fixture consistency, relay rows |
+| `agents/tests/test_live_round.py` | F1 | Four real agent processes over uAgents, checked from the relay log: a full round with no questions; the challenge round that pauses for a human and resumes on `/resume`; a round in mailbox mode over local `/submit`; a chat that starts a round and gets the summary |
+| `agents/tests/test_llm.py` | F1 | `llm.py` with a mocked client: good answer, invented number (retry, template), forbidden words, API errors and timeouts, missing key, and decisions unchanged by model output |
+| `agents/tests/test_chat.py` | F1 | Chat parsing, device lookup, help, status and summary text |
+| `agents/tests/chat_sender.py`, `agents/tests/tests_paths.py` | F1 | Test helpers: a fake ASI:One user (a real uAgent) for the live chat test; shared paths |
+| `agents/tests/test_uagents_api.py` | F1 | Runs the uAgents API snippets in `AGENT_NOTES.md` (seed address, mailbox, REST, chat protocol) |
 
 ## Optimizer
 
@@ -109,6 +136,7 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | `data/hospitals/demo.json` | Base | Demo hospital: critical services, `observed` flags, an inactive unknown device and vendor link for challenges |
 | `data/hospitals/template.json`, `invalid/` | Base | Template and validation fixtures |
 | `hippocratech/AGENT_NOTES.md` | F1 | uAgents, Agentverse, and watcher notes |
+| `hippocratech/AGENTVERSE_SETUP.md` | F1 | Laptop steps: register the four agents on Agentverse (mailbox, profiles) and test the Coordinator on ASI:One |
 
 ## Invariants
 

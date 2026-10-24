@@ -1,0 +1,72 @@
+{
+  "id": "cand_isolate_imaging",
+  "policy": {
+    "strategy": "max_containment",
+    "name": "Isolate imaging",
+    "rules": [
+      {
+        "id": "r_critical_care",
+        "from": {
+          "zone": "critical_care"
+        },
+        "to": {},
+        "plain": "Critical care devices keep all their connections."
+      },
+      {
+        "id": "r_public",
+        "from": {
+          "zone": "public"
+        },
+        "to": {},
+        "plain": "Public-area devices keep all their connections."
+      },
+      {
+        "id": "r_clinical_support",
+        "from": {
+          "zone": "clinical_support"
+        },
+        "to": {},
+        "plain": "Lab and pharmacy devices keep all their connections."
+      },
+      {
+        "id": "r_business",
+        "from": {
+          "zone": "business"
+        },
+        "to": {},
+        "plain": "Admin devices keep all their connections."
+      },
+      {
+        "id": "r_inpatient",
+        "from": {
+          "zone": "inpatient"
+        },
+        "to": {},
+        "plain": "Ward devices keep all their connections."
+      },
+      {
+        "id": "r_it_core",
+        "from": {
+          "zone": "it_core"
+        },
+        "to": {},
+        "plain": "Servers keep all their connections."
+      },
+      {
+        "id": "r_reading",
+        "from": {
+          "zone": "imaging",
+          "deviceType": "workstation"
+        },
+        "to": {
+          "role": "pacs"
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Imaging workstations may open images on PACS over HTTPS (443). Nothing else leaves imaging."
+      }
+    ],
+    "rationale": "[rationale]",
+    "tradeoff": "[tradeoff]"
+  }
+}

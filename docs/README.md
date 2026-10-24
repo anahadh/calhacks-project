@@ -37,7 +37,17 @@ The same engine (`sim-core`) is built into the `hippo-sim` CLI, which the agents
 | Sign-off Coordinator | Reach a plan humans can approve | Runs up to 4 rounds, pauses for human answers, and picks which roles must approve each recommendation. Cannot approve |
 
 - All four are uAgents registered on Agentverse, talking over uAgents messaging.
-- **Watchers** (SpacetimeDB subscription clients in `apps/watcher`) wake the agents when a run ends, a challenge appears, or a human answers. They also mirror every message into SpacetimeDB, and the Agent Room animates the conversation live from there. [Agentverse addresses here.]
+- **Watchers** (SpacetimeDB subscription clients in `apps/watcher`) wake the agents when a run ends, a challenge appears, or a human answers. They also mirror every message into SpacetimeDB, and the Agent Room animates the conversation live from there.
+- The Sign-off Coordinator also speaks the chat protocol: on ASI:One, type `simulate ransomware from MRI 2` and it runs a real round and sends you the summary.
+
+| Agent | Agentverse name | Handle | Address | Profile |
+|---|---|---|---|---|
+| Inventory | Hippocratech Inventory Agent | `@hippocratech-inventory` | *after registration* | *after registration* |
+| Flow | Hippocratech Flow Agent | `@hippocratech-flow` | *after registration* | *after registration* |
+| Clinical Workflow | Hippocratech Clinical Workflow Agent | `@hippocratech-clinical-workflow` | *after registration* | *after registration* |
+| Sign-off Coordinator | Hippocratech Sign-off Coordinator | `@hippocratech-coordinator` | *after registration* | *after registration* |
+
+Addresses come from the team's shared seed phrases, and the profile URLs from Agentverse. Both get filled in here after the agents are registered on a laptop ([`hippocratech/AGENTVERSE_SETUP.md`](hippocratech/AGENTVERSE_SETUP.md)).
 
 ## How Claude is used, and where it could go wrong (Anthropic)
 

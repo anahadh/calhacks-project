@@ -1,0 +1,86 @@
+{
+  "id": "cand_unknown_cut",
+  "policy": {
+    "strategy": "least_disruption",
+    "name": "Cut the unidentified device",
+    "rules": [
+      {
+        "id": "r_critical_care",
+        "from": {
+          "zone": "critical_care"
+        },
+        "to": {},
+        "plain": "Critical care devices keep all their connections."
+      },
+      {
+        "id": "r_public",
+        "from": {
+          "zone": "public"
+        },
+        "to": {},
+        "plain": "Public-area devices keep all their connections."
+      },
+      {
+        "id": "r_clinical_support",
+        "from": {
+          "zone": "clinical_support"
+        },
+        "to": {},
+        "plain": "Lab and pharmacy devices keep all their connections."
+      },
+      {
+        "id": "r_business",
+        "from": {
+          "zone": "business"
+        },
+        "to": {},
+        "plain": "Admin devices keep all their connections."
+      },
+      {
+        "id": "r_inpatient",
+        "from": {
+          "zone": "inpatient"
+        },
+        "to": {},
+        "plain": "Ward devices keep all their connections."
+      },
+      {
+        "id": "r_it_core",
+        "from": {
+          "zone": "it_core"
+        },
+        "to": {},
+        "plain": "Servers keep all their connections."
+      },
+      {
+        "id": "r_imaging_mri",
+        "from": {
+          "zone": "imaging",
+          "deviceType": "mri"
+        },
+        "to": {},
+        "plain": "Imaging MRI scanners keep their connections."
+      },
+      {
+        "id": "r_imaging_ct",
+        "from": {
+          "zone": "imaging",
+          "deviceType": "ct"
+        },
+        "to": {},
+        "plain": "Imaging CT scanners keep their connections."
+      },
+      {
+        "id": "r_imaging_workstation",
+        "from": {
+          "zone": "imaging",
+          "deviceType": "workstation"
+        },
+        "to": {},
+        "plain": "Imaging workstations keep their connections."
+      }
+    ],
+    "rationale": "[rationale]",
+    "tradeoff": "[tradeoff]"
+  }
+}
