@@ -420,7 +420,7 @@ General Cal Hacks prizes we qualify for with no extra build: Best People-First H
 |---|---|
 | Frontend | Next.js, React, TypeScript, Tailwind, IBM Plex |
 | 3D | React Three Fiber, drei, postprocessing (bloom on infected devices) |
-| Simulation | `sim-core` in the SpacetimeDB module language (Rust by default; TypeScript if the starter pack confirms TypeScript modules), plus the `hippo-sim` CLI built from it |
+| Simulation | `sim-core` in TypeScript (`packages/sim-core`), used by the SpacetimeDB TypeScript module, plus the `hippo-sim` CLI built from it |
 | Shared state and live sim | SpacetimeDB (module in `spacetime/`, client bindings from `spacetime generate`) |
 | Watchers | Node + SpacetimeDB TypeScript SDK (`apps/watcher`) |
 | Agents | Fetch.ai uAgents (Python), Agentverse |
@@ -434,23 +434,32 @@ Skip auth, Postgres, Redis, Docker, physics, rigged characters, and PDF librarie
 
 ## Design Language
 
+The full system (tokens, components, usage rules) is the **Hippocra.tech design system** artifact. Code mirrors it in `apps/web/tailwind.config.ts`, `apps/web/app/globals.css` and `apps/web/lib/colors.ts`. Direction: a clinical instrument on graphite. The building is quiet; harm is the only light.
+
 | Token | Hex | Use |
 |---|---|---|
-| Background | `#0B0F14` | App |
-| Healthy device | `#5AA9FF` | Uninfected; kept connections in the solution view |
-| Infected device | `#FF6B3D` | Infected devices, spread pulses |
-| Patient OK | `#E8ECF1` | Figures |
-| Patient delayed | `#F5B942` + clock badge | Delayed |
-| Patient disrupted | `#FF4D6D` + "!" badge | Disrupted, diverted |
-| Segment zone | `#B79CFF` | Zones, proposed cuts |
+| Background | `#0D0F10` | App (graphite, no navy tint) |
+| Panel / panel 2 | `#131618` / `#1A1D20` | Panels; inset wells |
+| Hairline / control border | `#24282B` / `#3E4448` | Rules between cells; button and input borders |
+| Ink / muted / faint | `#E9ECEE` / `#A1A8AE` / `#7D858B` | Text; also the monochrome selection fill |
+| Healthy device | `#4DB0FF` | Uninfected; kept connections in the solution view |
+| Infected device | `#FF6A2E` | Infected devices, spread pulses, room tint |
+| Patient OK | `#DDE4EA` | Figures |
+| Patient delayed | `#FFC53D` + ◷ badge | Delayed |
+| Patient disrupted | `#FF4778` + "!" / "↩" badge | Disrupted, diverted |
+| Segment zone | `#B08CFF` | Zones, proposed cuts |
+| Cut connection | `#6B7378`, dashed + ✕ | Cut connections |
 
-- Use blue and orange, never red and green, and always pair color with a badge or shape.
-- **Agents:** each has a neutral node and an icon (Inventory: tag; Flow: network; Clinical Workflow: heartbeat line; Coordinator: checklist). Message particles use one shape per type (proposal ◆, accept ●, reject ✕, revision ↻, question ?), so type never depends on color alone.
-- **Motion budget:** spread pulses, device flashes, room tints, agent message particles, the camera follow, and the split-screen replay. Nothing else animates.
-- Chrome follows the console template: navy panels (`#0C131C` background, `#14202D` panels), a teal accent (`#58C6D8`) for controls and selection, and uppercase mono captions. State colors above are unchanged.
-- Fonts: Space Grotesk for headings and big numbers, Inter for body text, IBM Plex Mono for numbers, ids and captions.
+- Chrome is monochrome. Selection, primary buttons, active tabs and presenter controls use ink (`#E9ECEE`) with graphite text. There is no hue accent, so nothing in the chrome can be mistaken for a state.
+- State colors are luminous "monitor traces" and appear only on devices, patients, arcs, zones and spread effects. Use blue and orange, never red and green, and always pair color with a badge or shape.
+- Surfaces: hairline grid. 1px borders, 4px panel radius, 2px control radius, no shadows except the Agent Room overlay and join modal.
+- Fonts: Hanken Grotesk for words and big numbers (weights 300/400/500; readouts are light 300), IBM Plex Mono for numbers, ids, controls and uppercase captions.
+- Before/after numbers: the old value small, struck and faint, then an arrow, then the new value large and light ("~~212~~ → 9").
+- 3D scene: matte graphite clay (slabs `#1D2023`, walls `#2A2E32`, edges `#3C4247`, ground `#111315`), low soft light. Nothing is emissive except infection.
+- **Agents:** each has a neutral node and an icon (Inventory: tag; Flow: network; Clinical Workflow: heartbeat line; Coordinator: checklist). Status is shown by form (faint, breathing dots, solid ring, dashed ring). Message particles use one shape per type (proposal ◆, accept ●, reject ✕, revision ↻, question ?), so type never depends on color alone.
+- **Motion budget:** spread pulses, device flashes, room tints, agent message particles, the camera follow, and the split-screen replay. Nothing else animates. It breathes: infected devices pulse at 60 bpm (sine in-out), pulses travel eased over the tick, flashes settle over 600 ms.
 - Lead with the human number. Never write "deaths," "lives," "fatal," or "mortality."
-- The reference design is the console template (timeline rail, demo steps, scene panel with a side column, and an Agents view).
+- The memo page prints on the design system's Paper theme.
 
 ---
 
@@ -592,7 +601,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 |---|---|
 | The sim in SpacetimeDB is late | It's the base app's critical path. Keep `sim-core` small; animate in the client from `spread_attempt` rows |
 | Ticks stutter over venue Wi-Fi | Run SpacetimeDB locally (`spacetime start`) on the demo laptop as a fallback; test on a phone hotspot |
-| The module language is unfamiliar (Rust) | Check whether the starter pack supports TypeScript modules first. Keep `sim-core` small either way |
+| The module is new to the team | Resolved: the module is TypeScript, like the rest of the stack. Keep `sim-core` small |
 | Agents are slow or flaky on stage | A cached demo round, replayed through the same Agent Room at readable pace, labeled "Cached run" |
 | The conversation is too fast to follow | Minimum 1.2 s per message, plus **Skip to result** |
 | The LLM makes up numbers | Verdicts and numbers come from `hippo-sim`; Claude only writes explanations |
@@ -615,7 +624,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 
 | Question | Default |
 |---|---|
-| SpacetimeDB module language | Rust, unless the starter pack confirms TypeScript modules |
+| SpacetimeDB module language | **Resolved Oct 24: TypeScript** (spacetimedb 2.13) |
 | How the Coordinator picks required roles | Security always; Clinical engineering for imaging, clinical devices or protected flows; Operations for ER, OR, ICU or pharmacy |
 | `MAX_SERVICE_LOSS` threshold | No critical service (ICU, ER, OR, imaging reading) down for more than 2 ticks |
 | Live Site criteria for Fetch.ai, Armadin, Microsoft, SpacetimeDB, and Anthropic's prize | Re-check Friday evening and record the results here |
@@ -636,7 +645,9 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 23, 2026 | **The simulation runs in SpacetimeDB** (scheduled `run_tick`), replacing the browser-only sim. The browser renders subscribed state. `sim-core` also builds `hippo-sim` for fast agent tests |
 | Oct 23, 2026 | **Watchers** (SpacetimeDB subscription clients) connect the Fetch.ai agents to the live world and mirror their conversation into `agent_message` |
 | Oct 23, 2026 | Three must-see moments: the visible spread, the visible agent conversation (Agent Room), and the solution view (lockstep split screen) |
-| Oct 24, 2026 | **Console design template adopted.** Two views (Simulation, Agents); timeline rail on top; Space Grotesk, Inter and IBM Plex Mono; teal chrome accent. State colors unchanged |
+| Oct 24, 2026 | **Console design template adopted.** Two views (Simulation, Agents); timeline rail on top. Its fonts and teal accent were replaced the same day by the design system (see "Design system adopted"); the layout stands |
+| Oct 24, 2026 | **SpacetimeDB module in TypeScript.** `sim-core` is `packages/sim-core`; the module is `spacetime/src/index.ts`; no Rust |
+| Oct 24, 2026 | **Design system adopted (supersedes the template's look).** Clinical instrument on graphite; monochrome chrome replaces the teal accent, which read too close to healthy blue; state colors retuned as monitor traces (same meanings); Hanken Grotesk + IBM Plex Mono; hairline grid surfaces; breathing motion. Layout unchanged |
 | Oct 23, 2026 | **Factory Droid dropped.** The Flow Agent tests candidates with `hippo-sim` directly. `/api/droid` and the Factory sponsor track are removed |
 | Oct 23, 2026 | `implementation-steps.md` removed. The build plan lives in this spec, plus the owner and file map in `hippocratech/CODE_REFERENCE.md` |
 

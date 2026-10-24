@@ -9,7 +9,7 @@ Updated Friday, Oct 23, 2026.
 - Nothing is built. The spec, the schema, the UX rules, and a design canvas ("Hippocra.tech screens") exist.
 - **Sponsor tracks: Fetch.ai, Armadin, Microsoft, Anthropic, SpacetimeDB.** Nothing else.
 - **The simulation runs inside SpacetimeDB.** Watchers connect it to the Fetch.ai agents.
-- **Open:** the SpacetimeDB module language (Rust unless TypeScript modules are confirmed); the required-roles rule; `MAX_SERVICE_LOSS`; Live Site criteria; pitch length (the guide says 2:00, our script is 3:00).
+- **Open:** the required-roles rule; `MAX_SERVICE_LOSS`; Live Site criteria; pitch length (the guide says 2:00, our script is 3:00).
 
 ## What judges must see
 

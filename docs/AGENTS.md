@@ -33,7 +33,7 @@ Rules for any coding agent (Claude Code or another) working in this repo. These 
 
 ## Before you say a task is done
 
-- Typecheck and tests pass in every package you touched (`npm run typecheck --workspaces --if-present`, `npm run test --workspaces --if-present`; `cargo test` for Rust; `pytest` for `agents/`).
+- Typecheck and tests pass in every package you touched (`npm run typecheck --workspaces --if-present`, `npm run test --workspaces --if-present`; `pytest` for `agents/`).
 - Show the result working: for a visual task, on two laptops or two tabs subscribed to the same session.
 - If you could not run the check, say so, and do not call the task done.
 

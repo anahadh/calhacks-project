@@ -7,48 +7,42 @@ A map of the repo and who owns each part. Update the matching row in the same ch
 ## Repo shape
 
 ```
-spacetime/               SpacetimeDB module: tables, reducers, the live simulation
-crates/sim-core/         Spread engine (shared by the module and hippo-sim)
-crates/hippo-sim/        CLI built from sim-core, for fast test runs
-packages/optimizer/      Graph optimizer + hippo-opt CLI
-packages/schema/         zod schemas and shared TypeScript types
+spacetime/               SpacetimeDB module (TypeScript, spacetimedb 2.13): tables, reducers, the live simulation
+packages/sim-core/       Spread engine (TypeScript), shared by the module and hippo-sim
+packages/hippo-sim/      CLI built from sim-core, for fast test runs (planned)
+packages/optimizer/      Graph optimizer + hippo-opt CLI (planned)
+packages/schema/         zod schemas and shared TypeScript types (planned)
 apps/web/                Next.js app: scene, panels, Agent Room, solution view, server routes
-apps/watcher/            Watchers: SpacetimeDB subscription clients that connect the agents
+apps/watcher/            Watchers: SpacetimeDB subscription clients that connect the agents (planned)
 agents/                  Fetch.ai uAgents (Python)
 data/hospitals/          demo.json, template.json, invalid/
 ```
 
-If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hippo-sim` become TypeScript packages instead, with the same split.
-
-**Update (Oct 24): the SpacetimeDB module is TypeScript** (2.13) and lives at:
-
-- `packages/sim-core/` the spread engine (`engine.ts`, `policy.ts`, `rng.ts`, `run.ts`), with `test/engine.test.ts` for determinism.
-- `spacetime/src/index.ts` all tables and the base reducers (sessions, presence, runs, scheduled `run_tick`, annotations). `spacetime/src/constants.ts` holds constants, because every export from `index.ts` must be a table, reducer or lifecycle hook or the module won't load.
-- `spacetime/test/module.test.ts` unit tests; `spacetime/test/live.integration.test.ts` two live clients against a running server (`STDB_URI=ws://127.0.0.1:3000`).
-- `apps/web/lib/stdb/module_bindings/` generated with `npm run generate -w hippocratech-module`. Never edit by hand.
-- `apps/web/lib/stdb/connection.ts`, `live-session.ts` the live subscription; `use-session.ts` uses it when `NEXT_PUBLIC_STDB_URI` is set, else the mock.
-- Feature reducers (F1 agents, F2 recommendations, F4 solution) go in their own `spacetime/src/<feature>.ts` files, re-exported from `index.ts`.
+Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle hook, or the module won't load. Constants live in `spacetime/src/constants.ts`. Feature reducers go in their own `spacetime/src/<feature>.ts` files, re-exported from `index.ts`.
 
 ## Simulation (SpacetimeDB and sim-core)
 
 | Path | Owner | Role |
 |---|---|---|
-| `crates/sim-core/src/lib.rs` | Base | `step(state, hospital, policy, rng) → TickResult`, spread, services, patients, choke points |
-| `crates/sim-core/src/policy.rs` | Base | Apply allow rules, report `protected_broken` |
-| `crates/sim-core/tests/determinism.rs` | Base | The same inputs give identical ticks. Never skip |
-| `crates/hippo-sim/src/main.rs` | Base | `hippo-sim --hospital --policy --patient-zero --seed [--challenge]` → RunResult JSON |
-| `spacetime/src/tables.rs` | Base | All tables from the spec's Data Model, plus `config` (server identity) |
-| `spacetime/src/session.rs` | Base | `session_create`, `set_presenter`, `challenge_add` |
-| `spacetime/src/run.rs` | Base | `run_start`, scheduled `run_tick`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `run_seek` |
-| `spacetime/src/solution.rs` | F4 | `solution_start`: two runs with a shared `pair_id`, advanced in lockstep |
-| `spacetime/src/agents.rs` | F1 | `defend_request`, `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
-| `spacetime/src/question.rs` | F1 | `question_add` (server identity), `question_answer` (allowed roles only) |
-| `spacetime/src/recommendation.rs` | F2 | `recommendation_upsert` (server identity) |
-| `spacetime/src/presence.rs` | F3 | `presence_heartbeat` |
-| `spacetime/src/review.rs` | F3 | `review_submit`, the only writer of `recommendation.status` |
-| `spacetime/src/memo.rs` | F3 | `memo_save_draft` (server identity), `memo_approve` |
-| `apps/web/lib/stdb/` | Base | Generated bindings (`spacetime generate`) and a `useSession(id)` subscription hook |
-| `apps/web/lib/stdb/types.ts`, `mock-session.ts` | Base | Row shapes and a fixed mid-run demo snapshot that `useSession` returns until the module exists |
+| `packages/sim-core/src/engine.ts`, `run.ts` | Base | `step(state, hospital, policy, rng) → TickResult`: spread, services, patients, choke points |
+| `packages/sim-core/src/policy.ts` | Base | Apply allow rules, report `protectedBroken` |
+| `packages/sim-core/src/rng.ts` | Base | mulberry32, seeded from the run |
+| `packages/sim-core/test/engine.test.ts` | Base | The same inputs give identical ticks. Never skip |
+| `packages/hippo-sim/` (planned) | Base | `hippo-sim --hospital --policy --patient-zero --seed [--challenge]` → RunResult JSON |
+| `spacetime/src/index.ts` | Base | All tables, plus `config` (server identity). Reducers: `config_set_server`, `session_create`, `presence_join`, `presence_heartbeat`, `set_presenter`, `run_start`, scheduled `run_tick`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `annotation_add`, `annotation_clear`. Still to add: `challenge_add`, `run_seek` |
+| `spacetime/src/constants.ts` | Base | Tick length and other module constants |
+| `spacetime/test/module.test.ts` | Base | Module unit tests |
+| `spacetime/test/live.integration.test.ts` | Base | Two live clients against a running server (`STDB_URI=ws://127.0.0.1:3000`) |
+| `spacetime/src/solution.ts` (planned) | F4 | `solution_start`: two runs with a shared `pair_id`, advanced in lockstep |
+| `spacetime/src/agents.ts` (planned) | F1 | `defend_request`, `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
+| `spacetime/src/question.ts` (planned) | F1 | `question_add` (server identity), `question_answer` (allowed roles only) |
+| `spacetime/src/recommendation.ts` (planned) | F2 | `recommendation_upsert` (server identity) |
+| `spacetime/src/review.ts` (planned) | F3 | `review_submit`, the only writer of `recommendation.status` |
+| `spacetime/src/memo.ts` (planned) | F3 | `memo_save_draft` (server identity), `memo_approve` |
+| `apps/web/lib/stdb/module_bindings/` | Base | Generated with `npm run generate -w hippocratech-module`. Never edit by hand |
+| `apps/web/lib/stdb/connection.ts`, `live-session.ts` | Base | The live subscription |
+| `apps/web/lib/stdb/use-session.ts` | Base | `useSession(id)`: live rows when `NEXT_PUBLIC_STDB_URI` is set, else the mock |
+| `apps/web/lib/stdb/types.ts`, `mock-session.ts` | Base | Row shapes and a fixed mid-run demo snapshot (with a sample agent round) for working without a server |
 
 ## Watchers
 
@@ -149,7 +143,7 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 
 ## Invariants
 
-- Spread, impact and patient numbers come only from `sim-core`, in the module or `hippo-sim`. The browser renders subscribed rows.
+- Spread, impact and patient numbers come only from `sim-core` (`packages/sim-core`), in the module or `hippo-sim`. The browser renders subscribed rows.
 - Visible runs advance only through `run_tick`. Reducers make no network calls.
 - Every agent message is in `agent_message`. The Agent Room shows only that table.
 - `recommendation.status` is written only by `review_submit`. Agent acceptance never sets it.
