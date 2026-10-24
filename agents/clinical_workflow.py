@@ -1,10 +1,13 @@
 """Clinical Workflow Agent (uAgent): keep care running.
 
 Judges each Proposal and Revision with logic.clinical.check and replies with a Verdict.
+Claude (llm.py) words the verdict's reason; it cannot change the verdict.
 """
 
 from uagents import Context
 
+import facts
+import llm
 from config import settings
 from logic import clinical
 from logic import hospital as hospital_mod
@@ -21,6 +24,8 @@ async def judge(ctx: Context, sender: str, type: str, msg: Proposal | Revision):
     try:
         await received(NAME, sender, type, msg)
         verdict = clinical.check(msg.sessionId, msg.round, msg.policyId, msg.testResult, H)
+        kind = "verdict_accept" if verdict.decision == "accept" else "verdict_reject"
+        verdict = await llm.worded(verdict, kind, facts.verdict(H, verdict, msg, msg.name))
         await send(ctx, NAME, "coordinator", "verdict", verdict)
         await relay.status(msg.sessionId, NAME, "idle")
     except Exception as e:  # show it; never answer with a made-up verdict

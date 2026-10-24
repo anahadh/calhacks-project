@@ -109,6 +109,10 @@ class Round:
         self._held: list[Proposal | Revision] = []  # arrived while waiting_for_human
         self._waiting_rejection = False  # paused after a confirm_device rejection
 
+    @property
+    def baseline(self) -> RunResult | None:
+        return self._baseline
+
     # --- events ---
 
     def start(

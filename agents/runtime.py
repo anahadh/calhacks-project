@@ -17,6 +17,7 @@ from uagents_core.types import DeliveryStatus  # noqa: E402
 import addresses  # noqa: E402
 from config import PORTS, seed, settings  # noqa: E402
 from protocol import Strict  # noqa: E402
+from llm import TEXT_FIELDS  # noqa: E402
 from tools import ToolError, relay  # noqa: E402
 
 PROTOCOL_NAME = "hippocratech"
@@ -72,14 +73,19 @@ def round_of(msg: Strict) -> int:
     return getattr(msg, "round", 0) or 0
 
 
-def reason_of(msg: Strict) -> str | None:
-    return getattr(msg, "reason", None)
+def reason_of(msg: Strict) -> tuple[str | None, str | None]:
+    """A message's worded text and who wrote it ("claude" or "template"), for the relay row."""
+    fields = TEXT_FIELDS.get(type(msg))
+    if fields is None:
+        return None, None
+    return getattr(msg, fields[0]), getattr(msg, fields[1])
 
 
 async def send(ctx: Context, me: str, to: str, type: str, msg: Strict) -> None:
     """Relay first, then send; a message that can't be relayed is not sent (rule 9)."""
     await relay.status(msg.sessionId, me, "speaking")
-    await relay.post(msg.sessionId, round_of(msg), me, to, type, msg, reason_of(msg), direction="sent")
+    reason, source = reason_of(msg)
+    await relay.post(msg.sessionId, round_of(msg), me, to, type, msg, reason, direction="sent", reason_source=source)
     status = await ctx.send(addresses.address(to), msg)
     # Through a mailbox, "sent" (stored in Agentverse) is as far as the sender can see.
     ok = {DeliveryStatus.DELIVERED} | ({DeliveryStatus.SENT} if settings().mailbox else set())
@@ -93,7 +99,8 @@ async def received(me: str, sender_address: str, type: str, msg: Strict) -> str:
     sender = names.get(sender_address)
     if sender is None:
         raise DeliveryError(f"{type} from unknown address {sender_address}")
-    await relay.post(msg.sessionId, round_of(msg), sender, me, type, msg, reason_of(msg), direction="received")
+    reason, source = reason_of(msg)
+    await relay.post(msg.sessionId, round_of(msg), sender, me, type, msg, reason, direction="received", reason_source=source)
     await relay.status(msg.sessionId, me, "thinking")
     return sender
 

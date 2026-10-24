@@ -3,17 +3,21 @@
 One logic.coordinator.Round per session. REST handlers (called by the watchers):
 POST /start_round, /resume, /reassess. Every Action the Round returns is carried
 out here: to an agent → uAgents message; to "humans" or "relay" → relay row.
+Claude (llm.py) words the Recommendation's explanation; it cannot change the plan,
+the numbers or the required roles.
 """
 
 import asyncio
 
 from uagents import Context
 
+import facts
+import llm
 from config import AGENTS, settings
 from logic import hospital as hospital_mod
 from logic.coordinator import Action, Round
 from protocol import Answer, Proposal, Question, Reassess, RestAck, Resume, Revision, StartRound, Verdict
-from runtime import fail, make_agent, received, send
+from runtime import fail, make_agent, reason_of, received, send
 from tools import relay, run_sim
 
 NAME = "coordinator"
@@ -25,10 +29,16 @@ lock = asyncio.Lock()  # one event at a time, REST and messages alike
 
 async def execute(ctx: Context, rnd: Round, actions: list[Action]):
     for a in actions:
+        msg = a.message
+        if a.type == "recommendation":
+            msg = await llm.worded(msg, "recommendation", facts.recommendation(H, msg, rnd.baseline, rnd.round))
+            rnd.recommendation = msg
         if a.to in AGENTS:
-            await send(ctx, NAME, a.to, a.type, a.message)
+            await send(ctx, NAME, a.to, a.type, msg)
         else:  # "humans" (questions) or "relay" (round_state, recommendation)
-            await relay.post(rnd.sessionId, rnd.round, NAME, a.to, a.type, a.message, direction="sent")
+            reason, source = reason_of(msg)
+            await relay.post(rnd.sessionId, rnd.round, NAME, a.to, a.type, msg, reason,
+                             direction="sent", reason_source=source)
     await relay.status(rnd.sessionId, NAME, "waiting" if rnd.state == "waiting_for_human" else "idle")
 
 

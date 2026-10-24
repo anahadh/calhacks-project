@@ -127,17 +127,20 @@ def test_runtime_fixtures_are_consistent():
 
 def test_relay_writes_jsonl_rows(tmp_path, capsys):
     v = Verdict(sessionId="s1", round=1, policyId="cand_keep_scans", agent="clinical_workflow", decision="accept", reason="[reason]")
-    run(tools.relay.post("s1", 1, "clinical_workflow", "coordinator", "verdict", v, v.reason))
+    run(tools.relay.post("s1", 1, "clinical_workflow", "coordinator", "verdict", v, v.reason, reason_source="template"))
     run(tools.relay.post("s1", 1, "clinical_workflow", "coordinator", "verdict", v, v.reason, direction="received"))
     run(tools.relay.status("s1", "clinical_workflow", "idle"))
     rows = [json.loads(line) for line in (tmp_path / "s1.jsonl").read_text().splitlines()]
     assert [r["table"] for r in rows] == ["agent_message", "agent_message", "agent_status"]
     m = rows[0]
-    assert set(m) == {"table", "sessionId", "round", "seq", "from", "to", "type", "payload", "reason", "createdAt", "direction", "fixture"}
+    assert set(m) == {"table", "sessionId", "round", "seq", "from", "to", "type", "payload", "reason", "reasonSource",
+                      "createdAt", "direction", "fixture"}
     assert (m["seq"], rows[1]["seq"]) == (1, 2)
     assert m["payload"]["decision"] == "accept" and m["reason"] == "[reason]" and m["fixture"] is True
     assert set(rows[2]) == {"table", "sessionId", "agent", "status", "updatedAt", "fixture"}
     out = capsys.readouterr().out.splitlines()
-    assert len(out) == 1 and "ACCEPT cand_keep_scans" in out[0]  # sent lines print; received don't
+    printed = [line for line in out if line.startswith("#")]
+    assert len(printed) == 1 and "ACCEPT cand_keep_scans" in printed[0]  # sent lines print; received don't
+    assert "“[reason]” (template)" in out[1]  # the worded reason, labeled with who wrote it
     with pytest.raises(AssertionError):
         run(tools.relay.status("s1", "flow", "approved"))

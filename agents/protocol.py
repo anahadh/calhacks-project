@@ -31,6 +31,8 @@ DeviceType = Literal[
 ServerRole = Literal["pacs", "ehr_engine", "file_server", "domain_controller", "other"]
 FlowProtocol = Literal["smb", "rdp", "http", "https", "dicom", "hl7", "other"]
 Strategy = Literal["least_disruption", "max_containment", "protect_critical_care", "fastest_deploy"]
+# Who wrote a message's text: Claude (llm.py, checked) or a code template (rule 13).
+TextSource = Literal["claude", "template"]
 ChallengeId = Literal["unknown_device_imaging", "vendor_link_mri3", "mark_vulnerable_ehr"]
 
 NonNegInt = conint(ge=0)
@@ -164,6 +166,8 @@ class Proposal(Strict):
     rationale: str
     tradeoff: str
     testResult: RunResult
+    reason: str | None = None  # "why this plan", worded by llm.py
+    reasonSource: TextSource | None = None
 
 
 class Verdict(Strict):
@@ -174,6 +178,7 @@ class Verdict(Strict):
     decision: Literal["accept", "reject"]
     reason: str  # Claude-written; the decision itself comes from code
     constraint: Constraint | None = None  # set on a rejection
+    reasonSource: TextSource | None = None
 
 
 class RuleDiff(Strict):
@@ -193,6 +198,8 @@ class Revision(Strict):
     rationale: str | None = None
     tradeoff: str | None = None
     testResult: RunResult
+    reason: str | None = None  # what changed and why, worded by llm.py
+    reasonSource: TextSource | None = None
 
 
 class Question(Strict):
@@ -204,6 +211,7 @@ class Question(Strict):
     text: NonEmptyStr
     choices: conlist(NonEmptyStr, min_items=2)
     allowedRoles: conlist(ReviewRole, min_items=1)
+    textSource: TextSource | None = None
 
 
 class Answer(Strict):
@@ -220,6 +228,7 @@ class Recommendation(Strict):
     verdicts: list[Verdict]
     explanation: str
     requiredRoles: conlist(ReviewRole, min_items=1)
+    explanationSource: TextSource | None = None
 
 
 # --- Coordinator → agents and relay (not in the spec's table) ---

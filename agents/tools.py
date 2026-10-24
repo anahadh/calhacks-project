@@ -152,19 +152,20 @@ class Relay:
     with `Authorization: Bearer $RELAY_TOKEN`. Otherwise appends it to
     <RELAY_LOG_DIR>/<sessionId>.jsonl (with a "table" field) and prints sent messages.
 
-    Rows carry two fields beyond the spec's tables: "direction" (sent or received;
-    rule 9 has both ends post, so every message appears twice) and "fixture" (true
-    when results come from fixtures/results/, so the UI can label the run).
+    Rows carry fields beyond the spec's tables: "direction" (sent or received; rule 9
+    has both ends post, so every message appears twice), "fixture" (true when results
+    come from fixtures/results/, so the UI can label the run) and "reasonSource"
+    ("claude" or "template": who wrote "reason", rule 13).
     """
 
     async def post(
         self, sessionId: str, round: int, from_: str, to: str, type: str, payload: Strict | dict,
-        reason: str | None = None, direction: str = "sent",
+        reason: str | None = None, direction: str = "sent", reason_source: str | None = None,
     ) -> dict:
         body = payload if isinstance(payload, dict) else json.loads(payload.json())
         row = {
             "sessionId": sessionId, "round": round, "seq": None, "from": from_, "to": to, "type": type,
-            "payload": body, "reason": reason, "createdAt": _now(), "direction": direction,
+            "payload": body, "reason": reason, "reasonSource": reason_source, "createdAt": _now(), "direction": direction,
             "fixture": settings().hippo_sim_fixtures,
         }
         return await self._write("agent_message", row)
@@ -216,8 +217,9 @@ def _line(row: dict) -> str:
     color = COLORS.get(row["from"], "") if sys.stdout.isatty() or os.environ.get("FORCE_COLOR") else ""
     reset = RESET if color else ""
     fixture = " [fixture]" if row["fixture"] else ""
+    said = f"\n{'':>44}“{row['reason']}” ({row['reasonSource']})" if row.get("reason") and row.get("reasonSource") else ""
     return (f"{color}{BOLD if color else ''}#{row['seq']:<3} {row['from']:>17} → {row['to']:<17}{reset}{color} "
-            f"{row['type']:<16} {summary(row['type'], row['payload'])}{fixture}{reset}")
+            f"{row['type']:<16} {summary(row['type'], row['payload'])}{fixture}{said}{reset}")
 
 
 relay = Relay()

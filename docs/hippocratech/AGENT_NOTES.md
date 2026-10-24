@@ -197,7 +197,7 @@ HIPPO_SIM_FIXTURES=1 .venv/bin/python run_all.py      # shell 1: the four agents
 ```
 
 - `run_all.py` starts `inventory.py`, `flow.py`, `clinical_workflow.py` and `coordinator.py` as separate processes and prefixes each one's output with `[agent]`. Ctrl-C or SIGTERM stops all four; if one exits, the rest are stopped.
-- With no `WATCHER_RELAY_URL`, each sent message prints one line (`#seq from → to type summary [fixture]`), and every row goes to `agents/logs/<sessionId>.jsonl`.
+- With no `WATCHER_RELAY_URL`, each sent message prints one line (`#seq from → to type summary [fixture]`), followed by its worded text and who wrote it (`“…” (template)` or `(claude)`). Every row goes to `agents/logs/<sessionId>.jsonl`.
 - `HIPPO_SIM_FIXTURES=1` reads `agents/fixtures/results/<candidate id or baseline>.json` (with challenges: `<id>@<challenge>.json`). Without it, `HIPPO_SIM_BIN` must point at `hippo-sim`, or the round fails with that error. Nothing falls back silently.
 - Without `HIPPO_OPT_BIN`, the candidates are `agents/fixtures/candidates/*.json`.
 
@@ -231,6 +231,31 @@ HIPPO_SIM_FIXTURES=1 .venv/bin/python run_all.py      # shell 1: the four agents
 - REST errors from the logic (a wrong role, a closed question, a round already running) return `ok: false` with the reason.
 - When no candidate meets every constraint, Flow sends the one that breaks the fewest (`logic.flow.choose`) and logs that it did. The guardians reject it and the rounds run out honestly.
 - Agents report `thinking` on receive, `speaking` before each send, then `idle`. The Coordinator reports `waiting` while its round is `waiting_for_human`. An error is logged, the agent goes `idle`, and nothing is made up in its place.
+
+## Claude-written text (`agents/llm.py`)
+
+Code makes every decision (`logic/`). Claude only puts it into words, in four places, each filled in by the agent file just before it sends:
+
+| Where | Field | Kind | Written by |
+|---|---|---|---|
+| Every Verdict | `reason` | `verdict_accept` / `verdict_reject` | Inventory, Clinical Workflow |
+| Inventory's Question | `text` | `question` | Inventory |
+| Flow's Proposal and Revision ("why this plan") | `reason` | `proposal` / `revision` | Flow |
+| The Recommendation | `explanation` | `recommendation` | Coordinator |
+
+- **Facts** (`agents/facts.py`) are built by code from the RunResult, the constraint and the hospital. They use human names and purposes ("MRI 2 → PACS, DICOM, 'Scans to radiologists'") and carry the numbers the text may use: infected devices with and without the plan, patients not ok, connections cut, protected flows broken, and critical services down too long.
+  - Clinical Workflow never sees the baseline, so its facts have no "without the plan" numbers.
+- **The request:** `AsyncAnthropic(timeout=10, max_retries=0)` and model `$ANTHROPIC_MODEL` (default `claude-haiku-5-5`), with `max_tokens=200`, `output_config.effort="low"`, and a JSON schema (`{"text": string}`, no other keys). On Haiku, thinking is disabled, because a 200-token answer has no room for it.
+  - The model's reply is also validated with a strict pydantic model, so an extra key (say `"decision"`) gets the reply rejected rather than read.
+- **Checks in code** (`llm.problems`):
+  - Every number in the text must appear in some fact value, including numbers inside names ("MRI 2").
+  - None of the words approved, ready, safe to deploy, death(s), died, fatal or mortality, as whole words, case-insensitive (so "already" is fine).
+  - At most 280 characters and 1–2 sentences.
+- **On a failure:** one retry, listing the errors. If that fails too, or on a refusal, an API error, a timeout, or no `ANTHROPIC_API_KEY`, the text is a template sentence built from the same facts. Templates pass the same checks, and a test enforces it.
+- **Every relay row has `reasonSource`**, `claude` or `template`, and the message carries it too (`reasonSource`, `textSource`, `explanationSource`). A template is never passed off as Claude's (rule 13). Each process logs one warning the first time it falls back for a missing key.
+- **Rule 7 in code:** `llm.with_text()` sets only the text and its source, and raises `DecisionChanged` if any other field would differ. `tests/test_llm.py` feeds contradictory model output (for example "I accept this" on a rejection) and checks that the decision, constraint, choices, allowed roles, required roles and numbers are unchanged.
+- **Not run against the real API yet:** this cloud session has no `ANTHROPIC_API_KEY` (and no `ant` login). api.anthropic.com is reachable, though. Set the key in `agents/.env` and run `HIPPO_SIM_FIXTURES=1 .venv/bin/python run_all.py`. A message whose line ends `(claude)` was written by Claude.
+- `propose()` (Flow's Claude-proposed alternatives) is F2's and not written yet.
 
 ## Open questions for the lead
 

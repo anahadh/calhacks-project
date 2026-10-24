@@ -71,6 +71,9 @@ def main() -> int:
         while True:
             for a, p in procs.items():
                 if p.poll() is not None:
+                    if p.returncode in (0, -signal.SIGINT, 130):  # stopped by Ctrl-C, usually just before us
+                        say(a, "stopped")
+                        raise KeyboardInterrupt
                     say(a, f"exited with code {p.returncode}; stopping the others")
                     return 1
             if len(ready) < len(AGENTS):

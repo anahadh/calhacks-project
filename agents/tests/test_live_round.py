@@ -55,6 +55,7 @@ def agents(tmp_path):
         "LOCAL_RESOLVE": "1", "AGENT_MAILBOX": "0", "HIPPO_SIM_FIXTURES": "1",
         "WATCHER_RELAY_URL": "", "RELAY_TOKEN": "", "HIPPO_SIM_BIN": "", "HIPPO_OPT_BIN": "",
         "RELAY_LOG_DIR": str(tmp_path),
+        "ANTHROPIC_API_KEY": "",  # never call the real API from tests: llm.py uses its templates
     }
     out = open(tmp_path / "run_all.out", "w")
     proc = subprocess.Popen([sys.executable, "-u", "run_all.py"], cwd=AGENTS_DIR, env=env,
@@ -97,6 +98,7 @@ def test_live_round(agents):
     assert rows and all(row["fixture"] is True for row in rows)
     sent = [m for m in rows if m["table"] == "agent_message" and m["direction"] == "sent"]
     assert not [m for m in sent if m["type"] == "question"]  # no challenge: no unidentified device
+    assert_worded(rows)
 
     expected = [
         ("proposal", lambda m: m["from"] == "flow" and m["payload"]["policyId"] == "cand_isolate_imaging"),
@@ -163,6 +165,19 @@ def test_live_challenge_pauses_for_a_human_and_resumes(agents):
     (rec,) = [m["payload"] for m in sent if m["type"] == "recommendation"]
     assert "fl_unknown_7_smb" in rec["testResult"]["removedFlows"]  # touches the device, now named
     assert rec["requiredRoles"] == ["security", "clinical_engineering"]
+    assert_worded(rows)
     # After the answer, Inventory accepts every candidate that touches dev_unknown_7.
     after = [m["payload"]["decision"] for m in sent[resumed:] if m["type"] == "verdict" and m["from"] == "inventory"]
     assert after and set(after) == {"accept"}
+
+
+WORDED = {"verdict": "reason", "proposal": "reason", "revision": "reason", "question": "text", "recommendation": "explanation"}
+
+
+def assert_worded(rows):
+    """Every worded message carries a real sentence and says a template wrote it (no key here)."""
+    for m in rows:
+        if m.get("table") == "agent_message" and m["type"] in WORDED:
+            text = m["payload"][WORDED[m["type"]]]
+            assert text and not text.startswith("["), m
+            assert m["reason"] == text and m["reasonSource"] == "template", m

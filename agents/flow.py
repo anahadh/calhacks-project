@@ -6,12 +6,16 @@ a revise request sends a Revision (a rule diff against the current policy).
 
 The optimizer never sees which flows are protected: Flow learns them only from
 the Clinical Workflow Agent's rejections (keep_flow constraints). That is the demo.
+
+Claude (llm.py) words "why this plan" as the message's reason; the choice is code's.
 """
 
 import json
 
 from uagents import Context
 
+import facts
+import llm
 from config import settings
 from logic import flow
 from logic import hospital as hospital_mod
@@ -52,12 +56,17 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         if req.revise is None or prev is None:
             msg = Proposal(sessionId=req.sessionId, round=req.round, policyId=cand.id, testResult=result, **cand.policy.dict())
             type = "proposal"
+            words = facts.plan(H, policy, result, req.baseline, req.round)
         else:
             changed = {k: getattr(policy, k) for k in ("strategy", "name", "rationale", "tradeoff")
                        if getattr(policy, k) != getattr(prev.policy, k)}
+            diff = flow.diff(prev.policy, policy)
             msg = Revision(sessionId=req.sessionId, round=req.round, policyId=cand.id,
-                           diff=flow.diff(prev.policy, policy), testResult=result, **changed)
+                           diff=diff, testResult=result, **changed)
             type = "revision"
+            words = facts.revision(H, policy, result, req.baseline, req.round, req.constraints,
+                                   [r.plain for r in diff.added], diff.removed)
+        msg = await llm.worded(msg, type, words)
         current[req.sessionId] = cand
         await send(ctx, NAME, "coordinator", type, msg)
         await relay.status(req.sessionId, NAME, "idle")
