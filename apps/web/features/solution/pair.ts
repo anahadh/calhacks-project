@@ -152,6 +152,16 @@ export function withoutSegmentation(
   return none.status === "requested" ? undefined : none.devicesCompromised;
 }
 
+/**
+ * The cut connections the infection reached: a removed flow with an infected
+ * device at either end, from the plan run's device rows. Each gets a ✕ on the
+ * building, where the spread stopped at the wall (UX "Solution view").
+ */
+export function cutStops(cut: readonly Flow[], devices: readonly DeviceStateRow[]): Flow[] {
+  const infected = new Set(devices.filter((d) => d.infected).map((d) => d.deviceId));
+  return cut.filter((f) => infected.has(f.from) || infected.has(f.to));
+}
+
 /** The plan's flows, split into the ones it kept and the ones it removed (run.removed_flows_json). */
 export function planFlows(hospital: Pick<Hospital, "flows">, plan: RunRow | undefined): { kept: Flow[]; cut: Flow[] } {
   const removed = new Set(plan?.removedFlows ?? []);

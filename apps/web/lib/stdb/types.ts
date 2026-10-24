@@ -245,10 +245,11 @@ export type SessionSnapshot = {
 // --- Agent rows (agent_message, agent_status, session.roundState) ---
 
 export type AgentId = "inventory" | "flow" | "clinical_workflow" | "coordinator";
-export type Speaker = AgentId | "humans";
-export type MessageType = "request" | "proposal" | "accept" | "reject" | "revision" | "question" | "answer" | "recommendation";
+/** "asi1": a person chatting with the orchestrator on ASI:One (chat rows relayed by the Coordinator). */
+export type Speaker = AgentId | "humans" | "asi1";
+export type MessageType = "request" | "proposal" | "accept" | "reject" | "revision" | "question" | "answer" | "recommendation" | "chat";
 /** Who wrote a message's text (rule 14: a template is never passed off as Claude's). */
-export type TextSource = "claude" | "template";
+export type TextSource = "claude" | "asi1" | "template";
 export type ReviewRole = "security" | "clinical_engineering" | "operations";
 
 export type AgentMessageRow = {
@@ -263,7 +264,15 @@ export type AgentMessageRow = {
   constraint?: { kind: "keep_flow" | "keep_service" | "confirm_device" | "max_rules"; targetIds: string[] };
   rules?: string[];
   diff?: string[];
-  tested?: { patientsAffected: number };
+  /** The plan's name, on proposals (and revisions that rename it). */
+  name?: string;
+  tested?: { patientsAffected: number; devicesCompromised?: number };
+  /** An ASI:One chat message carried an interactive card. */
+  card?: boolean;
+  /** The plan a proposal, revision or verdict is about. */
+  policyId?: string;
+  /** Recommendations: 1 = the negotiated plan, 2-3 = alternatives both guardians accepted. */
+  option?: number;
   source?: TextSource;
   /** When the row was written (microseconds since the epoch), for the transcript clock. */
   createdAt?: number;
@@ -297,6 +306,8 @@ export type QuestionRow = {
 export type RecommendationRow = {
   id: string;
   round: number;
+  /** 1 = the plan negotiated in the rounds; 2-3 = alternatives both reviewing agents also accepted. */
+  option: number;
   name: string;
   rules: string[];
   explanation: string;

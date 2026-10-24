@@ -32,7 +32,7 @@ ServerRole = Literal["pacs", "ehr_engine", "file_server", "domain_controller", "
 FlowProtocol = Literal["smb", "rdp", "http", "https", "dicom", "hl7", "other"]
 Strategy = Literal["least_disruption", "max_containment", "protect_critical_care", "fastest_deploy"]
 # Who wrote a message's text: Claude (llm.py, checked) or a code template (rule 13).
-TextSource = Literal["claude", "template"]
+TextSource = Literal["claude", "asi1"]
 ChallengeId = Literal["unknown_device_imaging", "vendor_link_mri3", "mark_vulnerable_ehr"]
 
 NonNegInt = conint(ge=0)
@@ -154,6 +154,21 @@ class Constraint(Strict):
         return values
 
 
+class Alternative(Strict):
+    """Another plan the Flow Agent tested in the same round, offered alongside its lead
+    plan. The orchestrator puts up to two on the table once the lead is accepted."""
+
+    policyId: NonEmptyStr
+    strategy: Strategy
+    name: NonEmptyStr
+    rules: conlist(PolicyRule, max_items=40)
+    rationale: str
+    tradeoff: str
+    testResult: RunResult
+    reason: str | None = None  # "why this plan", worded by llm.py like a Proposal's
+    reasonSource: TextSource | None = None
+
+
 class Proposal(Strict):
     sessionId: NonEmptyStr
     round: conint(ge=1)
@@ -168,6 +183,7 @@ class Proposal(Strict):
     testResult: RunResult
     reason: str | None = None  # "why this plan", worded by llm.py
     reasonSource: TextSource | None = None
+    alternatives: conlist(Alternative, max_items=3) = []  # Flow's other tested plans, best first
 
 
 class Verdict(Strict):
@@ -200,6 +216,7 @@ class Revision(Strict):
     testResult: RunResult
     reason: str | None = None  # what changed and why, worded by llm.py
     reasonSource: TextSource | None = None
+    alternatives: conlist(Alternative, max_items=3) = []  # Flow's other tested plans, best first
 
 
 class Question(Strict):
@@ -229,6 +246,7 @@ class Recommendation(Strict):
     explanation: str
     requiredRoles: conlist(ReviewRole, min_items=1)
     explanationSource: TextSource | None = None
+    option: conint(ge=1, le=3) = 1  # 1 = the plan negotiated in the rounds; 2-3 = alternatives both guardians also accepted
 
 
 # --- Coordinator → agents and relay (not in the spec's table) ---

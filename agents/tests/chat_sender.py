@@ -8,6 +8,7 @@ line each, to --out. The Coordinator reaches it through LOCAL_PEERS.
 import argparse
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -26,7 +27,7 @@ import addresses  # noqa: E402
 import runtime  # noqa: E402
 
 SEED = "live test seed for the chat sender"
-PORT = 8010
+PORT = int(os.environ.get("CHAT_SENDER_PORT", "8010"))
 
 
 def main():
@@ -50,7 +51,8 @@ def main():
 
     @chat.on_message(ChatMessage)
     async def on_message(ctx: Context, sender: str, msg: ChatMessage):
-        write({"type": "chat", "from_coordinator": sender == coordinator, "text": msg.text()})
+        cards = [json.loads(c.metadata["card_payload"]) for c in msg.content if getattr(c, "type", "") == "metadata"]
+        write({"type": "chat", "from_coordinator": sender == coordinator, "text": msg.text(), "cards": cards})
         await ctx.send(sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
 
     @chat.on_message(ChatAcknowledgement)

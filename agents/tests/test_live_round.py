@@ -1,13 +1,15 @@
 """The four uAgents as real processes (run_all.py), messaging over uAgents with local
-resolution and fixture results: one full round, read back from the relay log."""
+resolution and the real engine (hippo-sim): one full round, read back from the relay log."""
 
 import json
 import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from contextlib import contextmanager
@@ -20,6 +22,7 @@ from config import PORTS, SEED_VARS
 from llm import FORBIDDEN
 
 AGENTS_DIR = Path(__file__).parent.parent
+HIPPO_SIM = AGENTS_DIR.parent / "engine" / ".venv" / "bin" / "hippo-sim"  # the real engine: test runs are never fixtures
 SESSION = "live-test"
 CHALLENGE_SESSION = "live-challenge"
 TIMEOUT_S = 60
@@ -50,16 +53,45 @@ def messages(log: Path) -> list[dict]:
 
 CHAT_SENDER_SEED = "live test seed for the chat sender"
 CHAT_SENDER_PORT = 8010
+FAKE_ASI1_PORT = 8019
+FAKE_ASI1_TEXT = "Worded by the test model from the facts given."
+
+
+class FakeAsi1(BaseHTTPRequestHandler):
+    """A stand-in for ASI:One's chat completions API, so the agents word every message
+    with a model call (there is no fallback) without reaching the real API."""
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("content-length", 0)))
+        body = json.dumps({"choices": [{"message": {"content": json.dumps({"text": FAKE_ASI1_TEXT})}}]}).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture(scope="module", autouse=True)
+def fake_asi1():
+    server = ThreadingHTTPServer(("127.0.0.1", FAKE_ASI1_PORT), FakeAsi1)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield
+    server.shutdown()
 
 
 def env_for(tmp_path, **extra):
     return {
         **os.environ,
         **{var: f"live test seed for {agent}" for agent, var in SEED_VARS.items()},
-        "LOCAL_RESOLVE": "1", "AGENT_MAILBOX": "0", "HIPPO_SIM_FIXTURES": "1",
-        "WATCHER_RELAY_URL": "", "RELAY_TOKEN": "", "HIPPO_SIM_BIN": "", "HIPPO_OPT_BIN": "",
+        "LOCAL_RESOLVE": "1", "AGENT_MAILBOX": "0", "HIPPO_SIM_FIXTURES": "0",
+        "WATCHER_RELAY_URL": "", "RELAY_TOKEN": "", "HIPPO_SIM_BIN": str(HIPPO_SIM), "HIPPO_OPT_BIN": "",
         "RELAY_LOG_DIR": str(tmp_path),
-        "ANTHROPIC_API_KEY": "",  # never call the real API from tests: llm.py uses its templates
+        # Never call a real model from tests: the agents word messages through the fake ASI:One above.
+        "ANTHROPIC_API_KEY": "", "ASI1_API_KEY": "test-key, never sent",
+        "ASI1_BASE_URL": f"http://127.0.0.1:{FAKE_ASI1_PORT}/v1",
         "AGENTVERSE_API_KEY": "",  # nor Agentverse
         # The fake ASI:One user (tests/chat_sender.py), so the Coordinator can reply to it.
         "LOCAL_PEERS": f"{Identity.from_seed(CHAT_SENDER_SEED, 0).address}=http://127.0.0.1:{CHAT_SENDER_PORT}/submit",
@@ -116,20 +148,23 @@ def test_live_round(agents):
     start_round(SESSION)
     wait_until(round_state(log, "done"), TIMEOUT_S, "the round to finish")
     rows = messages(log)
-    assert rows and all(row["fixture"] is True for row in rows)
+    assert rows and all(row["fixture"] is False for row in rows)
     sent = [m for m in rows if m["table"] == "agent_message" and m["direction"] == "sent"]
     assert not [m for m in sent if m["type"] == "question"]  # no challenge: no unidentified device
     assert_worded(rows)
 
     expected = [
-        ("proposal", lambda m: m["from"] == "flow" and m["payload"]["policyId"] == "cand_isolate_imaging"),
+        # From MRI 2, cutting the attack's path contains it best but cuts a protected scan flow.
+        ("proposal", lambda m: m["from"] == "flow" and m["payload"]["policyId"] == "cut_attack_path"),
         ("clinical reject keep_flow", lambda m: m["type"] == "verdict" and m["from"] == "clinical_workflow"
             and m["payload"]["decision"] == "reject" and m["payload"]["constraint"]["kind"] == "keep_flow"),
         ("revision", lambda m: m["type"] == "revision" and m["from"] == "flow"),
         ("first accept", lambda m: m["type"] == "verdict" and m["payload"]["decision"] == "accept" and m["round"] == 2),
         ("second accept", lambda m: m["type"] == "verdict" and m["payload"]["decision"] == "accept" and m["round"] == 2),
         ("recommendation", lambda m: m["type"] == "recommendation"
-            and m["payload"]["requiredRoles"] == ["security", "clinical_engineering"]),
+            and m["payload"]["requiredRoles"][0] == "security"
+            and m["payload"]["testResult"]["infectedCount"] < m["payload"]["testResult"]["infectedCount"] + 1
+            and not m["payload"]["testResult"]["protectedBroken"]),
     ]
     it = iter(sent)
     for name, match in expected:
@@ -172,7 +207,7 @@ def test_live_challenge_pauses_for_a_human_and_resumes(agents):
     wait_until(round_state(log, "done"), TIMEOUT_S, "the round to finish")
 
     rows = messages(log)
-    assert all(row["fixture"] is True for row in rows)
+    assert all(row["fixture"] is False for row in rows)
     sent = [m for m in rows if m["table"] == "agent_message" and m["direction"] == "sent"]
     types = [(m["type"], m["payload"].get("state")) for m in sent]
     paused, resumed = types.index(("round_state", "waiting_for_human")), types.index(("round_state", "running"), 2)
@@ -183,9 +218,11 @@ def test_live_challenge_pauses_for_a_human_and_resumes(agents):
     assert all(i > resumed for i, m in enumerate(sent) if m["type"] == "proposal_request" and m["round"] > 1)
     rejudged = [m["to"] for m in sent[resumed:] if m["type"] in ("proposal", "revision") and m["from"] == "coordinator"]
     assert rejudged[:2] == ["inventory", "clinical_workflow"] or judged_before == 0
-    (rec,) = [m["payload"] for m in sent if m["type"] == "recommendation"]
+    recs = sorted((m["payload"] for m in sent if m["type"] == "recommendation"), key=lambda r: r.get("option", 1))
+    assert 1 <= len(recs) <= 3 and [r.get("option", 1) for r in recs] == list(range(1, len(recs) + 1))
+    rec = recs[0]
     assert "fl_unknown_7_smb" in rec["testResult"]["removedFlows"]  # touches the device, now named
-    assert rec["requiredRoles"] == ["security", "clinical_engineering"]
+    assert rec["requiredRoles"][0] == "security"
     assert_worded(rows)
     # After the answer, Inventory accepts every candidate that touches dev_unknown_7.
     after = [m["payload"]["decision"] for m in sent[resumed:] if m["type"] == "verdict" and m["from"] == "inventory"]
@@ -196,12 +233,12 @@ WORDED = {"verdict": "reason", "proposal": "reason", "revision": "reason", "ques
 
 
 def assert_worded(rows):
-    """Every worded message carries a real sentence and says a template wrote it (no key here)."""
+    """Every worded message carries the model's sentence and says ASI:One wrote it."""
     for m in rows:
         if m.get("table") == "agent_message" and m["type"] in WORDED:
             text = m["payload"][WORDED[m["type"]]]
             assert text and not text.startswith("["), m
-            assert m["reason"] == text and m["reasonSource"] == "template", m
+            assert text == FAKE_ASI1_TEXT and m["reason"] == text and m["reasonSource"] == "asi1", m
 
 
 def health(port):
@@ -222,8 +259,9 @@ def test_live_mailbox_mode_keeps_local_delivery(tmp_path):
         start_round(SESSION)
         wait_until(round_state(log, "done"), TIMEOUT_S, "the mailbox-mode round to finish")
         sent = [m for m in messages(log) if m["table"] == "agent_message" and m["direction"] == "sent"]
-        (rec,) = [m["payload"] for m in sent if m["type"] == "recommendation"]
-        assert rec["requiredRoles"] == ["security", "clinical_engineering"]
+        recs = sorted((m["payload"] for m in sent if m["type"] == "recommendation"), key=lambda r: r.get("option", 1))
+        rec = recs[0]
+        assert rec["requiredRoles"][0] == "security"
         received = [m for m in messages(log) if m["table"] == "agent_message" and m["direction"] == "received"]
         assert {m["to"] for m in received} == {"inventory", "flow", "clinical_workflow", "coordinator"}
 
@@ -246,25 +284,29 @@ def test_live_chat_starts_a_round_and_sends_the_summary(agents):
         assert [r["status"] for r in rows if r["type"] == "sent"] == ["delivered"] * 3
         acked = {r["acknowledged"] for r in rows if r["type"] == "ack"}
         assert {r["msg_id"] for r in rows if r["type"] == "sent"} <= acked  # every message acknowledged
-        help_, unknown, started, summary = [r["text"] for r in chats()]
+        help_, unknown, started, summary = chats()
         assert all(r["from_coordinator"] for r in chats())
-        assert "simulate ransomware from MRI 2" in help_ and "status" in help_
-        assert 'I don\'t know a device called "Toaster 9"' in unknown and "MRI 2" in unknown
-        assert started.startswith("Started a round from MRI 2") and "fixture" in started
-        assert "the Flow Agent proposed \"Isolate imaging\"" in summary
-        assert "✕ Clinical Workflow Agent rejected" in summary and "keep flow fl_1, fl_2, fl_3, fl_4" in summary
-        assert "Result: the agents agree on \"Contain imaging, keep scans flowing\"" in summary
-        assert "Security, Clinical engineering must sign off" in summary
-        assert "(template)" in summary and "fixture files" in summary
-        for text in (help_, unknown, started, summary):
-            assert not FORBIDDEN.search(text), text
+        card = lambda r: json.dumps(r["cards"], ensure_ascii=False)
+        assert "simulate ransomware from MRI 2" in help_["text"] and '"action": "simulate"' in card(help_)
+        assert 'I don\'t know a device called "Toaster 9"' in unknown["text"] and "MRI 2" in unknown["text"]
+        assert "Round started: MRI 2" in card(started) and "/room/chat-" in started["text"] and "fixture" not in card(started)
+        s = card(summary)
+        assert "Round 1 \u00b7 Cut the attack's path" in s
+        assert "\u2715 Clinical Workflow Agent" in s and "Option 1: " in s
+        assert "Security must sign off" in s and "fixture" not in s
+        for r in (help_, unknown, started, summary):
+            assert not FORBIDDEN.search(r["text"] + card(r)), r
         # The chat round went through the same code path as /start_round, and was relayed.
         logs = list(agents.glob("chat-*.jsonl"))
         assert len(logs) == 1
         relayed = [m for m in messages(logs[0]) if m.get("type") == "recommendation"]
-        assert relayed and relayed[0]["payload"]["requiredRoles"] == ["security", "clinical_engineering"]
+        assert relayed and relayed[0]["payload"]["requiredRoles"][0] == "security"
         chat_rows = [m for m in messages(agents / "asi1-chat.jsonl") if m.get("type") == "chat"]
-        assert [m["payload"]["text"] for m in chat_rows if m["direction"] == "received"] == texts
+        assert [m["payload"]["text"] for m in chat_rows if m["direction"] == "received"] == texts[:2]
+        # The request that started the round is relayed into the round's own session, with the cards sent there.
+        round_chat = [m for m in messages(logs[0]) if m.get("type") == "chat"]
+        assert [m["payload"]["text"] for m in round_chat if m["direction"] == "received"] == texts[2:]
+        assert [bool(m["payload"].get("card")) for m in round_chat if m["direction"] == "sent"] == [True, True]
     finally:
         os.killpg(sender.pid, signal.SIGKILL)
         sender.wait()

@@ -13,6 +13,7 @@ export const SPEAKER_NAME: Record<Speaker | "all", string> = {
   clinical_workflow: "Clinical Workflow",
   coordinator: "Coordinator",
   humans: "Humans",
+  asi1: "ASI:One",
   all: "all",
 };
 
@@ -23,6 +24,7 @@ export const SPEAKER_LABEL: Record<Speaker | "all", string> = {
   clinical_workflow: "Clinical Workflow Agent",
   coordinator: "Sign-off Coordinator",
   humans: "Humans",
+  asi1: "ASI:One user",
   all: "everyone",
 };
 
@@ -36,6 +38,7 @@ export const SPEAKER_COLOR: Record<Speaker | "all", string> = {
   inventory: "#F2C14E",
   clinical_workflow: "#FF5C5C",
   humans: "#E9ECEE",
+  asi1: "#B79CFF",
   all: "#A1A8AE",
 };
 
@@ -49,4 +52,5 @@ export const MESSAGE_SHAPE: Record<MessageType, { glyph: string; label: string }
   question: { glyph: "?", label: "Question" },
   answer: { glyph: "→", label: "Answer" },
   recommendation: { glyph: "■", label: "Recommendation" },
+  chat: { glyph: "✦", label: "ASI:One chat" },
 };

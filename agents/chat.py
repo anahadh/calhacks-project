@@ -4,6 +4,7 @@ reply calls a plan approved: humans sign off. Pure functions; coordinator.py sen
 """
 
 import difflib
+import json
 import re
 from dataclasses import dataclass
 
@@ -21,14 +22,46 @@ SIMULATE = [
 ]
 
 
+LOOKUP = re.compile(r"^(?:what(?:'s| is)(?: an?| the)?|tell me about|info(?:rmation)? (?:on|about)|look ?up|about|describe)\s+(?P<device>.+?)\??$", re.I)
+DEVICES = re.compile(r"^(?:(?:list|show)(?: me)?(?: all)?(?: the)? devices|devices|all devices|what devices.*|where can (?:an |the )?attack start.*)\??$", re.I)
+PROTECTED = re.compile(r"^(?:(?:list|show)(?: me)?(?: the)? )?(?:protected(?: clinical)? flows?|protected|clinical flows|what flows are protected.*)\??$", re.I)
+ACTIONS = {"simulate", "lookup", "devices", "protected", "status", "help"}
+
+
 @dataclass(frozen=True)
 class Command:
-    kind: str  # "simulate", "status" or "help"
+    kind: str  # "simulate", "lookup", "devices", "protected", "status" or "help"
     device: str | None = None
+
+
+def selection(text: str) -> Command | None:
+    """A card button's selection, sent back as JSON text (direct chat) or, through
+    ASI:One's planner, as prose naming the action and device."""
+    t = text.strip()
+    if t.startswith("{") and t.endswith("}"):
+        try:
+            data = json.loads(t)
+        except json.JSONDecodeError:
+            data = None
+        if isinstance(data, dict) and data.get("action") in ACTIONS:
+            device = data.get("device")
+            return Command(data["action"], device if isinstance(device, str) else None)
+    m = re.search(r"\baction\W+(?P<action>simulate|lookup|devices|protected|status|help)\b", t, re.I)
+    if m:
+        d = re.search(r"\bdevice\W+(?P<device>[a-z0-9_]+)", t, re.I)
+        return Command(m.group("action").lower(), d.group("device") if d else None)
+    return None
 
 
 def parse(text: str) -> Command:
     t = " ".join(text.strip().split())
+    picked = selection(t)
+    if picked is not None:
+        return picked
+    if DEVICES.fullmatch(t):
+        return Command("devices")
+    if PROTECTED.fullmatch(t):
+        return Command("protected")
     if re.fullmatch(r"(?:what(?:'s| is) the )?(?:status|state)\??", t, re.I):
         return Command("status")
     for pattern in SIMULATE:
@@ -36,6 +69,10 @@ def parse(text: str) -> Command:
         if m:
             device = re.sub(r"^(?:the|device)\s+", "", m.group("device").strip(" .!?\"'`"), flags=re.I)
             return Command("simulate", device or None)
+    m = LOOKUP.match(t)
+    if m:
+        device = re.sub(r"^(?:the|device)\s+", "", m.group("device").strip(" .!?\"'`"), flags=re.I)
+        return Command("lookup", device or None)
     return Command("help")
 
 
@@ -71,6 +108,7 @@ def help_text() -> str:
         "ransomware attack on a synthetic hospital. You can say:\n"
         f"• \"{EXAMPLE}\": start a round from that device (I'll send a summary when it ends)\n"
         "• \"status\": the state of the last round\n"
+        "• \"what is PACS?\", \"devices\", \"protected flows\": look things up in the hospital\n"
         "Nothing here touches a real network, and only humans can sign off a plan."
     )
 
@@ -91,7 +129,7 @@ def could_not_start(device_name: str, detail: str) -> str:
 def _said(text: str | None, source: str | None) -> str:
     if not text:
         return ""
-    return f": \"{text}\"" + (" (template)" if source == "template" else "")
+    return f": \"{text}\""
 
 
 def summary(h: HospitalIndex, session_id: str, device_name: str, events: list[tuple[str, object]],

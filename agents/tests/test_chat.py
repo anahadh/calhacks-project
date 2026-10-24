@@ -23,6 +23,16 @@ H = hospital_mod.load()
     ("What's the status?", "status", None),
     ("hi there", "help", None),
     ("", "help", None),
+    ("what is PACS?", "lookup", "PACS"),
+    ("tell me about the ER WS 1", "lookup", "ER WS 1"),
+    ("devices", "devices", None),
+    ("where can an attack start?", "devices", None),
+    ("protected flows", "protected", None),
+    # card button clicks: JSON from a direct chat, prose through ASI:One's planner
+    ('{"action": "simulate", "device": "mri_2", "source": "hippocratech"}', "simulate", "mri_2"),
+    ('{"action": "status", "source": "hippocratech"}', "status", None),
+    ("The user picked action lookup for device srv_pacs", "lookup", "srv_pacs"),
+    ('{"action": "rm -rf", "device": "x"}', "help", None),
 ])
 def test_parse(text, kind, device):
     c = chat.parse(text)
@@ -57,7 +67,7 @@ def candidate(name):
 
 def test_summary_of_a_round_with_a_rejection_and_a_recommendation():
     iso = Proposal(sessionId="chat-1", round=1, policyId="cand_isolate_imaging", testResult=result("cand_isolate_imaging"),
-                   reason="Isolate imaging: 1 infected device instead of 16.", reasonSource="template",
+                   reason="Isolate imaging: 1 infected device instead of 16.", reasonSource="asi1",
                    **candidate("cand_isolate_imaging").dict())
     rej = clinical.check("chat-1", 1, iso.policyId, iso.testResult, H).copy(update={"reason": "I can't accept this: it breaks 4 protected flows.", "reasonSource": "claude"})
     ok = clinical.check("chat-1", 2, "cand_keep_scans", result("cand_keep_scans"), H)
@@ -67,7 +77,7 @@ def test_summary_of_a_round_with_a_rejection_and_a_recommendation():
     text = chat.summary(H, "chat-1", "MRI 2", [("proposal", iso), ("verdict", rej), ("verdict", ok), ("recommendation", rec)],
                         "done", 2, fixture=True)
     assert "attack starting at MRI 2" in text
-    assert 'the Flow Agent proposed "Isolate imaging": "Isolate imaging: 1 infected device instead of 16." (template)' in text
+    assert 'the Flow Agent proposed "Isolate imaging": "Isolate imaging: 1 infected device instead of 16."' in text
     assert "✕ Clinical Workflow Agent rejected: \"I can't accept this: it breaks 4 protected flows.\" It needs: keep flow fl_1, fl_2, fl_3, fl_4." in text
     assert 'agree on "Contain imaging, keep scans flowing": "It holds the attack to 1 infected device."' in text
     assert "not a decision: Security, Clinical engineering must sign off" in text

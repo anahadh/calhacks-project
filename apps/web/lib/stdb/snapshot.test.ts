@@ -95,7 +95,7 @@ describe("snapshotOf", () => {
     const s = snapshotOf(SESSION, tables(), VIEWER);
     expect(s.roundState).toEqual({ state: "done", round: 2, maxRounds: 4, detail: undefined });
     expect(s.agentStatus).toEqual([{ agent: "flow", status: "idle" }]);
-    expect(s.messages.map((m) => m.seq)).toEqual([1, 2, 3, 5, 6, 7]);
+    expect(s.messages.map((m) => m.seq)).toEqual([1, 2, 3, 5, 6, 7, 8]);
     expect(s.questions.map((q) => q.questionId)).toEqual(["q1", "q2"]);
     expect(s.recommendations.map((r) => r.id)).toEqual(["s1:2", "s1:1"]);
   });

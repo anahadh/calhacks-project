@@ -13,6 +13,7 @@ type Published = {
   explanation: string;
   explanationSource?: string | null;
   requiredRoles: string[];
+  option?: number; // 1-3; absent = 1
 };
 
 /** `recommendation_json` is agents/protocol.py's Recommendation, as JSON. */
@@ -30,7 +31,9 @@ export const recommendation_upsert = spacetimedb.reducer(
     if (!rec?.policy?.name || !Array.isArray(rec.verdicts) || !Array.isArray(rec.requiredRoles) || !rec.requiredRoles.length) {
       fail("A recommendation needs a policy, verdicts and required roles.");
     }
-    const id = `${session_id}:${round}`;
+    // Option 1 keeps the round's id; alternatives the guardians also accepted get their own.
+    const option = Number.isInteger(rec.option) && rec.option! >= 1 && rec.option! <= 3 ? rec.option! : 1;
+    const id = option === 1 ? `${session_id}:${round}` : `${session_id}:${round}:${option}`;
     const old = ctx.db.recommendation.id.find(id);
     const row = {
       id, session_id, round, name: rec.policy.name, policy_json: JSON.stringify(rec.policy),

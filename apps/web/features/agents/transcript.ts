@@ -30,18 +30,21 @@ export type Entry = {
   detail?: string;
   /** Proportional, ink, in quotes: the agent's own sentence. */
   quote?: string;
-  /** The reason came from a template, not Claude (rule 14). */
+  /** The reason came from a template, not a model (rule 14). */
   template: boolean;
+  /** The reason was written by ASI:One's model (asi1-mini). */
+  asi1?: boolean;
 };
 
 const joinDetail = (parts: (string | undefined)[]) => parts.filter(Boolean).join(" · ") || undefined;
 
 /** One transcript entry per row. Requests carry template text, so it is the subject, not a quote. */
-export function entryOf(m: AgentMessageRow, index: SessionIndex): Entry {
+export function entryOf(m: AgentMessageRow, index: { device: Map<string, { name: string }> }): Entry {
   const shape = MESSAGE_SHAPE[m.type];
   const name = (id: string) => index.device.get(id)?.name ?? id;
   const tested = m.tested ? `test run: ${m.tested.patientsAffected} patients affected` : undefined;
   const template = m.source === "template";
+  const asi1 = m.source === "asi1";
 
   switch (m.type) {
     case "request":
@@ -52,6 +55,7 @@ export function entryOf(m: AgentMessageRow, index: SessionIndex): Entry {
         detail: joinDetail([...(m.rules ?? []).map((r) => `+ ${r}`), tested]),
         quote: m.reason,
         template,
+        asi1,
       };
     case "revision":
       return {
@@ -59,6 +63,7 @@ export function entryOf(m: AgentMessageRow, index: SessionIndex): Entry {
         detail: joinDetail([...(m.diff ?? []), tested]),
         quote: m.reason,
         template,
+        asi1,
       };
     case "reject":
       return {
@@ -66,15 +71,18 @@ export function entryOf(m: AgentMessageRow, index: SessionIndex): Entry {
         detail: m.constraint ? `Constraint: ${m.constraint.kind} · ${m.constraint.targetIds.map(name).join(" → ")}` : undefined,
         quote: m.reason,
         template,
+        asi1,
       };
     case "accept":
-      return { subject: "Accepts", quote: m.reason, template };
+      return { subject: "Accepts", quote: m.reason, template, asi1 };
     case "question":
-      return { subject: "Question for a human", quote: m.reason, template };
+      return { subject: "Question for a human", quote: m.reason, template, asi1 };
     case "answer":
       return { subject: "Answer", detail: m.reason, template: false };
     case "recommendation":
-      return { subject: "Recommendation, for human review", quote: m.reason, template };
+      return { subject: "Recommendation, for human review", quote: m.reason, template, asi1 };
+    case "chat":
+      return { subject: m.from === "asi1" ? "Asked on ASI:One" : m.card ? "Reply on ASI:One · card" : "Reply on ASI:One", quote: m.reason, template: false };
   }
 }
 
@@ -105,6 +113,10 @@ export function statusLine(round: RoundState, recommendations: readonly Recommen
       return hasMessages ? "The agents are idle." : "The agents are idle. Create a segmentation plan to start a round.";
     case "done": {
       if (!rec) return round.detail ?? "The round ended without a recommendation.";
+      const options = recommendations.filter((r) => r.round === rec.round).length;
+      if (options > 1 && rec.status !== "ready") {
+        return `Both reviewing agents accepted ${options} options. Humans choose one; ${roles(rec.requiredRoles)} must sign off.`;
+      }
       const accepted = rec.verdicts.filter((v) => v.decision === "accept").length;
       const total = rec.verdicts.length;
       const who = accepted === total && total === 2 ? "Both reviewing agents accepted." : `${accepted} of ${total} reviewing agents accepted.`;

@@ -15,7 +15,7 @@ export function runRow(over: Partial<RunRow> = {}): RunRow {
 
 export function recRow(over: Partial<RecommendationRow> = {}): RecommendationRow {
   return {
-    id: "s1:2", round: 2, name: "Keep scans flowing", rules: ["Scanners may send images to PACS."], explanation: "",
+    id: "s1:2", round: 2, option: 1, name: "Keep scans flowing", rules: ["Scanners may send images to PACS."], explanation: "",
     verified: { patientsAffected: 0, devicesCompromised: 1, protectedBroken: [], removedFlows: ["fl_8"] },
     verdicts: [], requiredRoles: ["security"], status: "draft", fixture: false, ...over,
   };

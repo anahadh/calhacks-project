@@ -12,7 +12,7 @@ import type { ServerReducers, SessionInfo } from "./stdb";
 const BODY_MAX = 256 * 1024;
 
 const Speaker = z.enum(["inventory", "flow", "clinical_workflow", "coordinator", "humans", "relay"]);
-const TextSource = z.enum(["claude", "template"]);
+const TextSource = z.enum(["claude", "asi1", "template"]);
 
 export const AgentMessageRow = z
   .object({
@@ -71,6 +71,7 @@ const RecommendationPayload = z
     explanation: z.string(),
     requiredRoles: z.array(Role).min(1),
     explanationSource: TextSource.nullable().optional(),
+    option: z.number().int().min(1).max(3).optional(), // 1 = the negotiated plan; 2-3 = accepted alternatives
   })
   .strict();
 

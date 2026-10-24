@@ -35,7 +35,7 @@ def rank(
     candidates: list[tuple[Policy, RunResult]], constraints: list[Constraint], hospital: HospitalIndex
 ) -> list[tuple[Policy, RunResult]]:
     """Drop candidates that break a constraint; sort the rest by fewest infected devices,
-    most patients ok, fewest rules, then name. The full policy JSON breaks any remaining tie."""
+    most patients ok, fewest rules, fewest connections cut, then name. The full policy JSON breaks any remaining tie."""
     ok = [(p, r) for p, r in candidates if not violates(r, constraints, hospital, len(p.rules))]
     return sorted(
         ok,
@@ -43,6 +43,7 @@ def rank(
             pr[1].infectedCount,
             -pr[1].patientCounts.ok,
             len(pr[0].rules),
+            len(pr[1].removedFlows),
             pr[0].name,
             pr[0].json(sort_keys=True),
         ),

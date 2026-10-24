@@ -53,17 +53,25 @@ def numbers(h: HospitalIndex, r: RunResult, baseline: RunResult | None = None) -
     """The run's headline numbers, and the same without a plan when the baseline is known."""
     not_ok = r.patientCounts.delayed + r.patientCounts.disrupted + r.patientCounts.diverted
     down = clinical.services_down_too_long(r, h)
+    # Names a model can't misread: "affected" patients are ones whose care is delayed,
+    # disrupted or diverted (never "protected"). Differences are given, since the
+    # text may only use numbers that appear here.
     out = {
         "infectedDevicesWithPlan": r.infectedCount,
-        "patientsNotOkWithPlan": not_ok,
+        "patientsWithCareDelayedOrDisruptedWithPlan": not_ok,
+        "servicesOfflineWithPlan": len(r.servicesDown),
         "connectionsCut": len(r.removedFlows),
         "protectedFlowsBroken": len(r.protectedBroken),
         "criticalServicesDownTooLong": [service(h, s) for s in down],
     }
     if baseline is not None:
         p = baseline.patientCounts
+        before = p.delayed + p.disrupted + p.diverted
         out["infectedDevicesWithoutPlan"] = baseline.infectedCount
-        out["patientsNotOkWithoutPlan"] = p.delayed + p.disrupted + p.diverted
+        out["patientsWithCareDelayedOrDisruptedWithoutPlan"] = before
+        out["servicesOfflineWithoutPlan"] = len(baseline.servicesDown)
+        out["infectionsPreventedByPlan"] = max(0, baseline.infectedCount - r.infectedCount)
+        out["patientsSparedDisruptionByPlan"] = max(0, before - not_ok)
     return out
 
 

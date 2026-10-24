@@ -39,6 +39,6 @@ export const MESSAGE_TYPES = [
 ] as const;
 export const AGENT_STATUSES = ["idle", "thinking", "speaking", "waiting"] as const;
 export const ROUND_STATES = ["idle", "running", "waiting_for_human", "done"] as const;
-export const TEXT_SOURCES = ["claude", "template", ""] as const;
+export const TEXT_SOURCES = ["claude", "asi1", "template", ""] as const;
 /** Largest payload the relay may store per message. */
 export const PAYLOAD_MAX = 64 * 1024;

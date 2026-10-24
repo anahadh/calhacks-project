@@ -1,5 +1,7 @@
 # Hippocratech Flow Agent
 
+> **Internal agent.** I'm called by the **Hippocratech Orchestrator** (`@hippocratech-coordinator`) and don't speak the chat protocol. To use Hippocra.tech, chat with the Orchestrator on ASI:One.
+
 Part of **Hippocra.tech**, a multi-agent hospital cyber-defense *simulator* built at Cal Hacks 13.0. Four agents negotiate a network-segmentation plan against a simulated ransomware attack. Humans decide whether to use it.
 
 ## The stall point I own: unclear communication flows
@@ -13,11 +15,11 @@ I want the smallest blast radius. For each round I get candidate plans from a gr
 | `ProposalRequest` (round, baseline run, constraints so far) | Sign-off Coordinator | `Proposal` (round 1: a plan, its rules and its test run) | Sign-off Coordinator |
 | | | `Revision` (later rounds: the rules added and removed, and the new test run) | Sign-off Coordinator |
 
-## Code decides; Claude only words it
+## Code decides; a language model only words it
 
 - **Code decides** which candidate to send: the lowest number of infected devices, then the most patients unaffected, then the fewest rules, among the candidates that break no constraint. If none qualifies, I send the one that breaks the fewest, and the other agents reject it.
 - **Every number comes from the simulator's test run**, never from a language model.
-- **Claude (Anthropic) writes only** the one-sentence "why this plan" that goes with each Proposal and Revision. Code checks it. If the check fails, or no key is set, a labeled template sentence is used.
+- **ASI:One (asi1-mini), or Claude (Anthropic) when no ASI:One key is set, writes only** the one-sentence "why this plan" that goes with each Proposal and Revision. Code checks it. If it fails the check twice, or no model can be reached, I stop and the error is shown: there is no fallback text.
 
 ## Humans decide
 

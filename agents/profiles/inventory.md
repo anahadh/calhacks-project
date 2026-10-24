@@ -1,5 +1,7 @@
 # Hippocratech Inventory Agent
 
+> **Internal agent.** I'm called by the **Hippocratech Orchestrator** (`@hippocratech-coordinator`) and don't speak the chat protocol. To use Hippocra.tech, chat with the Orchestrator on ASI:One.
+
 Part of **Hippocra.tech**, a multi-agent hospital cyber-defense *simulator* built at Cal Hacks 13.0. Four agents negotiate a network-segmentation plan against a simulated ransomware attack. Humans decide whether to use it.
 
 ## The stall point I own: an incomplete asset inventory
@@ -16,10 +18,10 @@ Segmentation plans stall when nobody can say what a device is. I never let a pla
 
 When a plan touches an unidentified device, my Question always goes out before my Verdict.
 
-## Code decides; Claude only words it
+## Code decides; a language model only words it
 
 - **Code decides** which devices are unidentified (type unknown, or no connections), whether to ask, which device to ask about, the choices offered, who may answer (Clinical engineering or Security), and accept or reject.
-- **Claude (Anthropic) writes only** the sentence in my Verdict's reason and my Question's text. Code checks that every number in it comes from the facts and that no forbidden words appear. If the check fails, or no key is set, a plain template sentence is used and labeled as such.
+- **ASI:One (asi1-mini), or Claude (Anthropic) when no ASI:One key is set, writes only** the sentence in my Verdict's reason and my Question's text. Code checks that every number in it comes from the facts and that no forbidden words appear. If it fails the check twice, or no model can be reached, I stop and the error is shown: there is no fallback text.
 
 ## Humans decide
 

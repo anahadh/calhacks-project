@@ -1,42 +1,77 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Line, OrbitControls, QuadraticBezierLine } from "@react-three/drei";
-import { arcMid, type Vec3 } from "@/components/scene/arcs";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { arcMid, arcPoint, type Vec3 } from "@/components/scene/arcs";
 import { FloorSlab } from "@/components/scene/building";
 import { FLOOR_GAP, to3 } from "@/components/scene/space";
 import { C } from "@/lib/colors";
 import type { Device, DeviceStateRow, Flow, Hospital, Point } from "@/lib/stdb/types";
 import { hullOf, type Segment } from "./pair";
 
-// The segmentation plan's scene (UX.md "Solution view", the design's screen 4):
-// the same isometric floors as the simulation, with devices as plain dots,
-// each segment outlined around its devices, the plan's kept flows as thin blue
-// lines and its cut flows dashed grey, and the plan run's remaining infection
-// path dotted orange. Everything drawn comes from the hospital file and the
-// plan run's rows (rule 16): nothing here computes spread.
+// One side of the solution view's split screen (UX.md "Solution view", the
+// design's screen 4): the same isometric floors as the simulation, with devices
+// as plain dots and the run's infection paths dotted orange. The plan side also
+// draws the plan: each segment filled and outlined in its color (the walls),
+// kept clinical flows as solid blue lines, cut connections as dashed lines, and
+// a ✕ on every cut connection the infection reached (cutStops). The "none" side
+// draws no walls and no flows, so the two buildings differ only by the plan.
+// Everything drawn comes from the hospital file and a run's rows (rule 16):
+// nothing here computes spread.
 
 const DOT_LIFT = 0.6;
 
+/**
+ * The camera the two sides share: whichever canvas the person drags writes its
+ * camera here, and the other follows each frame, so the buildings stay aligned.
+ */
+export type SharedCamera = { position: THREE.Vector3; target: THREE.Vector3; owner: string | null; stamp: number };
+export function sharedCamera(): SharedCamera {
+  return { position: new THREE.Vector3(4, 40, 80), target: new THREE.Vector3(0, 7, 0), owner: null, stamp: 0 };
+}
+
+function FollowCamera({ id, shared, controls }: { id: string; shared: SharedCamera; controls: RefObject<OrbitControlsImpl | null> }) {
+  const { camera } = useThree();
+  const seen = useRef(0);
+  useFrame(() => {
+    if (shared.owner === id || shared.stamp === seen.current || !controls.current) return;
+    seen.current = shared.stamp;
+    camera.position.copy(shared.position);
+    controls.current.target.copy(shared.target);
+    controls.current.update();
+  });
+  return null;
+}
+
 export function PlanScene({
+  id,
+  shared,
   hospital,
   devices,
   segments,
   kept,
   cut,
+  stops,
   patientZero,
   hoveredZone,
   onHoverZone,
   floorId,
 }: {
+  /** Which side this is, for the shared camera. */
+  id: string;
+  shared: SharedCamera;
   hospital: Hospital;
-  /** The plan run's device_state rows. */
+  /** This side's run's device_state rows. */
   devices: readonly DeviceStateRow[];
+  /** The walls to draw: the plan's segments, or none on the "no segmentation" side. */
   segments: readonly Segment[];
   kept: readonly Flow[];
   cut: readonly Flow[];
+  /** The cut connections the infection reached (cutStops): a ✕ each. */
+  stops: readonly Flow[];
   patientZero?: string;
   /** A segment lit from the list or from a hovered device; infected segments are always lit. */
   hoveredZone: string | null;
@@ -83,18 +118,37 @@ export function PlanScene({
 
   const infectionPath = devices.filter((d) => d.infected && d.infectedBy && shown(d.deviceId) && shown(d.infectedBy));
   const flowShown = (f: Flow) => shown(f.from) && shown(f.to);
+  const controls = useRef<OrbitControlsImpl | null>(null);
+  const publish = () => {
+    if (!controls.current) return;
+    shared.owner = id;
+    shared.position.copy(controls.current.object.position);
+    shared.target.copy(controls.current.target);
+    shared.stamp += 1;
+  };
 
   return (
     <Canvas
       dpr={[1, 2]}
-      camera={{ position: [4, 36, 76], fov: 34, near: 0.5, far: 400 }}
+      camera={{ position: shared.position.toArray(), fov: 34, near: 0.5, far: 400 }}
       onPointerMissed={() => onHoverZone(null)}
     >
       <color attach="background" args={[C.bg]} />
       <fog attach="fog" args={[C.bg, 80, 150]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[20, 40, 25]} intensity={0.9} />
-      <OrbitControls target={[0, 1, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
+      <OrbitControls
+        ref={controls}
+        target={shared.target.toArray()}
+        enableDamping
+        maxPolarAngle={Math.PI / 2.1}
+        minDistance={20}
+        maxDistance={110}
+        onStart={() => (shared.owner = id)}
+        onChange={() => shared.owner === id && publish()}
+        onEnd={() => (shared.owner = null)}
+      />
+      <FollowCamera id={id} shared={shared} controls={controls} />
 
       <group position={[0, -drop, 0]}>
         {hospital.floors.filter((f) => onFloor(f.id)).map((f) => (
@@ -129,6 +183,9 @@ export function PlanScene({
         {infectionPath.map((d) => (
           <PlanArc key={`inf_${d.deviceId}`} from={point(d.infectedBy!)} to={point(d.deviceId)} kind="infection" />
         ))}
+        {stops.filter(flowShown).map((f) => (
+          <CutStop key={`stop_${f.id}`} at={arcPoint(point(f.from), point(f.to), 0.5)} />
+        ))}
 
         {hospital.devices.filter((d) => onFloor(floorOf(d))).map((d) => (
           <DeviceDot
@@ -155,8 +212,9 @@ function RoomOutline({ polygon, level }: { polygon: Point[]; level: number }) {
 }
 
 /**
- * A segment's outline around its devices: a translucent fill and a line in the
- * segment's color when it is lit (infected, or hovered), else a faint line.
+ * A segment's wall around its devices: always a translucent fill and a line in
+ * the segment's color, so the building reads as zones at a glance; stronger
+ * when lit (infected, or hovered), with its label.
  */
 function SegmentOutline({
   hull,
@@ -181,14 +239,12 @@ function SegmentOutline({
   const [ox, , oz] = to3([0, 0], level);
   return (
     <group>
-      {lit && (
-        // Drawn in the x/y plane, then laid flat onto x/z (as RoomShell does).
-        <mesh position={[ox, level * FLOOR_GAP + 0.06, oz]} rotation={[Math.PI / 2, 0, 0]}>
-          <shapeGeometry args={[shape]} />
-          <meshBasicMaterial color={color} transparent opacity={0.16} side={THREE.DoubleSide} depthWrite={false} />
-        </mesh>
-      )}
-      <Line points={points} color={color} lineWidth={lit ? 1.8 : 1} transparent opacity={lit ? 0.95 : 0.28} />
+      {/* Drawn in the x/y plane, then laid flat onto x/z (as RoomShell does). */}
+      <mesh position={[ox, level * FLOOR_GAP + 0.06, oz]} rotation={[Math.PI / 2, 0, 0]}>
+        <shapeGeometry args={[shape]} />
+        <meshBasicMaterial color={color} transparent opacity={lit ? 0.22 : 0.12} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <Line points={points} color={color} lineWidth={lit ? 2.2 : 1.6} transparent opacity={lit ? 1 : 0.8} />
       {label && (
         <Html position={to3(label.at, level, 0.4)} center zIndexRange={[20, 10]} style={{ pointerEvents: "none" }}>
           <div
@@ -207,10 +263,10 @@ function SegmentOutline({
 }
 
 const ARC: Record<"kept" | "cut" | "infection", { color: string; width: number; opacity: number; dash?: [number, number] }> = {
-  // The plan's kept clinical flows: thin solid blue.
-  kept: { color: C.healthy, width: 0.9, opacity: 0.55 },
-  // A connection the plan removed: dashed grey (UX rule 3).
-  cut: { color: C.cut, width: 1.2, opacity: 0.85, dash: [0.5, 0.35] },
+  // The plan's kept clinical flows: solid blue, bright enough to read from across the room.
+  kept: { color: C.healthy, width: 1.4, opacity: 0.85 },
+  // A connection the plan removed: dashed grey (UX rule 3), at full strength.
+  cut: { color: C.cut, width: 1.6, opacity: 1, dash: [0.5, 0.35] },
   // The one infection path left, from infected_by: dotted orange.
   infection: { color: C.infected, width: 1.8, opacity: 0.95, dash: [0.25, 0.3] },
 };
@@ -222,6 +278,20 @@ function PlanArc({ from, to, kind }: { from: Vec3; to: Vec3; kind: keyof typeof 
   const ends = useMemo(() => ({ start: from, end: to, mid: arcMid(from, to) }), [at]);
   const dash = s.dash ? { dashed: true, dashSize: s.dash[0], gapSize: s.dash[1] } : {};
   return <QuadraticBezierLine {...ends} color={s.color} lineWidth={s.width} transparent opacity={s.opacity} {...dash} />;
+}
+
+/** The ✕ on a cut connection the infection reached: where the spread stopped at the wall. */
+function CutStop({ at }: { at: Vec3 }) {
+  return (
+    <Html position={at} center zIndexRange={[25, 15]} style={{ pointerEvents: "none" }}>
+      <span
+        className="font-disp grid h-7 w-7 place-items-center rounded-full border-[1.5px] border-state-infected bg-bg/95 text-[15px] font-bold leading-none text-state-infected shadow-[0_0_0_3px_rgba(255,106,46,0.25)]"
+        aria-label="The infection stopped here"
+      >
+        ✕
+      </span>
+    </Html>
+  );
 }
 
 /** A device as a plain dot: blue, orange once infected, red with a ring for patient zero. */

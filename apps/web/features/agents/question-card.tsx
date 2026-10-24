@@ -48,6 +48,7 @@ export function QuestionCard({ q, session, index }: { q: QuestionRow; session: S
         <div className="num text-[9.5px] uppercase tracking-[0.08em] text-ink-faint">
           ? Question · {SPEAKER_NAME[q.agent]} · round {q.round} · about {device?.name ?? q.targetId}
           {q.source === "template" && " · template text"}
+          {q.source === "asi1" && " · via ASI:One"}
         </div>
         <p className="mt-0.5 font-disp text-[14px] text-ink">{q.text}</p>
         {error && <p className="num mt-1 text-[10.5px] text-ink-muted">{error}</p>}

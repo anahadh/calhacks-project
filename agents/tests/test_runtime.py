@@ -93,9 +93,10 @@ def test_run_sim_fixtures_and_errors(monkeypatch):
         tools.run_sim(None, "mri_2", 1337)
 
 
-def test_optimize_falls_back_to_fixture_candidates():
-    cands = tools.optimize({}, tools.run_sim(None, "mri_2", 1337), [])
-    assert [c.id for c in cands] == ["cand_isolate_imaging", "cand_keep_scans", "cand_unknown_cut"]
+def test_optimize_has_no_fixture_fallback(monkeypatch):
+    monkeypatch.delenv("HIPPO_OPT_BIN", raising=False)
+    with pytest.raises(tools.ToolError, match="HIPPO_OPT_BIN is unset"):
+        tools.optimize({}, tools.run_sim(None, "mri_2", 1337), [])
 
 
 def test_runtime_fixtures_are_consistent():
@@ -196,7 +197,7 @@ def test_profiles(name):
     limit = lambda field: next(m.max_length for m in RegistrationRequest.model_fields[field].metadata if hasattr(m, "max_length"))
     assert len(p.name) <= limit("name") and len(p.handle) <= limit("handle"), (p.name, p.handle)
     readme = agent._readme
-    for must in ("## Messages", "Code decides", "Claude (Anthropic) writes only", "## Humans decide", "synthetic"):
+    for must in ("## Messages", "Code decides", "writes only", "## Humans decide", "synthetic"):
         assert must in readme, (name, must)
     assert not llm_forbidden(readme)
     if name == "coordinator":

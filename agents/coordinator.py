@@ -6,12 +6,15 @@ out here: to an agent → uAgents message; to "humans" or "relay" → relay row.
 Claude (llm.py) words the Recommendation's explanation; it cannot change the plan,
 the numbers or the required roles.
 
-It also speaks the chat protocol (ASI:One): "simulate ransomware from MRI 2" starts
-a round through the same begin() as /start_round, and the sender gets a summary when
-it ends. chat.py reads the text and builds the replies in code.
+It is the orchestrator, and the only agent that speaks the chat protocol (ASI:One):
+"simulate ransomware from MRI 2" starts a round through the same begin() as
+/start_round, and the sender gets the result as an ASI:One card when it ends. Lookups
+("what is PACS?", "devices", "protected flows") are answered from the hospital file.
+chat.py reads the text (and card button clicks); cards.py builds the replies; all code.
 """
 
 import asyncio
+import json
 import uuid
 from dataclasses import dataclass
 
@@ -19,10 +22,13 @@ from uagents import Context, Model, Protocol
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
+    MetadataContent,
+    StartSessionContent,
     TextContent,
     chat_protocol_spec,
 )
 
+import cards
 import chat
 import facts
 import llm
@@ -58,7 +64,9 @@ async def execute(ctx: Context, rnd: Round, actions: list[Action]):
         msg = a.message
         if a.type == "recommendation":
             msg = await llm.worded(msg, "recommendation", facts.recommendation(H, msg, rnd.baseline, rnd.round))
-            rnd.recommendation = msg
+            rnd.recommendations[msg.option - 1] = msg
+            if msg.option == 1:
+                rnd.recommendation = msg
             events.setdefault(rnd.sessionId, []).append(("recommendation", msg))
         if a.to in AGENTS:
             await send(ctx, NAME, a.to, a.type, msg)
@@ -159,13 +167,15 @@ async def on_question(ctx: Context, sender: str, msg: Question):
 chat_protocol = Protocol(spec=chat_protocol_spec)
 
 
-async def chat_send(ctx: Context, to: str, message: Model, session_id: str, text: str | None = None) -> None:
+async def chat_send(ctx: Context, to: str, message: Model, session_id: str, text: str | None = None,
+                    card: dict | None = None) -> None:
     """Send a chat-protocol message with the chat protocol's digest, whichever handler we
-    are in (a summary goes out from the handler of the round's last verdict). Text
-    replies are relayed first, like every other message (rule 9); acks aren't."""
+    are in (a summary goes out from the handler of the round's last verdict). Replies
+    are relayed first, card included, like every other message (rule 10); acks aren't."""
     if text is not None:
         rnd = rounds.get(session_id)
-        await relay.post(session_id, rnd.round if rnd else 0, NAME, "humans", "chat", {"text": text}, direction="sent")
+        payload = {"text": text, "via": "asi1"} | ({"card": card} if card is not None else {})
+        await relay.post(session_id, rnd.round if rnd else 0, NAME, "humans", "chat", payload, direction="sent")
     status = await ctx.send_raw(
         destination=to,
         message_schema_digest=Model.build_schema_digest(message),
@@ -180,14 +190,25 @@ async def reply(ctx: Context, to: str, text: str, session_id: str = CHAT_SESSION
     await chat_send(ctx, to, ChatMessage(content=[TextContent(text=text)]), session_id, text)
 
 
+async def reply_card(ctx: Context, to: str, msg: ChatMessage, session_id: str = CHAT_SESSION) -> None:
+    """A card reply: the text bubble and the card's element tree both go to the relay."""
+    bubble = next(c.text for c in msg.content if isinstance(c, TextContent))
+    card = json.loads(next(c.metadata["card_payload"] for c in msg.content if isinstance(c, MetadataContent)))
+    await chat_send(ctx, to, msg, session_id, bubble, card)
+
+
+def room_url(session_id: str) -> str:
+    return f"{settings().web_url}/room/{session_id}"
+
+
 async def notify_chat(ctx: Context, rnd: Round) -> None:
     c = chats.get(rnd.sessionId)
     if c is None or c.notified or rnd.state != "done":
         return
     c.notified = True
-    text = chat.summary(H, rnd.sessionId, c.device_name, events.get(rnd.sessionId, []), rnd.state, rnd.round,
-                        settings().hippo_sim_fixtures)
-    await reply(ctx, c.sender, text, rnd.sessionId)
+    card = cards.summary_card(H, rnd.sessionId, c.device_name, events.get(rnd.sessionId, []), rnd.state, rnd.round,
+                              settings().hippo_sim_fixtures, room_url(rnd.sessionId))
+    await reply_card(ctx, c.sender, card, rnd.sessionId)
 
 
 @chat_protocol.on_message(ChatMessage)
@@ -195,27 +216,45 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     await chat_send(ctx, sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id), CHAT_SESSION)
     text = msg.text().strip()
     if not text:
-        return  # e.g. only a start-session marker
-    await relay.post(CHAT_SESSION, 0, "humans", NAME, "chat", {"text": text}, direction="received")
+        if any(isinstance(c, StartSessionContent) for c in msg.content):
+            await reply_card(ctx, sender, cards.help_card(H, chat.devices_on_network(H)))
+        return
     command = chat.parse(text)
+    # A round's request is relayed into the round's own session, so its live Agent Room
+    # starts with the ASI:One message that started it.
+    device = chat.resolve_device(H, command.device) if command.device else None
+    session_id = f"chat-{uuid.uuid4().hex[:8]}" if command.kind == "simulate" and device else CHAT_SESSION
+    await relay.post(session_id, 0, "humans", NAME, "chat", {"text": text, "via": "asi1"}, direction="received")
     if command.kind == "status":
         sid = last_session[0] if last_session else None
         rnd = rounds.get(sid) if sid else None
+        if rnd is not None and rnd.state == "done" and sid in chats:
+            card = cards.summary_card(H, sid, chats[sid].device_name, events.get(sid, []), rnd.state, rnd.round,
+                                      settings().hippo_sim_fixtures, room_url(sid))
+            await reply_card(ctx, sender, card)
+            return
         last = None
         if rnd is not None:
             name = chats[sid].device_name if sid in chats else rnd.patient_zero
             last = (sid, name, rnd.state, rnd.round, rnd.recommendation is not None)
-        await reply(ctx, sender, chat.status(last))
+        await reply(ctx, sender, chat.status(last) + (f" Watch it live: {room_url(sid)}" if sid in chats else ""))
+        return
+    if command.kind == "devices":
+        await reply_card(ctx, sender, cards.devices_card(H, chat.devices_on_network(H)))
+        return
+    if command.kind == "protected":
+        await reply_card(ctx, sender, cards.protected_card(H))
         return
     if command.kind == "help" or not command.device:
-        await reply(ctx, sender, chat.help_text())
+        await reply_card(ctx, sender, cards.help_card(H, chat.devices_on_network(H)))
         return
-    device = chat.resolve_device(H, command.device)
     if device is None:
         await reply(ctx, sender, chat.unknown_device(H, command.device))
         return
+    if command.kind == "lookup":
+        await reply_card(ctx, sender, cards.device_card(H, device))
+        return
     name = H.devices[device]["name"]
-    session_id = f"chat-{uuid.uuid4().hex[:8]}"
     chats[session_id] = ChatRound(sender=sender, device_name=name)
     req = StartRound(sessionId=session_id, runId=f"run_{session_id.replace('-', '_')}", patientZero=device,
                      seed=chat.DEMO_SEED, challenges=[])
@@ -224,7 +263,8 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         chats.pop(session_id, None)
         await reply(ctx, sender, chat.could_not_start(name, ack.detail or "unknown error"), session_id)
         return
-    await reply(ctx, sender, chat.started(name, session_id, settings().hippo_sim_fixtures), session_id)
+    await reply_card(ctx, sender, cards.started_card(device, name, session_id, room_url(session_id),
+                                                     settings().hippo_sim_fixtures), session_id)
 
 
 @chat_protocol.on_message(ChatAcknowledgement)

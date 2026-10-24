@@ -8,6 +8,12 @@ always give the same actions.
 Message order the runtime must keep: Inventory sends its Question (on_questions)
 before the Verdict it belongs to (on_verdict).
 
+Options: every round puts the Flow Agent's lead plan and its alternatives (up to two)
+to both guardians. Every rejection adds its constraint, so the next round repairs all
+of them. The round ends with recommendations when at least two plans are accepted,
+when the lead is accepted and no alternative is left to repair, or at the last round
+with any plan accepted: up to three options, for humans to choose from.
+
 Pausing (spec, The Agents, step 5): the round goes to waiting_for_human as soon as a
 question is open. Proposals, revisions and verdicts that arrive while it waits are
 held. On resume, verdicts held for the current candidate are dropped and both
@@ -20,6 +26,7 @@ from typing import Literal
 
 from protocol import (
     AgentName,
+    Alternative,
     Answer,
     Constraint,
     Policy,
@@ -38,6 +45,7 @@ from . import flow
 from .hospital import HospitalIndex
 
 MAX_ROUNDS = 4
+MAX_OPTIONS = 3  # recommendations offered to humans: the lead and up to two alternatives
 GUARDIANS: tuple[AgentName, ...] = ("inventory", "clinical_workflow")
 CLINICAL_TYPES = {
     "mri", "ct", "patient_monitor", "infusion_pump", "anesthesia_machine", "lab_analyzer", "nurse_station",
@@ -106,8 +114,12 @@ class Round:
         self._current: Proposal | Revision | None = None  # last proposal or revision, as received
         self._verdicts: dict[str, Verdict] = {}
         self._decided = True  # no candidate is waiting for verdicts
+        self._decided_round = True  # the round's plans have all been judged and acted on
         self._held: list[Proposal | Revision] = []  # arrived while waiting_for_human
         self._waiting_rejection = False  # paused after a confirm_device rejection
+        self.recommendations: list[Recommendation] = []  # option 1 first
+        self._alternatives: list[Alternative] = []  # offered with the current candidate
+        self._alt_verdicts: dict[str, dict[str, Verdict]] = {}  # this round's alternatives: policy id → verdicts
 
     @property
     def baseline(self) -> RunResult | None:
@@ -183,23 +195,46 @@ class Round:
         self._check_session(verdict)
         if verdict.agent not in GUARDIANS:
             raise ValueError(f"verdict from {verdict.agent}, which is not a guardian")
+        if verdict.policyId in self._alt_verdicts and self._current is not None and verdict.round == self._current.round:
+            got = self._alt_verdicts[verdict.policyId]
+            if self.state != "running" or self._decided_round or verdict.agent in got:
+                return []
+            got[verdict.agent] = verdict
+            return self._decide_if_complete()
         stale = self._current is None or (verdict.round, verdict.policyId) != (self._current.round, self._current.policyId)
         # While waiting, a verdict on the current candidate is dropped: on resume both
         # guardians check it again with the human's answer.
         if self.state != "running" or stale or self._decided or verdict.agent in self._verdicts:
             return []
         self._verdicts[verdict.agent] = verdict
-        if len(self._verdicts) < len(GUARDIANS):
-            return []
-        self._decided = True
+        if len(self._verdicts) == len(GUARDIANS):
+            self._decided = True
+        return self._decide_if_complete()
 
+    def _decide_if_complete(self) -> list[Action]:
+        """Once both guardians have judged the lead and every alternative of the round."""
+        if not self._decided or any(len(v) < len(GUARDIANS) for v in self._alt_verdicts.values()) or self._decided_round:
+            return []
+        self._decided_round = True
         verdicts = [self._verdicts[a] for a in GUARDIANS]
-        rejections = [v for v in verdicts if v.decision == "reject"]
-        if not rejections:
-            return self._publish(verdicts)
-        for v in rejections:
-            if v.constraint is not None:
+        all_verdicts = verdicts + [v for got in self._alt_verdicts.values() for v in got.values()]
+        for v in all_verdicts:
+            if v.decision == "reject" and v.constraint is not None:
                 self.constraints = merge(self.constraints, v.constraint)
+        lead_ok = all(v.decision == "accept" for v in verdicts)
+        alts = {a.policyId: a for a in self._alternatives}
+        accepted_alts = [alts[pid] for pid, got in self._alt_verdicts.items()
+                         if all(got[g].decision == "accept" for g in GUARDIANS)]
+        rejected_alts = len(self._alt_verdicts) - len(accepted_alts)
+        options = ([(self._policy, self._result, verdicts)] if lead_ok else []) + [
+            (Policy(strategy=a.strategy, name=a.name, rules=a.rules, rationale=a.rationale, tradeoff=a.tradeoff),
+             a.testResult, [self._alt_verdicts[a.policyId][g] for g in GUARDIANS]) for a in accepted_alts]
+        last = self.round >= MAX_ROUNDS
+        if len(options) >= 2 or (lead_ok and (rejected_alts == 0 or last)) or (last and options):
+            return self._publish(options)
+        if lead_ok:
+            # The lead holds, but its alternatives need repair: one more round, with what they taught.
+            return self._next_round()
         if self._waiting_on_humans():
             self.state = "waiting_for_human"
             self._waiting_rejection = True
@@ -251,7 +286,14 @@ class Round:
 
     def _forward(self, msg: Proposal | Revision, type: ActionType) -> list[Action]:
         self._current, self._result, self._verdicts, self._decided = msg, msg.testResult, {}, False
-        return [Action(g, type, msg) for g in GUARDIANS]
+        self._decided_round = False
+        # The alternatives Flow offered with this plan, each put to both guardians too.
+        self._alternatives = [a for a in msg.alternatives if a.policyId != msg.policyId][: MAX_OPTIONS - 1]
+        self._alt_verdicts = {a.policyId: {} for a in self._alternatives}
+        alt_msgs = [Proposal(sessionId=self.sessionId, round=msg.round, policyId=a.policyId, strategy=a.strategy, name=a.name,
+                             rules=a.rules, rationale=a.rationale, tradeoff=a.tradeoff, testResult=a.testResult,
+                             reason=a.reason, reasonSource=a.reasonSource) for a in self._alternatives]
+        return [Action(g, type, msg) for g in GUARDIANS] + [Action(g, "proposal", a) for a in alt_msgs for g in GUARDIANS]
 
     def _waiting_on_humans(self) -> bool:
         """A confirm_device constraint is waiting on an open question about one of its devices."""
@@ -274,8 +316,8 @@ class Round:
         actions = [self._round_state()]
         reopen, self._waiting_rejection = self._waiting_rejection, False
         again = "proposal" if isinstance(self._current, Proposal) else "revision"
-        if self._current is not None and not self._decided:
-            # Paused mid-judgement: verdicts that came in meanwhile were dropped; judge again.
+        if self._current is not None and not self._decided_round and not reopen:
+            # Paused mid-judgement (the lead or an alternative): verdicts that came in meanwhile were dropped; judge again.
             actions += self._forward(self._current, again)
         elif self._current is not None and reopen:
             # Rejected for an unanswered question. If the answer cleared the only objection,
@@ -301,13 +343,13 @@ class Round:
         self._verdicts = {}
         return [self._round_state(), Action("flow", "proposal_request", self._request(revise=self._current.policyId))]
 
-    def _publish(self, verdicts: list[Verdict]) -> list[Action]:
-        self.recommendation = Recommendation(
-            policy=self._policy,
-            testResult=self._result,
-            verdicts=verdicts,
-            explanation="[explanation]",
-            requiredRoles=required_roles(self._result, self.hospital),
-        )
+    def _publish(self, options: list[tuple[Policy, RunResult, list[Verdict]]]) -> list[Action]:
+        options = options[:MAX_OPTIONS]
+        self.recommendations = [
+            Recommendation(policy=p, testResult=r, verdicts=vs, explanation="[explanation]",
+                           requiredRoles=required_roles(r, self.hospital), option=i)
+            for i, (p, r, vs) in enumerate(options, start=1)
+        ]
+        self.recommendation = self.recommendations[0]
         self.state = "done"
-        return [Action("relay", "recommendation", self.recommendation), self._round_state()]
+        return [*(Action("relay", "recommendation", rec) for rec in self.recommendations), self._round_state()]

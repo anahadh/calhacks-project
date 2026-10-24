@@ -82,10 +82,7 @@ def optimize(hospital: dict, baseline: RunResult, constraints: list[Constraint])
     (Flow strips protected-flow information from it)."""
     s = settings()
     if not s.hippo_opt_bin:
-        files = sorted((FIXTURES / "candidates").glob("*.json"))
-        if not files:
-            raise ToolError("HIPPO_OPT_BIN is unset and fixtures/candidates/ is empty")
-        return [Candidate.parse_file(f) for f in files]
+        raise ToolError("HIPPO_OPT_BIN is unset (the Flow Agent builds candidates itself; see logic/candidates.py)")
 
     with tempfile.TemporaryDirectory() as tmp:
         paths = {}
@@ -163,7 +160,7 @@ class Relay:
     Rows carry fields beyond the spec's tables: "direction" (sent or received; rule 10
     has both ends post, so every message appears twice), "fixture" (true when results
     come from fixtures/results/, so the UI can label the run) and "reasonSource"
-    ("claude" or "template": who wrote "reason", rule 14).
+    ("claude", "asi1" or "template": who wrote "reason", rule 14).
     """
 
     async def post(

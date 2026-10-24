@@ -45,7 +45,8 @@ AGENT_MAILBOX=1          # register with an Agentverse mailbox (listed, reachabl
 LOCAL_RESOLVE=1          # and keep the four agents talking to each other directly at 127.0.0.1
 HIPPO_SIM_FIXTURES=1     # until hippo-sim exists: results from agents/fixtures/results/, labeled "fixture"
 
-ANTHROPIC_API_KEY=...    # optional: Claude words the agents' messages (otherwise labeled template sentences)
+ASI1_API_KEY=...         # optional: ASI:One (asi1-mini) words the agents' messages, labeled "via ASI:One"
+ANTHROPIC_API_KEY=...    # optional: Claude words them when ASI1_API_KEY is unset (neither = the agents stop with an error; there is no fallback text)
 AGENTVERSE_API_KEY=...   # optional: lets each agent connect its own mailbox (step 5, option B)
 ```
 
@@ -118,5 +119,5 @@ Meanwhile, `run_all` prints every agent message as usual. The chat round's rows 
 | `Agentverse: mailbox connect failed: …` | The API key is wrong or lacks access. Use the Inspector instead (option A). |
 | ASI:One gets no answer | Check the Coordinator's log for `Received` lines. If nothing arrives, its mailbox isn't connected. If it logs `chat reply … not delivered`, the reply couldn't be routed back. Restart `run_all.py` and reconnect. |
 | ASI:One: "I couldn't start a round from CT 1: fixture results exist only for an attack starting at MRI 2" | Expected with `HIPPO_SIM_FIXTURES=1`: fixtures exist only for MRI 2. Use MRI 2 until hippo-sim exists. |
-| Messages say "(template)" | `ANTHROPIC_API_KEY` is unset, or Claude's text failed a check (the agent logs why). |
+| The round stops with "The … agent failed: …" | Neither `ASI1_API_KEY` nor `ANTHROPIC_API_KEY` is set, the model API failed, or its text failed the checks twice. The error is the round's status; there is no fallback text. |
 | Profile text didn't update | Agentverse stores the profile when the agent connects. Reconnect (step 5) after changing `agents/profiles/*.md`. |

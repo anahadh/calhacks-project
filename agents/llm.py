@@ -1,16 +1,20 @@
-"""Claude writes the words; code has already decided (AGENTS.md rule 7).
+"""A model writes the words; code has already decided (AGENTS.md rule 7).
 
 explain(kind, facts) and question_text(facts) return (text, source). The facts come
 from code (facts.py). Claude's answer must be JSON {"text": ...} and pass three
 checks: every number in it appears in the facts, none of the forbidden words, and
 1-2 sentences of at most 280 characters. On a failure it gets one retry with the
 errors listed. If that fails too, or the API errors or times out, or there is no
-ANTHROPIC_API_KEY, the text is a plain template sentence built from the same facts,
-and source says "template" (rule 13: never pass a template off as Claude's).
+key, explain() raises LlmError: there is no fallback text. The agent's step fails and
+the error is shown (rule 14).
+
+The writer is ASI:One (asi1-mini, OpenAI-style API at api.asi1.ai) when ASI1_API_KEY is
+set, else Claude when ANTHROPIC_API_KEY is set; source names which one wrote the text.
 
 with_text() puts the text on a message and refuses to change anything else.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -18,18 +22,21 @@ import re
 from typing import Any, Literal
 
 import anthropic
+import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from protocol import Proposal, Question, Recommendation, Revision, Strict, Verdict
+from protocol import Alternative, Proposal, Question, Recommendation, Revision, Strict, Verdict
 
 log = logging.getLogger("llm")
 
 DEFAULT_MODEL = "claude-haiku-5-5"
+ASI1_DEFAULT_MODEL = "asi1-mini"
+ASI1_URL = os.environ.get("ASI1_BASE_URL", "https://api.asi1.ai/v1").rstrip("/") + "/chat/completions"
 MAX_TOKENS = 200
-TIMEOUT_S = 10.0
+TIMEOUT_S = 20.0
 MAX_CHARS = 280
 Kind = Literal["verdict_accept", "verdict_reject", "proposal", "revision", "recommendation", "question"]
-Source = Literal["claude", "template"]
+Source = Literal["claude", "asi1"]
 
 # Prompt rules: no "approved", "ready" or "safe to deploy" for agent output (humans approve),
 # and no outcome language. Whole words, so "already" is fine.
@@ -66,13 +73,13 @@ SYSTEM = (
     "Code has already made every decision; you only put it into words, and you never change it. "
     "Use only the facts given. Do not use any number that is not in the facts. "
     "Use the human names from the facts, never ids. "
+    "Say what each number counts exactly as its fact name does: patients with care delayed or disrupted are harmed, "
+    "not protected; do not do arithmetic, use the differences given. "
     "1 or 2 sentences, at most 280 characters, plain language, no markdown, readable in a chat bubble. "
     "Never write approved, ready, or safe to deploy: humans approve. "
     "Never mention deaths or clinical outcomes. "
     'Reply with JSON only: {"text": "..."}'
 )
-
-_warned_no_key = False
 
 
 # --- checks ---
@@ -117,64 +124,6 @@ def problems(text: str, facts: dict) -> list[str]:
     return errors
 
 
-# --- templates (no model) ---
-
-
-def _n(count: int, noun: str) -> str:
-    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
-
-
-def _list(items: list[str], limit: int = 2) -> str:
-    return "; ".join(items[:limit]) + (" and others" if len(items) > limit else "")
-
-
-def template(kind: Kind, f: dict) -> str:
-    if kind == "verdict_reject":
-        if f.get("unidentifiedDevices"):
-            return f"I can't accept this yet: it changes {_list(f['unidentifiedDevices'])}, and nobody has told me what that is."
-        if f.get("brokenProtectedFlows"):
-            return (f"I can't accept this: it breaks {_n(f['protectedFlowsBroken'], 'protected flow')}, "
-                    f"including {f['brokenProtectedFlows'][0]}.")
-        if f.get("criticalServicesDownTooLong"):
-            return f"I can't accept this: {_list(f['criticalServicesDownTooLong'])} would stay down too long."
-        return f"I can't accept {f['plan']}: {f.get('constraintAdded', 'it breaks a constraint')}."
-    if kind == "verdict_accept":
-        if f["agent"] == "Inventory Agent":
-            return f"I accept this: every device {f['plan']} changes is identified."
-        return f"I accept this: {f['plan']} breaks no protected flow and keeps critical services up."
-    if kind == "proposal":
-        base = f.get("infectedDevicesWithoutPlan")
-        compare = f" instead of {base} without a plan" if base is not None else ""
-        return (f"{f['plan']}: {_n(f['infectedDevicesWithPlan'], 'infected device')}{compare}, "
-                f"by cutting {_n(f['connectionsCut'], 'connection')}.")
-    if kind == "revision":
-        keep = f.get("protectedFlowsToKeep") or []
-        if keep:
-            more = f" and {f['protectedFlowsToKeepCount'] - 1} more" if len(keep) > 1 else ""
-            meets = f", keeping {keep[0]}{more}"
-        else:
-            meets = f"; it meets: {f['constraintsToMeet'][0]}" if f.get("constraintsToMeet") else ""
-        return f"Revised to {f['plan']}{meets}, with {_n(f['infectedDevicesWithPlan'], 'infected device')}."
-    if kind == "recommendation":
-        base = f.get("infectedDevicesWithoutPlan")
-        compare = f" (vs {base} with no plan)" if base is not None else ""
-        return (f"{f['plan']} holds the attack to {_n(f['infectedDevicesWithPlan'], 'infected device')}{compare}. "
-                f"Sign-off needed from {', '.join(f['requiredSignOff'])}.")
-    if kind == "question":
-        links = f" It connects to {_list(f['connectedTo'], 1)}." if f.get("connectedTo") else ""
-        return f"What kind of device is {f['device']} in {f['room']}?{links}"
-    raise ValueError(kind)
-
-
-def _fallback(kind: Kind, facts: dict, why: str) -> tuple[str, Source]:
-    text = template(kind, facts)
-    if problems(text, facts):  # a template bug, not a model one: fail loudly in tests
-        raise AssertionError(f"template for {kind} fails its own checks: {problems(text, facts)}: {text!r}")
-    if why:
-        log.warning(f"llm: using the template for {kind}: {why}")
-    return text, "template"
-
-
 # --- Claude ---
 
 
@@ -217,42 +166,118 @@ class _BadAnswer(Exception):
     pass
 
 
-async def explain(kind: Kind, facts: dict) -> tuple[str, Source]:
-    global _warned_no_key
-    if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
-        if not _warned_no_key:
-            log.warning("llm: ANTHROPIC_API_KEY is not set; agents' messages use template sentences (source: template)")
-            _warned_no_key = True
-        return _fallback(kind, facts, "")
+class LlmError(Exception):
+    """No model could word this message. Never replaced by a template."""
 
-    model = _model()
+
+class _ApiFailed(Exception):
+    def __init__(self, message: str, transient: bool = True):
+        super().__init__(message)
+        self.transient = transient  # a timeout, connection error, 429 or 5xx: worth asking again
+
+
+API_TRIES = 3  # the same model call, asked again after a transient error; never a fallback
+API_BACKOFF_S = 1.0
+
+
+async def _ask_with_retries(ask, messages: list[dict]) -> str:
+    for attempt in range(1, API_TRIES + 1):
+        try:
+            return await ask(messages)
+        except _ApiFailed as e:
+            if not e.transient or attempt == API_TRIES:
+                raise
+            log.warning(f"llm: {e}; asking again ({attempt + 1}/{API_TRIES})")
+            await asyncio.sleep(API_BACKOFF_S * attempt)
+    raise AssertionError("unreachable")
+
+
+def _transient(status: int) -> bool:
+    return status == 429 or status >= 500
+
+
+async def _ask_claude(messages: list[dict]) -> str:
+    try:
+        return _text_of(await _make_client().messages.create(**_request(_model(), messages)))
+    except anthropic.APITimeoutError as e:
+        raise _ApiFailed(f"timed out after {TIMEOUT_S:.0f} s") from e
+    except anthropic.APIConnectionError as e:
+        raise _ApiFailed(f"could not reach the API: {e}") from e
+    except anthropic.APIStatusError as e:
+        raise _ApiFailed(f"API error {e.status_code}: {e.message}", _transient(e.status_code)) from e
+
+
+# --- ASI:One ---
+
+
+async def _asi1_post(body: dict) -> httpx.Response:
+    """One ASI:One chat completion (OpenAI-style). Tests replace this."""
+    key = os.environ.get("ASI1_API_KEY", "").strip()
+    async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+        return await client.post(ASI1_URL, json=body, headers={"Authorization": f"Bearer {key}"})
+
+
+def _asi1_model() -> str:
+    return os.environ.get("ASI1_MODEL", "").strip() or ASI1_DEFAULT_MODEL
+
+
+async def _ask_asi1(messages: list[dict]) -> str:
+    body = {"model": _asi1_model(), "max_tokens": MAX_TOKENS, "temperature": 0,
+            "messages": [{"role": "system", "content": SYSTEM}, *messages]}
+    try:
+        resp = await _asi1_post(body)
+    except httpx.TimeoutException as e:
+        raise _ApiFailed(f"ASI:One timed out after {TIMEOUT_S:.0f} s") from e
+    except httpx.HTTPError as e:
+        raise _ApiFailed(f"could not reach ASI:One: {e}") from e
+    if resp.status_code != 200:
+        raise _ApiFailed(f"ASI:One error {resp.status_code}: {resp.text[:200]}", _transient(resp.status_code))
+    try:
+        raw = resp.json()["choices"][0]["message"]["content"] or ""
+    except (ValueError, KeyError, IndexError, TypeError) as e:
+        raise _BadAnswer("no text in the response") from e
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())  # some answers come fenced
+    try:
+        return Answer.model_validate_json(raw).text.strip()
+    except ValidationError as e:
+        raise _BadAnswer(f"not the JSON asked for: {e.errors()[0]['msg']}") from e
+
+
+def _writer() -> tuple[Any, Source] | None:
+    if os.environ.get("ASI1_API_KEY", "").strip():
+        return _ask_asi1, "asi1"
+    if os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        return _ask_claude, "claude"
+    return None
+
+
+async def explain(kind: Kind, facts: dict) -> tuple[str, Source]:
+    writer = _writer()
+    if writer is None:
+        raise LlmError("neither ASI1_API_KEY nor ANTHROPIC_API_KEY is set, so no model can word the agents' messages")
+
+    ask, source = writer
     prompt = f"{VOICE[kind]}\n\nFacts (JSON):\n{json.dumps(facts, ensure_ascii=False, indent=1)}"
     messages = [{"role": "user", "content": prompt}]
-    client = _make_client()
     last = ""
     for attempt in (1, 2):
         try:
-            response = await client.messages.create(**_request(model, messages))
-            text = _text_of(response)
+            text = await _ask_with_retries(ask, messages)
             errors = problems(text, facts)
             last = text
         except _BadAnswer as e:
             errors, text = [str(e)], last
-        except anthropic.APITimeoutError:
-            return _fallback(kind, facts, f"timed out after {TIMEOUT_S:.0f} s")
-        except anthropic.APIConnectionError as e:
-            return _fallback(kind, facts, f"could not reach the API: {e}")
-        except anthropic.APIStatusError as e:
-            return _fallback(kind, facts, f"API error {e.status_code}: {e.message}")
+        except _ApiFailed as e:
+            raise LlmError(f"{source} could not word the {kind} message: {e}") from e
         if not errors:
-            return text, "claude"
+            return text, source
         if attempt == 1:
             messages += [
                 {"role": "assistant", "content": json.dumps({"text": text})},
                 {"role": "user", "content": "That text can't be used: it " + "; it ".join(errors)
                  + ". Write it again, following every rule, as JSON {\"text\": \"...\"}."},
             ]
-    return _fallback(kind, facts, "rejected twice: " + "; ".join(errors))
+    raise LlmError(f"{source}'s {kind} text was rejected twice: " + "; ".join(errors))
 
 
 async def question_text(facts: dict) -> tuple[str, Source]:
@@ -262,6 +287,7 @@ async def question_text(facts: dict) -> tuple[str, Source]:
 # --- putting text on a message, and nothing else ---
 
 TEXT_FIELDS: dict[type, tuple[str, str]] = {
+    Alternative: ("reason", "reasonSource"),
     Verdict: ("reason", "reasonSource"),
     Proposal: ("reason", "reasonSource"),
     Revision: ("reason", "reasonSource"),

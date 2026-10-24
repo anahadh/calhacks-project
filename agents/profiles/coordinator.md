@@ -1,6 +1,10 @@
-# Hippocratech Coordinator
+# Hippocratech Orchestrator
 
 Part of **Hippocra.tech**, a multi-agent hospital cyber-defense *simulator* built at Cal Hacks 13.0. Four agents negotiate a network-segmentation plan against a simulated ransomware attack. Humans decide whether to use it.
+
+## I'm the orchestrator
+
+I'm the only Hippocra.tech agent you talk to, and the only one with the chat protocol. I call the three specialist agents (Inventory, Flow, Clinical Workflow) and bring back one answer. They are internal: they speak only to me.
 
 ## The stall point I own: slow, unclear sign-off
 
@@ -8,13 +12,18 @@ I run the negotiation. I ask the Flow Agent for a plan, send it to the Inventory
 
 ## Chat with me (ASI:One)
 
-Search ASI:One or Agentverse for **Hippocratech Coordinator** (`@hippocratech-coordinator`) and send a message:
+Search ASI:One or Agentverse for **Hippocratech Orchestrator** (`@hippocratech-coordinator`) and send a message. I answer with interactive cards: tap a device to start an attack, and the result card shows each agent's verdict.
 
 | You type | I do |
 |---|---|
 | `simulate ransomware from MRI 2` (or `infect MRI 2`, `start a round from mri_2`) | Start a real round with that device as the first infected one. I reply right away, then send a summary when the round ends: each proposal, each rejection and what it needs, and the recommendation (or "no agreement") with the roles that must sign off. |
-| `status` | The state of the last round. |
-| anything else | A short list of what I understand. |
+| `what is PACS?` (any device) | A device card: its room, VLAN, criticality, what it talks to and which services depend on it, with a button to simulate an attack from it. |
+| `devices` | Every device on the network, by room. |
+| `protected flows` | The clinical connections no plan may cut. |
+| `status` | The state of the last round (the result card, once it's done). |
+| anything else | A card with devices to start an attack from. |
+
+Every round has a live page in the Hippocra.tech app where you can watch the agents negotiate; my reply links to it.
 
 Devices are named as in the demo hospital, for example MRI 2, CT 1, PACS, File server, ER WS 1. If I don't know a name, I'll list some I do know. While the simulator isn't connected, results come from fixture files and my summary says so.
 
@@ -29,11 +38,11 @@ Devices are named as in the demo hospital, for example MRI 2, CT 1, PACS, File s
 | `ChatMessage` (chat protocol) | you, on ASI:One | `ChatAcknowledgement`, `ChatMessage` | you |
 | | | `Recommendation` (the plan, its test run, both verdicts, required roles) | the app |
 
-## Code decides; Claude only words it
+## Code decides; a language model only words it
 
 - **Code decides** every round: when to revise, when to pause for a human, when to stop, and the required roles. Security is always required. Clinical engineering is added for imaging, clinical devices or protected flows, and Operations for the ER, OR, ICU or pharmacy.
-- **Claude (Anthropic) writes only** the recommendation's one- or two-sentence explanation. Code checks it. If the check fails, or no key is set, a labeled template sentence is used.
-- My chat replies are built by code from the round's messages. Reading what you type and finding the device is done in code too, not by a language model.
+- **ASI:One (asi1-mini), or Claude (Anthropic) when no ASI:One key is set, writes only** the recommendation's one- or two-sentence explanation. Code checks it. If it fails the check twice, or no model can be reached, I stop and the error is shown: there is no fallback text.
+- My chat replies and cards are built by code from the round's messages and the hospital file. Reading what you type (and the buttons you tap) and finding the device is done in code too, not by a language model.
 
 ## Humans decide
 

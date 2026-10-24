@@ -3,7 +3,7 @@ import { MOCK_REFUSAL } from "@/features/agents/defend";
 import { recRow, runRow, withRun } from "@/features/fixtures";
 import type { Hospital, RunView, SessionSnapshot } from "@/lib/stdb/types";
 import {
-  beforeAfter, hullOf, keptWorking, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, showBlocker,
+  beforeAfter, cutStops, hullOf, keptWorking, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, showBlocker,
   stripPending, withoutSegmentation,
 } from "./pair";
 
@@ -274,5 +274,19 @@ describe("sceneOf", () => {
     expect(s.activeRunId).toBe("");
     expect(s.devices).toEqual([]);
     expect(s.totals.patientsAffected).toBe(0);
+  });
+});
+
+describe("cutStops", () => {
+  const flow = (id: string, from: string, to: string) => ({ id, from, to, protocol: "x", purpose: "p" }) as never;
+  it("marks a cut connection the infection reached from either end, and no other", () => {
+    const cut = [flow("f1", "mri_2", "pacs"), flow("f2", "ws_1", "file"), flow("f3", "ct_1", "ws_2")];
+    const devices = [
+      { deviceId: "mri_2", infected: true },
+      { deviceId: "ws_2", infected: true },
+      { deviceId: "ws_1", infected: false },
+    ];
+    expect(cutStops(cut, devices).map((f) => f.id)).toEqual(["f1", "f3"]);
+    expect(cutStops(cut, [])).toEqual([]);
   });
 });

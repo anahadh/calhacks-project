@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { SystemsDown } from "@/components/panel/spread";
 import { SceneBoundary } from "@/components/scene/scene-boundary";
 import { Brand } from "@/components/shell/brand";
@@ -9,18 +9,19 @@ import { pairOf, roundRefusal, SPEEDS, type PlaybackControl } from "@/lib/stdb/r
 import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
 import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
 import {
-  beforeAfter, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending, withoutSegmentation,
-  type Delta, type Segment,
+  beforeAfter, cutStops, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending,
+  withoutSegmentation, type Delta, type Segment,
 } from "./pair";
-import { PlanScene } from "./plan-scene";
+import { PlanScene, sharedCamera } from "./plan-scene";
 
 // The segmentation plan screen (UX.md "Solution view", the design's screen 4):
-// the plan's rerun of the same attack, on one scene, with what the baseline
-// rerun ("no segmentation") did drawn against it as numbers. Both are live
-// runs the watcher feeds through the engine, moved as one pair; every tab
-// opens this view while session.solution_pair_id is set. The scene and the
-// side column read the plan run's rows; the baseline's row gives the
-// "without segmentation" numbers. Nothing here computes spread.
+// the same attack replayed on two buildings side by side, "No segmentation" on
+// the left and the plan on the right, in lockstep under one transport and
+// clock. Both are live runs the watcher feeds through the engine, moved as one
+// pair; every tab opens this view while session.solution_pair_id is set. Each
+// scene reads its own run's rows; the side column reads both run rows. The two
+// cameras are shared, so dragging one building turns the other. Nothing here
+// computes spread.
 
 const MIN_SPAN = 16; // 4 simulated hours, until the run settles
 
@@ -33,6 +34,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const index = useSessionIndex(planScene);
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
   const [floor, setFloor] = useState("all");
+  const [camera] = useState(sharedCamera);
   const [err, setErr] = useState<string>();
   const [closing, setClosing] = useState(false);
 
@@ -43,6 +45,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const tick = planRun?.tick ?? clock.tick;
   const segments = useMemo(() => segmentsOf(hospital, rows.devices), [hospital, rows.devices]);
   const flows = useMemo(() => planFlows(hospital, planRun), [hospital, planRun]);
+  const stops = useMemo(() => cutStops(flows.cut, rows.devices), [flows.cut, rows.devices]);
   const deltas = beforeAfter(hospital, none, planRun, rec?.rules.length);
   const pending = stripPending(none, planRun);
   const ghost = withoutSegmentation(base.run ?? none, base.devices, tick);
@@ -94,7 +97,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
         <section aria-label="Segmentation plan" className="panel flex min-w-0 flex-[999_1_760px] flex-col overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-line p-4">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="eyebrow">Segmentation plan</span>
+              <span className="eyebrow">Same attack, twice</span>
               <span className="readout text-[19px] leading-6 text-ink">{rec?.name ?? planRun?.label ?? "Computing the plan…"}</span>
               <span className="num text-xs text-ink-muted">{subtitle}</span>
             </div>
@@ -128,36 +131,70 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
               <Legend />
             </div>
 
-            <div className="relative min-h-[620px] flex-1">
-              <SceneBoundary session={planScene}>
-                <PlanScene
-                  hospital={hospital}
-                  devices={rows.devices}
-                  segments={segments}
-                  kept={flows.kept}
-                  cut={flows.cut}
-                  patientZero={planRun?.patientZero}
-                  hoveredZone={hoveredZone}
-                  onHoverZone={setHoveredZone}
-                  floorId={floor === "all" ? undefined : floor}
-                />
-              </SceneBoundary>
-              <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
-                Drag to rotate · scroll to zoom · hover a device
-              </span>
+            <div className="grid flex-grow grid-cols-1 gap-px border-t border-line bg-line lg:grid-cols-2">
+              <Side
+                title="No segmentation"
+                tone="infected"
+                infected={ghost}
+                total={hospital.devices.length}
+                note="Every device can reach every other"
+              >
+                <SceneBoundary session={sceneOf(session, { ...base, run: base.run ?? none })}>
+                  <PlanScene
+                    id="none"
+                    shared={camera}
+                    hospital={hospital}
+                    devices={base.devices}
+                    segments={[]}
+                    kept={[]}
+                    cut={[]}
+                    stops={[]}
+                    patientZero={none?.patientZero ?? planRun?.patientZero}
+                    hoveredZone={hoveredZone}
+                    onHoverZone={setHoveredZone}
+                    floorId={floor === "all" ? undefined : floor}
+                  />
+                </SceneBoundary>
+              </Side>
+              <Side
+                title={rec?.name ? `With the plan: ${rec.name}` : "With the plan"}
+                tone="healthy"
+                infected={rows.totals.devicesCompromised}
+                total={hospital.devices.length}
+                note={`${segments.length} segments · ${flows.cut.length} connections cut · ${stops.length} stopped at a wall`}
+              >
+                <SceneBoundary session={planScene}>
+                  <PlanScene
+                    id="plan"
+                    shared={camera}
+                    hospital={hospital}
+                    devices={rows.devices}
+                    segments={segments}
+                    kept={flows.kept}
+                    cut={flows.cut}
+                    stops={stops}
+                    patientZero={planRun?.patientZero}
+                    hoveredZone={hoveredZone}
+                    onHoverZone={setHoveredZone}
+                    floorId={floor === "all" ? undefined : floor}
+                  />
+                </SceneBoundary>
+              </Side>
             </div>
+            <span className="num px-4 py-2 text-[11px] text-ink-faint">
+              Drag either building to turn both · scroll to zoom · hover a device
+            </span>
           </div>
         </section>
 
-        <aside aria-label="What segmentation saved" className="flex min-w-0 flex-[1_1_380px] flex-col gap-5">
-          <Infected total={hospital.devices.length} infected={rows.totals.devicesCompromised} ghost={ghost} />
+        <aside aria-label="What segmentation saved" className="flex min-w-0 flex-[1_1_320px] flex-col gap-5">
+          <Headline before={ghost} after={rows.totals.devicesCompromised} total={hospital.devices.length} />
           <Saved deltas={deltas} pending={pending} />
           <Segments segments={segments} hovered={hoveredZone} onHover={setHoveredZone} />
-          <SystemsDown session={planScene} index={index} />
-          <p className="num m-0 text-[11px] leading-relaxed text-ink-faint">
-            Illustrative simulation. Spread rates are not measured from real incidents. This rerun is a simulation, not a
-            change to any network: only humans decide what gets deployed.
-          </p>
+          <details className="group">
+            <summary className="eyebrow cursor-pointer list-none">Systems · with the plan <span className="text-ink-faint group-open:hidden">▸</span><span className="hidden text-ink-faint group-open:inline">▾</span></summary>
+            <div className="mt-3"><SystemsDown session={planScene} index={index} /></div>
+          </details>
           {notes.length > 0 && (
             <details className="num text-[11px] text-ink-faint">
               <summary className="cursor-pointer">What the engine assumed ({notes.length})</summary>
@@ -168,7 +205,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
       </main>
 
       <footer className="num mt-auto border-t border-line px-4 py-3 text-[11px] text-ink-faint md:px-6">
-        Synthetic data · illustrative simulation · humans approve every plan.
+        Synthetic data · illustrative simulation, not a change to any network · only humans decide what gets deployed.
       </footer>
     </div>
   );
@@ -349,8 +386,8 @@ function Legend() {
   return (
     <ul className="num m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-xs leading-4 text-ink-muted">
       <li className="inline-flex items-center gap-2">
-        <span className="h-2.5 w-4 rounded-full border-[1.5px] border-state-zone" />
-        Infected segment
+        <span className="h-2.5 w-4 rounded-full border-[1.5px] border-state-zone bg-state-zone/15" />
+        Segment wall (plan side)
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="h-px w-5 bg-state-healthy" />
@@ -387,45 +424,64 @@ function Legend() {
 }
 
 /**
- * Devices infected under the plan, with the baseline's count by the same step
- * hatched past it, and the difference as infections blocked. `infected` is the
- * plan run row's column; `ghost` is withoutSegmentation().
+ * One side of the split screen: its scene with a caption over it, the side's
+ * name and its devices-infected count at this step. `infected` is a run row's
+ * column (plan side) or withoutSegmentation() (baseline side).
  */
-function Infected({ total, infected, ghost }: { total: number; infected: number; ghost?: number }) {
-  const share = total ? Math.round((infected / total) * 100) : 0;
-  const pct = (n: number) => (total ? Math.min(100, (n / total) * 100) : 0);
-  const blocked = ghost === undefined ? undefined : Math.max(0, ghost - infected);
+function Side({
+  title,
+  tone,
+  infected,
+  total,
+  note,
+  children,
+}: {
+  title: string;
+  tone: "infected" | "healthy";
+  infected?: number;
+  total: number;
+  note: string;
+  children: ReactNode;
+}) {
+  const color = tone === "infected" ? "text-state-infected" : "text-state-healthy";
   return (
-    <div className="panel flex flex-col gap-4 p-4">
-      <div className="flex flex-col gap-3">
-        <span className="eyebrow">Devices infected</span>
+    <div className="relative min-h-[440px] min-w-0 bg-scene-ground lg:min-h-[520px]">
+      {children}
+      <div className="pointer-events-none absolute left-3 top-3 flex max-w-[calc(100%-24px)] flex-col gap-0.5 rounded-ctl border border-line bg-bg/85 px-3 py-2 backdrop-blur-sm">
+        <span className="eyebrow truncate">{title}</span>
         <div className="flex items-baseline gap-2 tabular-nums">
-          <span className="readout text-readout-l">{infected}</span>
+          <span className={`readout text-readout-l ${infected === undefined ? "text-ink-faint" : color}`}>{infected ?? "—"}</span>
           <span className="readout text-readout-m text-ink-muted">/ {total}</span>
-          <span className="num ml-auto text-xs text-ink-muted">{share}%</span>
+          <span className="num text-xs text-ink-muted">devices infected</span>
         </div>
-        <div role="progressbar" aria-label="Devices infected" aria-valuemin={0} aria-valuemax={total} aria-valuenow={infected} className="relative h-2.5 overflow-hidden rounded-[1px] bg-panel2">
-          {ghost !== undefined && ghost > infected && (
-            <span
-              aria-hidden
-              className="absolute inset-y-0 transition-[width,left] duration-fade ease-breath"
-              style={{
-                left: `${pct(infected)}%`,
-                width: `${pct(ghost) - pct(infected)}%`,
-                background: "repeating-linear-gradient(135deg, rgba(255,106,46,0.6) 0 2px, transparent 2px 5px)",
-              }}
-            />
-          )}
-          <span className="absolute inset-y-0 left-0 bg-state-infected transition-[width] duration-fade ease-breath" style={{ width: `${pct(infected)}%` }} />
+        <span className="num text-[11px] text-ink-faint">{note}</span>
+      </div>
+    </div>
+  );
+}
+
+/** The one number: devices infected without segmentation, struck through, against the plan's, at this step. */
+function Headline({ before, after, total }: { before?: number; after: number; total: number }) {
+  const blocked = before === undefined ? undefined : Math.max(0, before - after);
+  const pct = (n: number) => (total ? Math.min(100, (n / total) * 100) : 0);
+  return (
+    <div className="panel flex flex-col gap-3 p-4">
+      <span className="eyebrow">Devices infected · at this step</span>
+      <div className="flex items-baseline gap-3 tabular-nums">
+        <span className="readout text-readout-l text-state-infected line-through decoration-2 opacity-70">{before ?? "—"}</span>
+        <span className="num text-sm text-ink-faint">→</span>
+        <span className="readout text-readout-l text-state-healthy">{after}</span>
+        <span className="num ml-auto text-xs text-ink-muted">{blocked === undefined ? "" : `${blocked} blocked`}</span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <div role="progressbar" aria-label="Without segmentation" aria-valuemin={0} aria-valuemax={total} aria-valuenow={before ?? 0} className="h-2 overflow-hidden rounded-[1px] bg-panel2">
+          <span className="block h-full bg-state-infected transition-[width] duration-fade ease-breath" style={{ width: `${pct(before ?? 0)}%` }} />
         </div>
-        <span className="num text-xs text-ink-muted">
-          {ghost === undefined ? "Hatched: the no-segmentation rerun is still computing" : `Hatched: ${ghost} infected by now without segmentation`}
-        </span>
+        <div role="progressbar" aria-label="With the plan" aria-valuemin={0} aria-valuemax={total} aria-valuenow={after} className="h-2 overflow-hidden rounded-[1px] bg-panel2">
+          <span className="block h-full bg-state-healthy transition-[width] duration-fade ease-breath" style={{ width: `${pct(after)}%` }} />
+        </div>
       </div>
-      <div className="flex items-center gap-3 border-t border-line pt-3">
-        <span className="eyebrow flex-auto">Infections blocked</span>
-        <span className="readout text-readout-m">{blocked ?? "—"}</span>
-      </div>
+      {before === undefined && <span className="num text-xs text-ink-muted">The no-segmentation rerun is still computing</span>}
     </div>
   );
 }
@@ -462,9 +518,9 @@ function Saved({ deltas, pending }: { deltas: Delta[]; pending: string | null })
 function Segments({ segments, hovered, onHover }: { segments: Segment[]; hovered: string | null; onHover: (zone: string | null) => void }) {
   return (
     <section aria-labelledby="segments" className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-baseline gap-x-2">
         <h2 id="segments" className="eyebrow m-0">Segments · {segments.length}</h2>
-        <p className="num m-0 text-xs leading-5 text-ink-muted">Shown on the hospital when infected. Hover a segment or a device to see any other.</p>
+        <span className="eyebrow">· the walls on the right</span>
       </div>
       <ul className="m-0 flex list-none flex-col overflow-hidden rounded-panel border border-line p-0" onMouseLeave={() => onHover(null)}>
         {segments.map((s) => {

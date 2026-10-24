@@ -201,7 +201,7 @@ From `agent.py` 0.26.1:
   - Devices resolve by id or name, ignoring case, spaces and punctuation (`mri2` = MRI 2). A device that's off the network until its challenge (`dev_unknown_7`) doesn't count.
 - A chat round goes through the same `begin()` as `/start_round`, with session `chat-<8 hex>`, seed 1337 and no challenges.
   - The "Started a round…" reply goes out before the round can move on, because the Coordinator handles one message at a time.
-  - When the round reaches `done`, the sender gets a summary built from the messages the Coordinator saw, with their Claude or template text. It labels templates and fixtures, and ends with who must sign off and "Nothing is applied to any real network."
+  - When the round reaches `done`, the sender gets a summary built from the messages the Coordinator saw, with the model's text. It labels fixtures, and ends with who must sign off and "Nothing is applied to any real network."
 - Chat replies sent later (the summary goes out from the handler of the round's last verdict) use `ctx.send_raw(..., protocol_digest=chat_protocol.digest)`, so they carry the chat protocol's digest, not the handler's.
 - Chat text is relayed as `type: "chat"` rows: received with `from: "humans"`, replies with `to: "humans"`. Rows that belong to a round use its session; the rest go under `asi1-chat`. The sender's address isn't stored, and acks aren't relayed.
 - **Fixture mode refuses other patient zeros.** Every fixture result is for MRI 2, so `tools.run_sim` now raises "fixture results exist only for an attack starting at MRI 2", rather than returning MRI 2's numbers for "simulate from CT 1". The chat reply passes that on.
@@ -243,7 +243,7 @@ HIPPO_SIM_FIXTURES=1 .venv/bin/python run_all.py      # shell 1: the four agents
 ```
 
 - `run_all.py` starts `inventory.py`, `flow.py`, `clinical_workflow.py` and `coordinator.py` as separate processes and prefixes each one's output with `[agent]`. Ctrl-C or SIGTERM stops all four; if one exits, the rest are stopped.
-- With no `WATCHER_RELAY_URL`, each sent message prints one line (`#seq from → to type summary [fixture]`), followed by its worded text and who wrote it (`“…” (template)` or `(claude)`). Every row goes to `agents/logs/<sessionId>.jsonl`.
+- With no `WATCHER_RELAY_URL`, each sent message prints one line (`#seq from → to type summary [fixture]`), followed by its worded text and who wrote it (`(asi1)` or `(claude)`). Every row goes to `agents/logs/<sessionId>.jsonl`.
 - `HIPPO_SIM_FIXTURES=1` reads `agents/fixtures/results/<candidate id or baseline>.json` (with challenges: `<id>@<challenge>.json`). Without it, `HIPPO_SIM_BIN` must point at `hippo-sim`, or the round fails with that error. Nothing falls back silently.
 - Without `HIPPO_OPT_BIN`, the candidates are `agents/fixtures/candidates/*.json`.
 
@@ -297,8 +297,8 @@ Code makes every decision (`logic/`). Claude only puts it into words, in four pl
   - Every number in the text must appear in some fact value, including numbers inside names ("MRI 2").
   - None of the words approved, ready, safe to deploy, death(s), died, fatal or mortality, as whole words, case-insensitive (so "already" is fine).
   - At most 280 characters and 1–2 sentences.
-- **On a failure:** one retry, listing the errors. If that fails too, or on a refusal, an API error, a timeout, or no `ANTHROPIC_API_KEY`, the text is a template sentence built from the same facts. Templates pass the same checks, and a test enforces it.
-- **Every relay row has `reasonSource`**, `claude` or `template`, and the message carries it too (`reasonSource`, `textSource`, `explanationSource`). A template is never passed off as Claude's (rule 13). Each process logs one warning the first time it falls back for a missing key.
+- **On a failure:** one retry, listing the errors. If that fails too, or on a refusal, an API error, a timeout, or no key, `explain()` raises `LlmError`: the agent's step fails and the error becomes the round's status (`fail()` in `runtime.py`). There is no fallback text. With `ASI1_API_KEY` set, ASI:One's `asi1-mini` writes instead of Claude (source `asi1`), through the same checks and retry.
+- **Every relay row has `reasonSource`**, `asi1` or `claude`, and the message carries it too (`reasonSource`, `textSource`, `explanationSource`). The live tests word messages through a local fake ASI:One server (`ASI1_BASE_URL`).
 - **Rule 7 in code:** `llm.with_text()` sets only the text and its source, and raises `DecisionChanged` if any other field would differ. `tests/test_llm.py` feeds contradictory model output (for example "I accept this" on a rejection) and checks that the decision, constraint, choices, allowed roles, required roles and numbers are unchanged.
 - **Not run against the real API yet:** this cloud session has no `ANTHROPIC_API_KEY` (and no `ant` login). api.anthropic.com is reachable, though. Set the key in `agents/.env` and run `HIPPO_SIM_FIXTURES=1 .venv/bin/python run_all.py`. A message whose line ends `(claude)` was written by Claude.
 - `propose()` (Flow's Claude-proposed alternatives) is F2's and not written yet.
@@ -358,3 +358,8 @@ Pure functions; the agents only execute what they return (AGENTS.md rule 7). No 
   - Held proposals and revisions are then processed in order.
 - **Runtime contract:** Inventory sends its `Question` before the `Verdict` it belongs to, and remembers which device each of its question ids is about, so it can apply an `answer` action. Both are implemented in `agents/inventory.py`.
 - Not handled yet: `Reassess` (challenges) has no event in `Round`.
+
+
+## Options for humans (orchestrator)
+
+Every round, the Coordinator puts the Flow Agent's lead plan and up to two alternatives (`Proposal.alternatives` / `Revision.alternatives`, built by `logic/candidates.py` and tested with hippo-sim) to both guardians. Every rejection, on any plan, adds its constraint, so the next round repairs all of them. The round ends with up to three `Recommendation`s (`option` 1-3) when at least two plans are accepted, when the lead is accepted and no alternative is left to repair, or at the last round with any plan accepted. Humans choose one in the Agent Room and sign it off; agent acceptance is never approval.

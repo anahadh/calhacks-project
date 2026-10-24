@@ -304,7 +304,7 @@ export const mockSession: SessionSnapshot = {
   questions: [],
   recommendations: [
     {
-      id: "mock:2", round: 2, name: "No SMB between zones, keep lab results",
+      id: "mock:2", round: 2, option: 1, name: "No SMB between zones, keep lab results",
       rules: [
         "Scanners may send images to PACS on DICOM 104. Nothing else.",
         "Workstations may reach the EHR engine on HTTPS 443.",

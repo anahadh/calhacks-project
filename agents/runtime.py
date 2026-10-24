@@ -71,19 +71,20 @@ class Profile:
 PROFILES = {
     "inventory": Profile(
         "Hippocratech Inventory Agent", "hippocratech-inventory",
-        "Blocks any network change to a hospital device nobody can name, and asks a human what it is. Simulation only.",
+        "Internal agent, called by the Hippocratech Orchestrator (no chat). Blocks any network change to a hospital device nobody can name, and asks a human what it is. Simulation only.",
     ),
     "flow": Profile(
         "Hippocratech Flow Agent", "hippocratech-flow",
-        "Proposes and revises hospital network-segmentation plans, each tested against the same simulated attack.",
+        "Internal agent, called by the Hippocratech Orchestrator (no chat). Proposes and revises hospital network-segmentation plans, each tested against the same simulated attack.",
     ),
     "clinical_workflow": Profile(
         "Hippocratech Clinical Workflow", "hippocratech-clinical-workflow",
-        "Rejects any segmentation plan that breaks a protected clinical flow or keeps a critical service down.",
+        "Internal agent, called by the Hippocratech Orchestrator (no chat). Rejects any segmentation plan that breaks a protected clinical flow or keeps a critical service down.",
     ),
     "coordinator": Profile(
-        "Hippocratech Coordinator", "hippocratech-coordinator",
-        "Runs the agents' negotiation and routes the plan to the humans who must sign off. Chat: 'simulate ransomware from MRI 2'.",
+        "Hippocratech Orchestrator", "hippocratech-coordinator",
+        "Orchestrator: chat with me on ASI:One. I run Inventory, Flow and Clinical Workflow agents to build a ransomware "
+        "segmentation plan for a simulated hospital, then route it to the humans who must sign off. Try 'simulate ransomware from MRI 2'.",
     ),
 }
 
@@ -171,7 +172,7 @@ def round_of(msg: Strict) -> int:
 
 
 def reason_of(msg: Strict) -> tuple[str | None, str | None]:
-    """A message's worded text and who wrote it ("claude" or "template"), for the relay row."""
+    """A message's worded text and who wrote it ("claude", "asi1" or "template"), for the relay row."""
     fields = TEXT_FIELDS.get(type(msg))
     if fields is None:
         return None, None
@@ -203,9 +204,13 @@ async def received(me: str, sender_address: str, type: str, msg: Strict) -> str:
 
 
 async def fail(ctx: Context, me: str, session_id: str, error: Exception) -> None:
-    """Show the error (rule 13): log it and leave the agent idle. No fallback behavior."""
+    """Show the error (rule 14): log it, stop the round with the error as its state's
+    detail (the Agent Room shows it), and leave the agent idle. No fallback behavior."""
     ctx.logger.error(f"{type(error).__name__}: {error}")
+    detail = f"The {me.replace('_', ' ')} agent failed: {error}"[:500]
     try:
+        await relay.post(session_id, 0, me, "relay", "round_state",
+                         {"sessionId": session_id, "round": 0, "state": "done", "detail": detail}, direction="sent")
         await relay.status(session_id, me, "idle")
     except ToolError as e:
         ctx.logger.error(f"relay also failed: {e}")

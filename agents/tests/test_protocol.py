@@ -79,6 +79,7 @@ SAMPLES = {
     p.RoundState: {"sessionId": "demo", "round": 2, "state": "waiting_for_human"},
     p.StartRound: {"sessionId": "demo", "runId": "run_baseline", "patientZero": "mri_2", "seed": 1337},
     p.Candidate: {"id": "cand_keep_scans", "policy": POLICY},
+    p.Alternative: {"policyId": "wall_imaging", **POLICY, "testResult": RUN_RESULT},
     p.Reassess: {"sessionId": "demo", "challenge": "unknown_device_imaging"},
     p.Resume: {
         "sessionId": "demo", "questionId": "q_1", "choice": "workstation",

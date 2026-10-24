@@ -51,6 +51,7 @@ class Settings:
     log_dir: Path  # RELAY_LOG_DIR, default agents/logs; used when WATCHER_RELAY_URL is unset
     agentverse_api_key: str | None  # AGENTVERSE_API_KEY: with AGENT_MAILBOX=1, agents connect their own mailbox
     local_peers: dict[str, str]  # LOCAL_PEERS: extra "address=url" pairs for the local resolver (tests, dev)
+    web_url: str  # HIPPO_WEB_URL: the web app, for the "watch the agents live" link in chat replies
 
 
 def settings() -> Settings:
@@ -66,6 +67,7 @@ def settings() -> Settings:
         log_dir=Path(_str("RELAY_LOG_DIR") or AGENTS_DIR / "logs"),
         agentverse_api_key=_str("AGENTVERSE_API_KEY"),
         local_peers=_peers(_str("LOCAL_PEERS")),
+        web_url=(_str("HIPPO_WEB_URL") or "http://localhost:3000").rstrip("/"),
     )
     if s.relay_url and not s.relay_token:
         raise ConfigError("WATCHER_RELAY_URL is set but RELAY_TOKEN is not")

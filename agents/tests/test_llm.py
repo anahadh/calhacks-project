@@ -1,4 +1,4 @@
-"""llm.py with a mocked Anthropic client: checks, retry, template fallback, and that
+"""llm.py with mocked Anthropic and ASI:One clients: checks, retry, errors (never a fallback), and that
 model output never changes a decision (AGENTS.md rule 7). No network."""
 
 import asyncio
@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import anthropic
+import httpx
 import httpx2
 import pytest
 
@@ -107,22 +108,6 @@ def test_forbidden_words_length_and_sentences():
     assert llm.problems("One. Two. Three.", f) == ["has 3 sentences; write 1 or 2"]
 
 
-@pytest.mark.parametrize("kind, build", [
-    ("verdict_reject", lambda: reject_verdict()[1]),
-    ("verdict_accept", lambda: facts.verdict(H, clinical.check("s", 2, "cand_keep_scans", result("cand_keep_scans"), H),
-                                             proposal("cand_keep_scans"), "Contain imaging, keep scans flowing")),
-    ("proposal", lambda: facts.plan(H, POLICY.policy, result("cand_isolate_imaging"), result("baseline"), 1)),
-    ("recommendation", lambda: facts.recommendation(H, sample_recommendation(), result("baseline"), 2)),
-    ("revision", lambda: facts.revision(H, candidate("cand_keep_scans"), result("cand_keep_scans"), result("baseline"), 2,
-                                        [reject_verdict()[0].constraint], ["Imaging may send scans to PACS over DICOM (104)."], [])),
-    ("question", lambda: facts.question(H, inventory.question("s", 1, "dev_unknown_7"), ["unknown_device_imaging"])),
-])
-def test_templates_pass_their_own_checks(kind, build):
-    f = build()
-    text = llm.template(kind, f)
-    assert llm.problems(text, f) == [], text
-
-
 def sample_recommendation():
     r = result("cand_keep_scans")
     v = clinical.check("s", 2, "cand_keep_scans", r, H)
@@ -152,17 +137,15 @@ def test_model_comes_from_env(client, monkeypatch):
     assert fake.calls[0]["model"] == "claude-opus-5-5" and "thinking" not in fake.calls[0]
 
 
-def test_invented_number_is_retried_then_falls_back(client, caplog):
+def test_invented_number_is_retried_then_breaks(client):
     _, f = reject_verdict()
     fake = client(answer("I can't accept this: 17 devices would fall."), answer("I can't accept this: 9 flows break."))
-    with caplog.at_level(logging.WARNING, logger="llm"):
-        text, source = run(llm.explain("verdict_reject", f))
-    assert source == "template" and text == llm.template("verdict_reject", f)
+    with pytest.raises(llm.LlmError, match="rejected twice"):
+        run(llm.explain("verdict_reject", f))
     assert len(fake.calls) == 2
     retry = fake.calls[1]["messages"]
     assert retry[1] == {"role": "assistant", "content": json.dumps({"text": "I can't accept this: 17 devices would fall."})}
     assert "uses numbers that are not in the facts: 17" in retry[2]["content"]
-    assert "rejected twice" in caplog.text
 
 
 def test_retry_can_succeed(client):
@@ -175,8 +158,8 @@ def test_retry_can_succeed(client):
 def test_forbidden_word_is_rejected(client):
     _, f = reject_verdict()
     fake = client(answer("Approved by me."), answer("This is ready to go."))
-    text, source = run(llm.explain("verdict_reject", f))
-    assert source == "template"
+    with pytest.raises(llm.LlmError):
+        run(llm.explain("verdict_reject", f))
     assert "uses forbidden words: approved" in fake.calls[1]["messages"][2]["content"]
 
 
@@ -188,13 +171,15 @@ def test_forbidden_word_is_rejected(client):
 def test_malformed_output_is_rejected(client, raw):
     _, f = reject_verdict()
     client(answer(raw=raw), answer(raw=raw))
-    assert run(llm.explain("verdict_reject", f))[1] == "template"
+    with pytest.raises(llm.LlmError):
+        run(llm.explain("verdict_reject", f))
 
 
-def test_refusal_falls_back(client):
+def test_refusal_breaks(client):
     _, f = reject_verdict()
     client(answer("x", stop_reason="refusal"), answer("x", stop_reason="refusal"))
-    assert run(llm.explain("verdict_reject", f))[1] == "template"
+    with pytest.raises(llm.LlmError):
+        run(llm.explain("verdict_reject", f))
 
 
 @pytest.mark.parametrize("error", [
@@ -203,29 +188,27 @@ def test_refusal_falls_back(client):
     anthropic.APIStatusError("overloaded", response=httpx2.Response(529, request=REQUEST), body=None),
     anthropic.RateLimitError("slow down", response=httpx2.Response(429, request=REQUEST), body=None),
 ])
-def test_api_errors_fall_back_to_the_template(client, error):
+def test_api_errors_break(client, error, monkeypatch):
+    monkeypatch.setattr(llm, "API_BACKOFF_S", 0)
     _, f = reject_verdict()
-    fake = client(error)
-    assert run(llm.explain("verdict_reject", f)) == (llm.template("verdict_reject", f), "template")
-    assert len(fake.calls) == 1  # no second try after an API error
+    fake = client(error, error, error)
+    with pytest.raises(llm.LlmError):
+        run(llm.explain("verdict_reject", f))
+    assert len(fake.calls) == llm.API_TRIES  # the same call, asked again; then it breaks, no fallback
 
 
-def test_missing_key_uses_the_template_and_warns_once(monkeypatch, caplog):
+def test_missing_key_breaks(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr(llm, "_warned_no_key", False)
     monkeypatch.setattr(llm, "_make_client", lambda: pytest.fail("no client without a key"))
     _, f = reject_verdict()
-    with caplog.at_level(logging.WARNING, logger="llm"):
-        first = run(llm.explain("verdict_reject", f))
-        second = run(llm.explain("verdict_reject", f))
-    assert first == second == (llm.template("verdict_reject", f), "template")
-    assert caplog.text.count("ANTHROPIC_API_KEY is not set") == 1
+    with pytest.raises(llm.LlmError, match="neither ASI1_API_KEY nor ANTHROPIC_API_KEY is set"):
+        run(llm.explain("verdict_reject", f))
 
 
-def test_client_is_configured_for_10_seconds_and_no_sdk_retries(monkeypatch):
+def test_client_is_configured_for_20_seconds_and_no_sdk_retries(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key, never sent")
     c = llm._make_client()
-    assert isinstance(c, anthropic.AsyncAnthropic) and c.timeout == 10.0 and c.max_retries == 0
+    assert isinstance(c, anthropic.AsyncAnthropic) and c.timeout == 20.0 and c.max_retries == 0
 
 
 # --- rule 7: model output never changes a decision ---
@@ -266,9 +249,9 @@ def test_question_choices_roles_and_recommendation_roles_unchanged(client):
 
 def test_with_text_refuses_to_change_anything_else():
     v, _ = reject_verdict()
-    assert llm.with_text(v, "words", "template").constraint == v.constraint
+    assert llm.with_text(v, "words", "asi1").constraint == v.constraint
     with pytest.raises(KeyError):
-        llm.with_text(v.constraint, "words", "template")  # only message types with a text field
+        llm.with_text(v.constraint, "words", "asi1")  # only message types with a text field
 
 
 def test_question_facts_use_names_not_ids():
@@ -276,5 +259,91 @@ def test_question_facts_use_names_not_ids():
     f = facts.question(H, q, ["unknown_device_imaging"])
     assert f["device"] == "Unidentified device" and f["room"] == "Imaging"
     assert f["connectedTo"] == ["Imaging WS 1 over SMB"]
-    text = llm.template("question", f)
-    assert "dev_unknown_7" not in text and llm.problems(text, f) == []
+    assert "dev_unknown_7" not in json.dumps(f)
+
+
+# --- ASI:One ---
+
+
+class FakeAsi1:
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.bodies = []
+
+    async def __call__(self, body):
+        self.bodies.append(body)
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        status, content = reply
+        return httpx.Response(status, json={"choices": [{"message": {"content": content}}]}, request=ASI1_REQUEST)
+
+
+ASI1_REQUEST = httpx.Request("POST", llm.ASI1_URL)
+
+
+@pytest.fixture
+def asi1(monkeypatch):
+    monkeypatch.setenv("ASI1_API_KEY", "test-key, never sent")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key, never sent")  # ASI:One wins when both are set
+    monkeypatch.delenv("ASI1_MODEL", raising=False)
+
+    def install(*replies):
+        fake = FakeAsi1(*replies)
+        monkeypatch.setattr(llm, "_asi1_post", fake)
+        monkeypatch.setattr(llm, "_make_client", lambda: pytest.fail("Claude called while ASI1_API_KEY is set"))
+        return fake
+
+    return install
+
+
+def test_asi1_writes_when_its_key_is_set(asi1):
+    v, f = reject_verdict()
+    fake = asi1((200, json.dumps({"text": "I can't accept this: it cuts a flow care needs."})))
+    assert run(llm.explain("verdict_reject", f)) == ("I can't accept this: it cuts a flow care needs.", "asi1")
+    body = fake.bodies[0]
+    assert body["model"] == "asi1-mini" and body["messages"][0] == {"role": "system", "content": llm.SYSTEM}
+
+
+def test_asi1_fenced_json_is_accepted(asi1):
+    _, f = reject_verdict()
+    asi1((200, '```json\n{"text": "I can\'t accept this: it cuts a flow care needs."}\n```'))
+    assert run(llm.explain("verdict_reject", f))[1] == "asi1"
+
+
+def test_asi1_bad_number_is_retried_then_breaks(asi1):
+    _, f = reject_verdict()
+    fake = asi1((200, json.dumps({"text": "Only 987 devices."})), (200, json.dumps({"text": "Still 987."})))
+    with pytest.raises(llm.LlmError, match="rejected twice"):
+        run(llm.explain("verdict_reject", f))
+    assert len(fake.bodies) == 2
+    assert "987" in fake.bodies[1]["messages"][-1]["content"]
+
+
+@pytest.mark.parametrize("reply", [(400, "{}"), (401, "{}")])
+def test_asi1_errors_break(asi1, reply):
+    _, f = reject_verdict()
+    asi1(reply)
+    with pytest.raises(llm.LlmError):
+        run(llm.explain("verdict_reject", f))
+
+
+def test_asi1_transient_errors_are_asked_again(asi1, monkeypatch):
+    monkeypatch.setattr(llm, "API_BACKOFF_S", 0)
+    _, f = reject_verdict()
+    fake = asi1((500, "{}"), httpx.ConnectTimeout("slow"), (200, json.dumps({"text": "I can't accept this: it cuts a flow care needs."})))
+    assert run(llm.explain("verdict_reject", f))[1] == "asi1"
+    assert len(fake.bodies) == 3
+
+
+def test_asi1_gives_up_after_three_tries_and_a_400_is_not_retried(asi1, monkeypatch):
+    monkeypatch.setattr(llm, "API_BACKOFF_S", 0)
+    _, f = reject_verdict()
+    fake = asi1((503, "{}"), (503, "{}"), (503, "{}"))
+    with pytest.raises(llm.LlmError, match="503"):
+        run(llm.explain("verdict_reject", f))
+    assert len(fake.bodies) == 3
+    fake = asi1((400, "{}"))
+    with pytest.raises(llm.LlmError, match="400"):
+        run(llm.explain("verdict_reject", f))
+    assert len(fake.bodies) == 1

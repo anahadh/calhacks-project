@@ -83,14 +83,15 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `spacetime/src/solution.ts` | F4 | `solution_start`: two `requested` runs with a shared `pair_id` (no segmentation vs the plan), `active_run_id` untouched; `solution_close` clears `session.solution_pair_id` |
 | `spacetime/src/agents.ts` | F1 | `defend_request` (any joined human; refused while any run in the session is `requested` or `running`, or a round is open; writes `defend_request_log`), `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
 | `spacetime/src/question.ts` | F1 | `question_add` (server identity), `question_answer` (allowed roles only, from the caller's presence; never the server) |
-| `spacetime/src/recommendation.ts` | F2 | `recommendation_upsert` (server identity): keyed by session and round; inserts as `draft` and never changes `status` |
+| `spacetime/src/recommendation.ts` | F2 | `recommendation_upsert` (server identity): keyed by session, round and option (`s:round` for option 1, `s:round:2`, `s:round:3` for alternatives); inserts as `draft` and never changes `status` |
 | `spacetime/src/review.ts` (planned) | F3 | `review_submit`, the only writer of `recommendation.status` |
 | `spacetime/src/memo.ts` (planned) | F3 | `memo_save_draft` (server identity), `memo_approve` |
 | `apps/web/lib/stdb/module_bindings/` | Base | Generated with `npm run generate -w hippocratech-module`. Never edit by hand |
 | `apps/web/lib/stdb/connection.ts`, `live-session.ts` | Base | The live subscription (session-scoped and run-scoped rows); `useLiveSession` and `useLiveRunRows` (a run's rows by id, e.g. each side of a solution pair) |
 | `apps/web/lib/stdb/snapshot.ts`, `run-status.ts`, `actions.ts` | Base | `snapshotOf(rows)`/`runViewOf` map the generated bindings onto the UI row shapes (no computation); run status helpers; the reducer-calling `SessionActions` |
 | `apps/web/lib/stdb/use-session.ts` | Base | `useSession(id)`/`useRunRows(id)`: live rows when `NEXT_PUBLIC_STDB_URI` is set; the explicit mock only with `NEXT_PUBLIC_MOCK=1`; otherwise `source:'error'` ("Not connected"). No silent fallback (rule 14) |
-| `apps/web/lib/stdb/agent-rows.ts` | Base | Reshapes `agent_message`, `agent_status`, `question`, `recommendation` and the session's round state for the Agent Room (sender's copy of each message, plus humans' answers) |
+| `apps/web/lib/stdb/agent-rows.ts` | Base | Reshapes `agent_message`, `agent_status`, `question`, `recommendation` and the session's round state for the Agent Room (sender's copy of each message, plus humans' answers; ASI:One chat rows as messages to/from `asi1`). For rounds with no session row, the round state and recommendation come from their relayed messages |
+| `apps/web/lib/stdb/room.ts` | F1 | Subscribes to one ASI:One round's `agent_message` and `agent_status` rows (session ids `chat-…`, which have no session row) |
 | `apps/web/lib/stdb/types.ts`, `mock-session.ts` | Base | Row shapes (incl. the new `RunRow` columns and `SessionActions`) and a fixed mid-run demo snapshot (with a sample agent round) for working without a server |
 
 ## Watchers
@@ -119,7 +120,9 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `agents/flow.py` | F1 | Flow uAgent: `optimize()` without protected-flow info, `run_sim` per candidate, `logic.flow.choose`; Proposal or Revision. `llm.propose()` fallback later |
 | `agents/clinical_workflow.py` | F1 | Clinical Workflow uAgent: `logic.clinical.check` on each Proposal/Revision, replies with a Verdict |
 | `agents/coordinator.py` | F1 | Coordinator uAgent: one `Round` per session; REST `/start_round`, `/resume`, `/reassess` (not implemented yet); carries out every Action; chat protocol (ASI:One): starts rounds and sends summaries |
-| `agents/chat.py` | F1 | The Coordinator's chat in code: parse commands, resolve devices by name or id, help, status and round-summary text |
+| `agents/chat.py` | F1 | The orchestrator's chat in code: parse commands (simulate, lookup, devices, protected flows, status, help) and ASI:One card button clicks, resolve devices by name or id, help, status and round-summary text |
+| `agents/logic/candidates.py` | F1 | The Flow Agent's candidate plans, built in code from the baseline attack: cut the attack's path, wall off the zone it starts in, shield the server room, block cross-zone file sharing and remote desktop. Each is an allow-list the engine reads; keep_flow constraints are never cut. Replaces the fixture candidates (no fallback); `HIPPO_OPT_BIN` still overrides |
+| `agents/cards.py` | F1 | ASI:One interactive cards (Agentverse element-tree primitives) for the orchestrator's replies: device picker, device, devices, protected flows, round started, round result |
 | `agents/profiles/*.md` | F1 | Agentverse README for each agent (`readme_path`): stall point, messages, code vs. Claude, human approval, synthetic data |
 | `agents/tools.py` | F1 | `run_sim` (the Python engine's `hippo-sim` via `HIPPO_SIM_BIN`, or `HIPPO_SIM_FIXTURES=1` results), `optimize` (hippo-opt or fixture candidates), `relay` (agent_message/agent_status rows: HTTP or `logs/<session>.jsonl`) |
 | `agents/llm.py` | F2 (implemented by F1) | `explain()` and `question_text()`: Claude words verdict reasons, Question text, Flow's "why this plan" and the recommendation's explanation, with number, word and length checks, one retry, and a labeled template fallback; `with_text()` changes only the text. `propose()` still to come (F2) |
@@ -179,10 +182,12 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `apps/web/features/scene/patients-fx.tsx` | F4 | Patient badges, ambulance diversion |
 | `apps/web/features/scene/camera.ts` | F4 | Follows the infection front, then a wide shot |
 | `apps/web/features/scene/equipment.tsx` | F4 | Key-equipment models |
-| `apps/web/features/solution/solution-view.tsx`, `pair.ts` | F4 | Lockstep split screen fed by the pair's rows, plan on the building, before/after strip from the two run rows, what keeps working; `pair.ts` resolves the pair's two runs by `pairId` |
+| `apps/web/features/solution/solution-view.tsx`, `plan-scene.tsx`, `pair.ts` | F4 | Lockstep split screen fed by the pair's rows: two `PlanScene`s side by side (no segmentation left, the plan right) under one transport and a shared camera, each side captioned with its devices-infected count; the plan side draws the segment walls, kept and cut flows, and a ✕ per cut connection the infection reached (`cutStops`); the side column has the one before/after number, the saved grid and the segments list. `pair.ts` resolves the pair's two runs by `pairId` |
 | `apps/web/features/scene/challenge-menu.tsx` | F4 | **Change conditions** presets |
 | `apps/web/components/plan/plan-2d.tsx` | F4 | 2D fallback |
-| `apps/web/features/agents/agent-room.tsx` | F1 | Agents tab: agent list and status, conversation thread, round header, recommendations column. Still to add: agent map, message particles, readable pace |
+| `apps/web/features/agents/agent-room.tsx` | F1 | Agent Room: the orchestrator graph with an ASI:One node and a particle per message, the negotiation table (one column per plan, one stamp per reviewing agent's verdict), constraints learned, transcript tab, round chip. `AgentRoom` (session modal) and `AgentRoomFrame` (shared with app/room) |
+| `apps/web/features/agents/negotiation.ts` | F1 | Pure: agent_message rows → plan columns, verdict stamps and constraint chips (met when the same agent accepts a later plan) |
+| `apps/web/app/room/[sessionId]/` | F1 | Live, read-only Agent Room for a round started from ASI:One chat; the orchestrator's chat reply links here (`HIPPO_WEB_URL`) |
 | `apps/web/features/agents/agents.ts`, `agent-icon.tsx` | F1 | Agent names and objectives, message-type shapes, agent icons |
 | `apps/web/features/agents/scene-highlights.tsx` | F1 | Scene highlights driven by each `agent_message` |
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
