@@ -180,6 +180,29 @@ def test_cors_allows_the_dev_origin(tmp_path):
     assert resp.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
 
+def _demo_hospital():
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).resolve().parents[2] / "data/hospitals/demo.json").read_text())["hospital"]
+
+
+def test_app_run_executes_a_hospital_live(tmp_path):
+    client = TestClient(create_app(tmp_path))
+    resp = client.post("/app/run", json={"hospital": _demo_hospital(), "patient_zero": "mri_2"})
+    assert resp.status_code == 200
+    sim = resp.json()
+    assert sum(d["infected"] for d in sim["devices"]) > 5
+    assert sim["medicalDevicesEncrypted"] == 0
+    assert len(sim["snapshots"]) == sim["finalTick"] + 1
+
+
+def test_app_run_rejects_a_bad_patient_zero(tmp_path):
+    client = TestClient(create_app(tmp_path))
+    resp = client.post("/app/run", json={"hospital": _demo_hospital(), "patient_zero": "mri_1"})
+    assert resp.status_code == 422
+    assert resp.json()["error"]["type"] == "invalid_app_input"
+
+
 def test_planner_endpoint_excludes_campaign(tmp_path):
     scenario, campaign = case()
     client = TestClient(create_app(tmp_path, scenarios={"cuh": scenario}))

@@ -28,6 +28,7 @@ from pydantic import ValidationError
 
 from . import RULES_VERSION, cache
 from .adapters import load_cuh
+from .app_bridge import run_session
 from .planner import PlannerBoundaryError, planner_scenario_payload
 from .schema import Campaign, Plan, Scenario, StrictModel
 from .serialize import CONTENT_TYPE, result_bytes
@@ -57,6 +58,13 @@ class ReplayRequest(StrictModel):
     plan: Plan | None = None
     scenario_id: str | None = None
     campaign_id: str | None = None
+
+
+class AppRunRequest(StrictModel):
+    """A live run over the app's hospital format (devices/flows/services/patients)."""
+
+    hospital: dict
+    patient_zero: str
 
 
 class _ClientError(Exception):
@@ -153,6 +161,28 @@ def create_app(
             media_type=CONTENT_TYPE,
             headers={"X-Cache-Key": result.cache_key, "X-Cache": "hit" if cached else "miss"},
         )
+
+    @app.post("/app/run")
+    async def app_run(request: Request):
+        # Live run over the app's hospital format, returning the UI's sim rows
+        # (devices/services/patients + a per-tick attempts/events/snapshots timeline).
+        raw = await request.body()
+        if len(raw) > max_body_bytes:
+            return _error(413, "body_too_large", f"request body exceeds {max_body_bytes} bytes")
+        try:
+            parsed = AppRunRequest.model_validate_json(raw)
+        except ValidationError as exc:
+            return _error(422, "invalid_request", [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors(include_url=False)])
+        devices = parsed.hospital.get("devices") if isinstance(parsed.hospital, dict) else None
+        if not isinstance(devices, list) or not devices:
+            return _error(422, "invalid_hospital", "hospital must have a non-empty devices list")
+        if len(devices) > max_nodes:
+            return _error(413, "too_many_nodes", f"{len(devices)} > {max_nodes}")
+        try:
+            session = await run_in_threadpool(run_session, parsed.hospital, parsed.patient_zero)
+        except (ValueError, KeyError, TypeError) as exc:
+            return _error(422, "invalid_app_input", str(exc))
+        return JSONResponse(session)
 
     @app.websocket("/replay/{cache_key}/trace")
     async def stream_trace(websocket: WebSocket, cache_key: str) -> None:
