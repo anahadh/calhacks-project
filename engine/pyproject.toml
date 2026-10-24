@@ -17,6 +17,7 @@ research = ["pyyaml>=6,<7"]
 
 [project.scripts]
 hippo-backtest = "sim_core.cli:main"
+hippo-sim = "sim_core.app_cli:main"
 
 [dependency-groups]
 # Dev installs the API stack too, so the full test suite (including the HTTP and

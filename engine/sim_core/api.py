@@ -28,7 +28,8 @@ from pydantic import ValidationError
 
 from . import RULES_VERSION, cache
 from .adapters import load_cuh
-from .app_bridge import run_session
+from .app_bridge import entry_points, run_result, run_session
+from .app_policy import PolicyError
 from .planner import PlannerBoundaryError, planner_scenario_payload
 from .schema import Campaign, Plan, Scenario, StrictModel
 from .serialize import CONTENT_TYPE, result_bytes
@@ -60,11 +61,19 @@ class ReplayRequest(StrictModel):
     campaign_id: str | None = None
 
 
-class AppRunRequest(StrictModel):
-    """A live run over the app's hospital format (devices/flows/services/patients)."""
+class AppSessionRequest(StrictModel):
+    """A live run over the app's hospital format, optionally under an agents' policy."""
 
     hospital: dict
     patient_zero: str
+    policy: dict | None = None
+    challenges: list[str] = []
+
+
+class AppHospitalRequest(StrictModel):
+    """Just a hospital (for the patient-zero eligibility list)."""
+
+    hospital: dict
 
 
 class _ClientError(Exception):
@@ -162,27 +171,67 @@ def create_app(
             headers={"X-Cache-Key": result.cache_key, "X-Cache": "hit" if cached else "miss"},
         )
 
-    @app.post("/app/run")
-    async def app_run(request: Request):
-        # Live run over the app's hospital format, returning the UI's sim rows
-        # (devices/services/patients + a per-tick attempts/events/snapshots timeline).
-        raw = await request.body()
+    def _read_hospital(raw: bytes, model: type[StrictModel]):
         if len(raw) > max_body_bytes:
-            return _error(413, "body_too_large", f"request body exceeds {max_body_bytes} bytes")
+            raise _ClientError(413, "body_too_large")
         try:
-            parsed = AppRunRequest.model_validate_json(raw)
+            parsed = model.model_validate_json(raw)
         except ValidationError as exc:
-            return _error(422, "invalid_request", [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors(include_url=False)])
+            raise _ClientError(422, "invalid_request") from exc
         devices = parsed.hospital.get("devices") if isinstance(parsed.hospital, dict) else None
         if not isinstance(devices, list) or not devices:
-            return _error(422, "invalid_hospital", "hospital must have a non-empty devices list")
+            raise _ClientError(422, "invalid_hospital")
         if len(devices) > max_nodes:
-            return _error(413, "too_many_nodes", f"{len(devices)} > {max_nodes}")
+            raise _ClientError(413, "too_many_nodes")
+        return parsed
+
+    @app.post("/app/session")
+    async def app_session(request: Request):
+        # The live visible run: UI sim rows plus a per-tick `frames` timeline the
+        # run watcher drips into SpacetimeDB.
         try:
-            session = await run_in_threadpool(run_session, parsed.hospital, parsed.patient_zero)
+            parsed = _read_hospital(await request.body(), AppSessionRequest)
+        except _ClientError as exc:
+            return _error(exc.status, exc.detail, exc.detail)
+        try:
+            session = await run_in_threadpool(
+                run_session, parsed.hospital, parsed.patient_zero, policy=parsed.policy, challenges=parsed.challenges,
+            )
+        except PolicyError as exc:
+            return _error(422, "invalid_policy", str(exc))
         except (ValueError, KeyError, TypeError) as exc:
             return _error(422, "invalid_app_input", str(exc))
         return JSONResponse(session)
+
+    @app.post("/app/run_result")
+    async def app_run_result(request: Request):
+        # The same run reduced to the agents' RunResult contract (HTTP twin of the CLI).
+        try:
+            parsed = _read_hospital(await request.body(), AppSessionRequest)
+        except _ClientError as exc:
+            return _error(exc.status, exc.detail, exc.detail)
+        try:
+            rr = await run_in_threadpool(
+                run_result, parsed.hospital, parsed.patient_zero, policy=parsed.policy, challenges=parsed.challenges,
+            )
+        except PolicyError as exc:
+            return _error(422, "invalid_policy", str(exc))
+        except (ValueError, KeyError, TypeError) as exc:
+            return _error(422, "invalid_app_input", str(exc))
+        return JSONResponse(rr)
+
+    @app.post("/app/entry_points")
+    async def app_entry_points(request: Request):
+        # The device ids the engine accepts as patient zero, so the UI can dim the rest.
+        try:
+            parsed = _read_hospital(await request.body(), AppHospitalRequest)
+        except _ClientError as exc:
+            return _error(exc.status, exc.detail, exc.detail)
+        try:
+            ids = await run_in_threadpool(entry_points, parsed.hospital)
+        except (ValueError, KeyError, TypeError) as exc:
+            return _error(422, "invalid_app_input", str(exc))
+        return JSONResponse({"entryPoints": ids})
 
     @app.websocket("/replay/{cache_key}/trace")
     async def stream_trace(websocket: WebSocket, cache_key: str) -> None:

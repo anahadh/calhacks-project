@@ -22,8 +22,10 @@ HTTPS/DICOM/HL7 stay application-layer.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
+from .app_policy import apply_policy
 from .engine import Level
 from .replay import replay
 from .schema import (
@@ -164,122 +166,294 @@ def run(hospital: dict, patient_zero: str, plan: Plan | None = None) -> tuple[Re
     return replay(bridge.scenario, campaign, plan or Plan()), bridge
 
 
-def _patient_counts(hospital: dict, final_services: dict[str, str]) -> dict[str, int]:
-    # First-cut mapping from final service state to patient state. The tick-accurate
-    # escalation (duration-based delayed/disrupted/diverted) is applied by the watcher
-    # when it drips rows on the tick schedule; this summary uses the final frame only.
+def entry_points(hospital: dict) -> list[str]:
+    """Device ids the engine accepts as patient zero, in hospital file order.
+
+    Exactly the check ``to_campaign`` makes: an executing Windows host that is not a
+    vendor medical appliance (so an IT host or a Windows medical console). The UI
+    dims everything else, so a judge can only start an attack the engine will run.
+    """
+    bridge = to_scenario(hospital)
+    by_id = {n.id: n for n in bridge.scenario.nodes}
+    out: list[str] = []
+    for device in hospital["devices"]:
+        node = by_id.get(device["id"])
+        if node is not None and node.host.os_family == "windows" and not node.medical_device:
+            out.append(device["id"])
+    return out
+
+
+# --- Patient state, shared by the summary and by each per-tick frame ---
+
+
+def _patient_state(group: dict, services: dict[str, str]) -> str:
+    states = [services.get(sid) for sid in group.get("dependsOnServices", [])]
+    if any(s == "down" for s in states):
+        return "diverted" if group.get("type") == "er" else "disrupted"
+    if any(s == "paper" for s in states):
+        return "delayed"
+    return "ok"
+
+
+def _patient_counts(hospital: dict, services: dict[str, str]) -> dict[str, int]:
     counts = {"ok": 0, "delayed": 0, "disrupted": 0, "diverted": 0}
     for group in hospital.get("patients", []):
-        states = [final_services.get(sid) for sid in group.get("dependsOnServices", [])]
-        if any(s == "down" for s in states):
-            state = "diverted" if group.get("type") == "er" else "disrupted"
-        elif any(s == "paper" for s in states):
-            state = "delayed"
-        else:
-            state = "ok"
-        counts[state] += int(group.get("count", 0))
+        counts[_patient_state(group, services)] += int(group.get("count", 0))
     return counts
 
 
-def to_run_result(hospital: dict, result: ReplayResult, bridge: BridgeResult) -> dict[str, Any]:
-    """Map a ReplayResult onto the agents' RunResult contract (agents/protocol.py)."""
-    controlled = {h for h, lvl in result.levels.items() if Level[lvl] >= Level.controlled}
-    first_tick: dict[str, int] = {}
-    for index, entry in enumerate(result.trace):
-        if entry.node and entry.node in controlled and entry.node not in first_tick and entry.to_level in {"controlled", "encrypted"}:
-            first_tick[entry.node] = index
-    final = result.services[-1].services
-    return {
-        "ticks": len([e for e in result.trace if e.status == "applied" and e.rule in {"R4", "R6"}]),
-        "infectedCount": len(controlled),
-        "infectedDevices": sorted(({"id": h, "tick": first_tick.get(h, 0)} for h in controlled), key=lambda d: (d["tick"], d["id"])),
-        "servicesDown": sorted(({"id": sid, "downSinceTick": 0, "ticksDown": 1} for sid in bridge.service_ids if final.get(sid) in {"down", "paper"}), key=lambda d: d["id"]),
-        "patientCounts": _patient_counts(hospital, final),
-        "protectedBroken": [],
-        "removedFlows": [],
-    }
-
-
-def run_session(hospital: dict, patient_zero: str, plan: Plan | None = None) -> dict[str, Any]:
-    """Run our engine and emit the UI's sim rows (devices/services/patients + a
-    per-tick attempts/events/snapshots timeline) so the 3D scene can animate it.
-
-    Note a faithful difference from the probability engine: a merely *controlled*
-    host does not degrade a service here; services fail at encryption (R6) or on a
-    lost dependency. So the animation shows spread during the window, then services
-    drop at detonation, rather than degrading gradually.
+def _spread_tree(hospital: dict, patient_zero: str, infected: set[str]) -> tuple[dict[str, int], dict[str, str], dict[str, str]]:
+    """Reconstruct how the infection reached each controlled device, as a BFS tree over
+    the hospital's own admin-class (SMB/RDP) links — the links the engine's lateral reach
+    uses. Returns ``tick`` (0 for patient zero, then one device per tick in BFS order),
+    ``parent`` (the device it was taken from), and ``flow`` (the hospital flow id of that
+    hop). Every hop is a real flow, so every pulse the UI draws runs along a real edge.
+    Deterministic: siblings break ties by flow file order then device id.
     """
-    result, bridge = run(hospital, patient_zero, plan)
-    flow_id = {}
+    from collections import deque
+
+    order = {f["id"]: i for i, f in enumerate(hospital["flows"])}
+    adj: dict[str, list[tuple[int, str, str]]] = {}
     for f in hospital["flows"]:
-        flow_id.setdefault((f["from"], f["to"]), f["id"])
-        flow_id.setdefault((f["to"], f["from"]), f["id"])
+        if f["protocol"] in LATERAL_PROTOCOLS and f["from"] in infected and f["to"] in infected:
+            adj.setdefault(f["from"], []).append((order[f["id"]], f["to"], f["id"]))
+            adj.setdefault(f["to"], []).append((order[f["id"]], f["from"], f["id"]))
+
+    parent: dict[str, str] = {}
+    flow: dict[str, str] = {}
+    seen = {patient_zero}
+    visited = [patient_zero]
+    queue: deque[str] = deque([patient_zero])
+    while queue:
+        node = queue.popleft()
+        for _, nxt, fid in sorted(adj.get(node, [])):
+            if nxt not in seen:
+                seen.add(nxt)
+                parent[nxt], flow[nxt] = node, fid
+                visited.append(nxt)
+                queue.append(nxt)
+    # Any controlled device the admin links don't reach (not expected on the demo):
+    # attach it to patient zero without a flow, so it still shows as compromised.
+    for dev in sorted(infected - seen):
+        parent[dev], flow[dev] = patient_zero, ""
+        visited.append(dev)
+    tick = {dev: i for i, dev in enumerate(visited)}
+    return tick, parent, flow
+
+
+def _choke_points(infected: set[str], patient_zero: str, parent: dict[str, str]) -> list[dict]:
+    """Each device's share of the infections downstream of it in the spread tree."""
+    children: dict[str, list[str]] = {}
+    for dev, par in parent.items():
+        children.setdefault(par, []).append(dev)
+
+    def below(node: str) -> int:
+        return sum(1 + below(c) for c in children.get(node, []))
+
+    denom = len(infected) - 1
+    if denom <= 0:
+        return []
+    shares = [{"deviceId": d, "share": round(below(d) / denom, 2)} for d in sorted(infected)]
+    shares = [c for c in shares if c["share"] > 0]
+    return sorted(shares, key=lambda c: (-c["share"], c["deviceId"]))[:3]
+
+
+def run_session(hospital: dict, patient_zero: str, plan: Plan | None = None, *,
+                policy: dict | None = None, challenges: Sequence[str] = ()) -> dict[str, Any]:
+    """Run the engine over a hospital (optionally under an agents' ``policy`` and
+    ``challenges``) and emit the UI's sim rows plus a per-tick ``frames`` timeline.
+
+    The run tells a two-beat story: the infection spreads host to host across the
+    window, one device per tick along a real connection; then at detonation services
+    drop and patient groups divert. A merely *controlled* host doesn't degrade a
+    service — services fail at encryption (R6) or a lost dependency — so the animation
+    is spread, then a hard drop, not a gradual slide.
+    """
+    applied = apply_policy(hospital, policy, challenges)
+    run_hospital = applied.hospital
+    result, bridge = run(run_hospital, patient_zero, plan)
     name = {d["id"]: d["name"] for d in hospital["devices"]}
+    device_ids = [d["id"] for d in hospital["devices"]]
+    room_of = {d["id"]: d.get("roomId", "") for d in hospital["devices"]}
+    svc_name = {s["id"]: s.get("name", s["id"]) for s in hospital["services"]}
 
-    infected_at: dict[str, int] = {patient_zero: 0}
-    infected_by: dict[str, str | None] = {patient_zero: None}
-    attempts: list[dict] = []
-    events: list[dict] = [{"tick": 0, "kind": "patient_zero", "targetId": patient_zero, "text": f"{name.get(patient_zero, patient_zero)} infected (patient zero)"}]
-    tick = 0
-    for entry in result.trace:
-        if entry.rule == "R4" and entry.node:
-            if entry.status == "applied" and entry.source:
-                tick += 1
-                infected_at.setdefault(entry.node, tick)
-                infected_by.setdefault(entry.node, entry.source)
-                attempts.append({"tick": tick, "from": entry.source, "to": entry.node, "flowId": flow_id.get((entry.source, entry.node), ""), "success": True})
-                events.append({"tick": tick, "kind": "device_infected", "targetId": entry.node, "text": f"{name.get(entry.node, entry.node)} compromised"})
+    infected = {h for h, lvl in result.levels.items() if Level[lvl] >= Level.controlled}
+    infected.add(patient_zero)
+    tick_of, parent, flow_of = _spread_tree(run_hospital, patient_zero, infected)
+    det_tick = (max(tick_of.values()) if tick_of else 0) + 1
 
-    det_tick = tick + 1
     final = result.services[-1].services
     down_services = [sid for sid in bridge.service_ids if final.get(sid) in {"down", "paper"}]
-    for sid in down_services:
-        events.append({"tick": det_tick, "kind": "service_down", "targetId": sid, "text": f"{sid} offline"})
+    group_state = {g["id"]: _patient_state(g, final) for g in hospital.get("patients", [])}
+    group_room = {g["id"]: g.get("roomId", "") for g in hospital.get("patients", [])}
+    group_type = {g["id"]: g.get("type") for g in hospital.get("patients", [])}
+    notes = list(bridge.notes)
+    if any(tick_of.get(d, 0) > 0 for d in infected):
+        notes.append("[S] Each spread step is drawn along a real SMB/RDP connection between the device taken and the one it was taken from; the exact order inside a tick is a reconstruction.")
 
-    infected_ids = {h for h, lvl in result.levels.items() if Level[lvl] >= Level.footholded} | set(infected_at)
-    devices = [
-        {"deviceId": h, "infected": True, "infectedAtTick": infected_at.get(h, 0), "infectedBy": infected_by.get(h) or ""}
-        if h in infected_ids else {"deviceId": h, "infected": False}
-        for h in (d["id"] for d in hospital["devices"])
+    # Blocked attempts: a connection the policy cut, out of a device the attack took.
+    blocked: list[tuple[int, dict]] = []
+    if applied.removed_flows:
+        removed = {f["id"]: f for f in hospital["flows"] if f["id"] in set(applied.removed_flows)}
+        for fid in applied.removed_flows:
+            f = removed[fid]
+            src = f["from"] if f["from"] in infected else f["to"] if f["to"] in infected else None
+            if src is not None and f["protocol"] in LATERAL_PROTOCOLS:
+                dst = f["to"] if src == f["from"] else f["from"]
+                blocked.append((tick_of.get(src, 0), {"from": src, "to": dst, "flowId": fid, "success": False}))
+        if blocked:
+            notes.append("[S] A blocked attempt marks a connection the plan removed, out of a device the attack had taken.")
+
+    # Tick 0 lists every device/service/group (the baseline the module inserts);
+    # every later tick carries only what changed.
+    base_devices = [
+        {"deviceId": d, "infected": True, "infectedAtTick": 0, "infectedBy": ""} if d == patient_zero
+        else {"deviceId": d, "infected": False, "infectedAtTick": -1, "infectedBy": ""}
+        for d in device_ids
     ]
-    services = [{"serviceId": sid, "down": True, "downSinceTick": det_tick} if sid in down_services else {"serviceId": sid, "down": False} for sid in bridge.service_ids]
+    base_services = [{"serviceId": sid, "down": False, "downSinceTick": -1} for sid in bridge.service_ids]
+    base_patients = [{"groupId": gid, "state": "ok"} for gid in group_state]
 
-    groups = {}
-    for group in hospital.get("patients", []):
-        states = [final.get(sid) for sid in group.get("dependsOnServices", [])]
-        if any(s == "down" for s in states):
-            groups[group["id"]] = "diverted" if group.get("type") == "er" else "disrupted"
-        elif any(s == "paper" for s in states):
-            groups[group["id"]] = "delayed"
+    dev_changes: dict[int, list[dict]] = {}
+    attempts_at: dict[int, list[dict]] = {}
+    events_at: dict[int, list[dict]] = {0: [{"kind": "patient_zero", "targetId": patient_zero, "text": f"{name.get(patient_zero, patient_zero)} — patient zero"}]}
+    for dev, t in sorted(tick_of.items(), key=lambda kv: kv[1]):
+        if dev == patient_zero:
+            continue
+        dev_changes.setdefault(t, []).append({"deviceId": dev, "infected": True, "infectedAtTick": t, "infectedBy": parent[dev]})
+        attempts_at.setdefault(t, []).append({"from": parent[dev], "to": dev, "flowId": flow_of[dev], "success": True})
+        events_at.setdefault(t, []).append({"kind": "device_infected", "targetId": dev, "text": f"{name.get(dev, dev)} compromised"})
+    for t, row in blocked:
+        attempts_at.setdefault(t, []).append(row)
+
+    svc_changes_det = [{"serviceId": sid, "down": True, "downSinceTick": det_tick} for sid in down_services]
+    pat_changes_det = [{"groupId": gid, "state": st} for gid, st in group_state.items() if st != "ok"]
+    events_det = [{"kind": "service_down", "targetId": sid, "text": f"{svc_name.get(sid, sid)} offline"} for sid in down_services]
+    events_det += [{"kind": "diversion", "targetId": group_room[gid], "text": f"Ambulances diverted from {name.get(group_room[gid], group_room[gid])}"}
+                   for gid, st in group_state.items() if st == "diverted" and group_type.get(gid) == "er"]
+
+    # Cumulative state, frame by frame.
+    cur_infected = {patient_zero: 0}
+    cur_services = {sid: {"serviceId": sid, "down": False, "downSinceTick": -1} for sid in bridge.service_ids}
+    cur_patients = {gid: "ok" for gid in group_state}
+    choke = _choke_points(infected, patient_zero, parent)
+    frames: list[dict] = []
+    for t in range(det_tick + 1):
+        if t == det_tick:
+            for sid in down_services:
+                cur_services[sid] = {"serviceId": sid, "down": True, "downSinceTick": det_tick}
+            cur_patients.update(group_state)
         else:
-            groups[group["id"]] = "ok"
-    patients = [{"groupId": gid, "state": st} for gid, st in groups.items()]
+            for ch in dev_changes.get(t, []):
+                cur_infected[ch["deviceId"]] = t
+        affected = sum(int(g.get("count", 0)) for g in hospital.get("patients", []) if cur_patients[g["id"]] != "ok")
+        down_now = sorted(sid for sid, s in cur_services.items() if s["down"])
+        delayed_now = sum(int(g.get("count", 0)) for g in hospital.get("patients", [])
+                          if cur_patients[g["id"]] != "ok" and g.get("type") in {"outpatient_scan", "surgical"})
+        if t == 0:
+            devices_f, services_f, patients_f = base_devices, base_services, base_patients
+        elif t == det_tick:
+            devices_f, services_f, patients_f = [], svc_changes_det, pat_changes_det
+        else:
+            devices_f, services_f, patients_f = dev_changes.get(t, []), [], []
+        frame: dict[str, Any] = {
+            "tick": t,
+            "final": t == det_tick,
+            "devices": devices_f,
+            "services": services_f,
+            "patients": patients_f,
+            "attempts": attempts_at.get(t, []),
+            "events": events_det if t == det_tick else events_at.get(t, []),
+            "snapshot": {
+                "infectedCount": len(cur_infected),
+                "patientsAffected": affected,
+                "infectedIds": sorted(cur_infected),
+                "servicesDown": down_now,
+                "patients": dict(cur_patients),
+            },
+            "summary": {
+                "patientsAffected": affected,
+                "devicesCompromised": len(cur_infected),
+                "servicesDown": len(down_now),
+                "delayedProcedures": delayed_now,
+                "chokePoints": choke,
+            },
+        }
+        if t == 0:
+            frame["run"] = {
+                "finalTick": det_tick,
+                "removedFlows": list(applied.removed_flows),
+                "protectedBroken": list(applied.protected_broken),
+                "assumptions": notes,
+            }
+        frames.append(frame)
 
-    total_ticks = det_tick
-    snapshots = [{"tick": k, "infectedCount": sum(1 for v in infected_at.values() if v <= k)} for k in range(total_ticks + 1)]
-    by_counts: dict[str, int] = {}
-    for src in infected_by.values():
-        if src:
-            by_counts[src] = by_counts.get(src, 0) + 1
-    total_by = sum(by_counts.values()) or 1
-    choke = [{"deviceId": d, "share": round(c / total_by, 2)} for d, c in sorted(by_counts.items(), key=lambda x: -x[1])[:3]]
-    delayed = sum(1 for st in groups.values() if st != "ok")
+    # Aggregate (final-state) top-level rows, for any consumer that isn't playing frames.
+    devices = [
+        {"deviceId": h, "infected": True, "infectedAtTick": tick_of[h], "infectedBy": parent.get(h, "") if h != patient_zero else ""}
+        if h in infected else {"deviceId": h, "infected": False}
+        for h in device_ids
+    ]
+    services = [{"serviceId": sid, "down": True, "downSinceTick": det_tick} if sid in down_services
+                else {"serviceId": sid, "down": False} for sid in bridge.service_ids]
+    patients = [{"groupId": gid, "state": st} for gid, st in group_state.items()]
+    all_attempts = [a for t in sorted(attempts_at) for a in attempts_at[t]]
+    all_events = [dict(e) for t in sorted(events_at) for e in events_at[t]] + list(events_det)
+    snapshots = [{"tick": f["tick"], "infectedCount": f["snapshot"]["infectedCount"]} for f in frames]
+    delayed = frames[-1]["summary"]["delayedProcedures"]
 
     return {
         "patientZero": patient_zero,
-        "finalTick": total_ticks,
+        "finalTick": det_tick,
+        "removedFlows": list(applied.removed_flows),
+        "protectedBroken": list(applied.protected_broken),
+        "frames": frames,
         "devices": devices,
         "services": services,
         "patients": patients,
-        "attempts": attempts,
-        "events": events,
+        "attempts": all_attempts,
+        "events": all_events,
         "snapshots": snapshots,
         "chokePoints": choke,
         "delayedProcedures": delayed,
-        "assumptions": bridge.notes,
+        "assumptions": notes,
         "encryptedHosts": len(result.summary["encrypted_hosts"]),
         "medicalDevicesEncrypted": result.summary["medical_devices_encrypted"],
     }
 
 
-__all__ = ["BridgeResult", "to_scenario", "to_campaign", "run", "run_session", "to_run_result", "MEDICAL_TYPES", "PORT_CLASS"]
+def to_run_result(session: dict, hospital: dict) -> dict[str, Any]:
+    """Derive the agents' RunResult (agents/protocol.py) from a ``run_session`` output,
+    so the agents' numbers are exactly the numbers the screen showed. ``hospital`` only
+    supplies the static patient-group counts; nothing here recomputes spread."""
+    final_tick = session["finalTick"]
+    infected = [d for d in session["devices"] if d["infected"]]
+    state_of = {p["groupId"]: p["state"] for p in session["patients"]}
+    counts = {"ok": 0, "delayed": 0, "disrupted": 0, "diverted": 0}
+    for group in hospital.get("patients", []):
+        counts[state_of.get(group["id"], "ok")] += int(group.get("count", 0))
+    return {
+        "ticks": final_tick,
+        "infectedCount": len(infected),
+        "infectedDevices": sorted(({"id": d["deviceId"], "tick": d["infectedAtTick"]} for d in infected), key=lambda d: (d["tick"], d["id"])),
+        "servicesDown": sorted(
+            ({"id": s["serviceId"], "downSinceTick": s["downSinceTick"], "ticksDown": final_tick - s["downSinceTick"] + 1}
+             for s in session["services"] if s["down"]),
+            key=lambda d: d["id"],
+        ),
+        "patientCounts": counts,
+        "protectedBroken": list(session["protectedBroken"]),
+        "removedFlows": list(session["removedFlows"]),
+    }
+
+
+def run_result(hospital: dict, patient_zero: str, *, policy: dict | None = None, challenges: Sequence[str] = ()) -> dict[str, Any]:
+    """A full test run reduced to the agents' RunResult contract."""
+    session = run_session(hospital, patient_zero, policy=policy, challenges=challenges)
+    return to_run_result(session, hospital)
+
+
+__all__ = [
+    "BridgeResult", "to_scenario", "to_campaign", "run", "run_session",
+    "to_run_result", "run_result", "entry_points", "MEDICAL_TYPES", "PORT_CLASS",
+]

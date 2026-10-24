@@ -186,21 +186,44 @@ def _demo_hospital():
     return json.loads((Path(__file__).resolve().parents[2] / "data/hospitals/demo.json").read_text())["hospital"]
 
 
-def test_app_run_executes_a_hospital_live(tmp_path):
+def test_app_session_executes_a_hospital_live(tmp_path):
     client = TestClient(create_app(tmp_path))
-    resp = client.post("/app/run", json={"hospital": _demo_hospital(), "patient_zero": "mri_2"})
+    resp = client.post("/app/session", json={"hospital": _demo_hospital(), "patient_zero": "mri_2"})
     assert resp.status_code == 200
     sim = resp.json()
     assert sum(d["infected"] for d in sim["devices"]) > 5
     assert sim["medicalDevicesEncrypted"] == 0
     assert len(sim["snapshots"]) == sim["finalTick"] + 1
+    # the per-tick frames the run watcher drips into SpacetimeDB
+    assert len(sim["frames"]) == sim["finalTick"] + 1
+    assert sim["frames"][0]["tick"] == 0 and sim["frames"][0]["run"]["finalTick"] == sim["finalTick"]
+    assert sim["frames"][-1]["final"] is True
 
 
-def test_app_run_rejects_a_bad_patient_zero(tmp_path):
+def test_app_session_rejects_a_bad_patient_zero(tmp_path):
     client = TestClient(create_app(tmp_path))
-    resp = client.post("/app/run", json={"hospital": _demo_hospital(), "patient_zero": "mri_1"})
+    resp = client.post("/app/session", json={"hospital": _demo_hospital(), "patient_zero": "mri_1"})
     assert resp.status_code == 422
     assert resp.json()["error"]["type"] == "invalid_app_input"
+
+
+def test_app_session_rejects_a_bad_policy(tmp_path):
+    client = TestClient(create_app(tmp_path))
+    bad = {"strategy": "least_disruption", "name": "x", "rules": [{"id": "r", "from": {"zone": "nope"}, "to": {}, "plain": "p"}], "rationale": "", "tradeoff": ""}
+    resp = client.post("/app/session", json={"hospital": _demo_hospital(), "patient_zero": "mri_2", "policy": bad})
+    assert resp.status_code == 422
+    assert resp.json()["error"]["type"] == "invalid_policy"
+
+
+def test_app_run_result_and_entry_points(tmp_path):
+    client = TestClient(create_app(tmp_path))
+    rr = client.post("/app/run_result", json={"hospital": _demo_hospital(), "patient_zero": "mri_2"})
+    assert rr.status_code == 200
+    assert set(rr.json()) == {"ticks", "infectedCount", "infectedDevices", "servicesDown", "patientCounts", "protectedBroken", "removedFlows"}
+    ep = client.post("/app/entry_points", json={"hospital": _demo_hospital()})
+    assert ep.status_code == 200
+    ids = ep.json()["entryPoints"]
+    assert "mri_2" in ids and "mri_1" not in ids  # the Windows console, not the linux scanner
 
 
 def test_planner_endpoint_excludes_campaign(tmp_path):
