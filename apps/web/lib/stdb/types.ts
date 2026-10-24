@@ -132,7 +132,7 @@ export type SessionActions = {
   /** A note at a tick on the active run's timeline. */
   addNote: (tick: number, note: string) => Promise<void>;
   clearFocus: (annotationId: string) => Promise<void>;
-  /** Create aggregate fix: writes defend_request. Refused while the active run is running. */
+  /** Create segmentation plan: writes defend_request. Refused while the active run is running. */
   defend: () => Promise<void>;
   answerQuestion: (questionId: string, choice: string) => Promise<void>;
 };
