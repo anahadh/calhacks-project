@@ -121,4 +121,36 @@ export type SessionSnapshot = {
   chokePoints: ChokePoint[];
   delayedProcedures: number;
   presence: PresenceRow[];
+  roundState: RoundState;
+  agentStatus: AgentStatusRow[];
+  messages: AgentMessageRow[];
+};
+
+// --- Agent rows (agent_message, agent_status, session.roundState) ---
+
+export type AgentId = "inventory" | "flow" | "clinical_workflow" | "coordinator";
+export type Speaker = AgentId | "humans";
+export type MessageType = "proposal" | "accept" | "reject" | "revision" | "question" | "answer";
+
+export type AgentMessageRow = {
+  round: number;
+  seq: number;
+  from: Speaker;
+  to: Speaker | "all";
+  type: MessageType;
+  reason: string;
+  // Rejections carry the constraint they add; proposals and revisions carry
+  // rules or a diff, plus the hippo-sim test result.
+  constraint?: { kind: "keep_flow" | "keep_service" | "confirm_device" | "max_rules"; targetIds: string[] };
+  rules?: string[];
+  diff?: string[];
+  tested?: { patientsAffected: number };
+};
+
+export type AgentStatusRow = { agent: AgentId; status: "idle" | "thinking" | "speaking" | "waiting" };
+
+export type RoundState = {
+  state: "idle" | "running" | "waiting_for_human" | "done";
+  round: number;
+  maxRounds: number;
 };

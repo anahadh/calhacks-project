@@ -27,13 +27,13 @@ export function RoomChip({
       <div className="flex flex-col items-center gap-1">
       {/* A service that goes down shows over the room that broke it. */}
       {servicesDown.map((svc) => (
-        <div key={svc.id} className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-line bg-surface/95 px-2 py-0.5 text-[11px]">
+        <div key={svc.id} className="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-line2 bg-panel/95 px-2 py-0.5 text-[11px]">
           <span className="rounded bg-ink px-1 text-[10px] font-semibold uppercase tracking-wide text-bg">Down</span>
           <span className="text-ink">{svc.name} offline</span>
         </div>
       ))}
-      <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-line/80 bg-bg/80 px-2.5 py-1 text-[11px] backdrop-blur-sm">
-        <span className="text-ink-muted">{name}</span>
+      <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-line2 bg-bg/90 px-2.5 py-0.5 text-[11px]">
+        <span className="font-disp font-semibold text-ink">{name}</span>
         <span className="num">
           <span className={infected > 0 ? "text-state-infected" : "text-ink-faint"}>{infected}</span>
           <span className="text-ink-faint">/{total}</span>
