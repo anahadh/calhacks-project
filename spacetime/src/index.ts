@@ -7,202 +7,25 @@
 //
 // All data is synthetic. Patient groups are counts.
 
-import { schema, table, t, SenderError, ScheduleAt } from "spacetimedb/server";
-import type { Identity, Timestamp } from "spacetimedb";
+import { t, ScheduleAt } from "spacetimedb/server";
+import type { Timestamp } from "spacetimedb";
 import {
   initialState, isSettled, protectedBroken, step, summarize,
   type Hospital, type HospitalFile, type Policy, type SimState, type StepResult,
 } from "@hippo/sim-core";
 
 import { ANNOTATING_ROLES, KEEP_ATTEMPT_TICKS, NOTE_MAX, ROLES, SPEEDS, TICK_MS } from "./constants";
+import spacetimedb, { fail, getSession, isServer, same, tick_timer } from "./schema";
 
-// ---------------------------------------------------------------- tables
-
-const config = table(
-  { name: "config" }, // private
-  { id: t.u32().primaryKey(), server_identity: t.identity() },
-);
-
-const session = table(
-  { name: "session", public: true },
-  {
-    id: t.string().primaryKey(),
-    hospital_json: t.string(),
-    hospital_name: t.string(),
-    presenter: t.identity(),
-    active_run_id: t.string(),
-    created_at: t.timestamp(),
-  },
-);
-
-const run = table(
-  { name: "run", public: true },
-  {
-    id: t.string().primaryKey(),
-    session_id: t.string().index("btree"),
-    pair_id: t.string(), // "" unless part of a solution-view pair
-    label: t.string(),
-    seed: t.u32(),
-    patient_zero: t.string(),
-    policy_json: t.string(), // "" = no segmentation
-    tick: t.u32(),
-    status: t.string(), // running | paused | done
-    speed: t.f64(),
-    patients_affected: t.u32(),
-    devices_compromised: t.u32(),
-    services_down: t.u32(),
-    delayed_procedures: t.u32(),
-    choke_points_json: t.string(),
-    protected_broken_json: t.string(),
-    started_at: t.timestamp(),
-  },
-);
-
-/** The engine's full state per run. Private: clients read the public rows. */
-const run_state = table(
-  { name: "run_state" },
-  { run_id: t.string().primaryKey(), state_json: t.string() },
-);
-
-/** One row per ticking run or pair. Deleting it pauses the run. */
-const tick_timer = table(
-  { name: "tick_timer", scheduled: (): any => run_tick },
-  {
-    scheduled_id: t.u64().primaryKey().autoInc(),
-    scheduled_at: t.scheduleAt(),
-    key: t.string(), // run id, or pair id for lockstep runs
-  },
-);
-
-const device_state = table(
-  { name: "device_state", public: true },
-  {
-    id: t.string().primaryKey(), // `${run_id}:${device_id}`
-    run_id: t.string().index("btree"),
-    device_id: t.string(),
-    infected: t.bool(),
-    infected_at_tick: t.i32(), // -1 = not infected
-    infected_by: t.string(), // "" = patient zero or not infected
-  },
-);
-
-const service_state = table(
-  { name: "service_state", public: true },
-  {
-    id: t.string().primaryKey(),
-    run_id: t.string().index("btree"),
-    service_id: t.string(),
-    down: t.bool(),
-    down_since_tick: t.i32(),
-  },
-);
-
-const patient_state = table(
-  { name: "patient_state", public: true },
-  {
-    id: t.string().primaryKey(),
-    run_id: t.string().index("btree"),
-    group_id: t.string(),
-    state: t.string(), // ok | delayed | disrupted | diverted
-  },
-);
-
-const spread_attempt = table(
-  { name: "spread_attempt", public: true },
-  {
-    id: t.u64().primaryKey().autoInc(),
-    run_id: t.string().index("btree"),
-    tick: t.u32(),
-    from_device: t.string(),
-    to_device: t.string(),
-    flow_id: t.string(),
-    success: t.bool(),
-  },
-);
-
-const sim_event = table(
-  { name: "sim_event", public: true },
-  {
-    id: t.u64().primaryKey().autoInc(),
-    run_id: t.string().index("btree"),
-    tick: t.u32(),
-    kind: t.string(),
-    target_id: t.string(),
-    text: t.string(),
-  },
-);
-
-const tick_snapshot = table(
-  { name: "tick_snapshot", public: true },
-  {
-    id: t.string().primaryKey(), // `${run_id}:${tick}`
-    run_id: t.string().index("btree"),
-    tick: t.u32(),
-    infected_count: t.u32(),
-    patients_affected: t.u32(),
-    infected_ids_json: t.string(),
-    services_down_json: t.string(),
-    patients_json: t.string(),
-  },
-);
-
-const presence = table(
-  { name: "presence", public: true },
-  {
-    identity: t.identity().primaryKey(),
-    session_id: t.string().index("btree"),
-    name: t.string(),
-    role: t.string(),
-    following: t.bool(),
-    last_seen: t.timestamp(),
-  },
-);
-
-/** Focus annotations (spec 7.8). Context for the agents, never an order. */
-const annotation = table(
-  { name: "annotation", public: true },
-  {
-    id: t.u64().primaryKey().autoInc(),
-    session_id: t.string().index("btree"),
-    run_id: t.string(),
-    kind: t.string(), // focus
-    target_id: t.string(), // device id
-    note: t.string(),
-    author: t.identity(),
-    author_name: t.string(),
-    role: t.string(),
-    active: t.bool(),
-    created_at: t.timestamp(),
-    cleared_by: t.string(), // "" while active
-  },
-);
-
-const spacetimedb = schema({
-  config, session, run, run_state, tick_timer, device_state, service_state,
-  patient_state, spread_attempt, sim_event, tick_snapshot, presence, annotation,
-});
+// Tables live in schema.ts; feature reducers in their own files, re-exported here.
 export default spacetimedb;
+export * from "./agents";
+export * from "./question";
+export * from "./recommendation";
 
 type RunRow = ReturnType<typeof readRun>;
 
 // ---------------------------------------------------------------- helpers
-
-function fail(message: string): never {
-  throw new SenderError(message);
-}
-
-function same(a: Identity, b: Identity): boolean {
-  return a.isEqual(b);
-}
-
-function isServer(ctx: any): boolean {
-  const c = ctx.db.config.id.find(0);
-  return !!c && same(c.server_identity, ctx.sender);
-}
-
-function getSession(ctx: any, sessionId: string) {
-  return ctx.db.session.id.find(sessionId) ?? fail(`Session "${sessionId}" does not exist.`);
-}
 
 function readRun(ctx: any, runId: string) {
   const r = ctx.db.run.id.find(runId);
@@ -411,6 +234,7 @@ export const session_create = spacetimedb.reducer(
     ctx.db.session.insert({
       id: session_id, hospital_json, hospital_name: file.hospital.name,
       presenter: ctx.sender, active_run_id: "", created_at: ctx.timestamp,
+      round_state: "idle", round: 0, round_detail: "",
     });
   },
 );

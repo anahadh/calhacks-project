@@ -10,3 +10,16 @@ export const NOTE_MAX = 140;
 export const ROLES = ["security", "clinical_engineering", "operations", "observer"] as const;
 export const ANNOTATING_ROLES = ["security", "clinical_engineering", "operations"] as const;
 
+
+// Agent rows (F1). Names match agents/protocol.py.
+export const AGENT_NAMES = ["inventory", "flow", "clinical_workflow", "coordinator"] as const;
+/** Who can appear on either end of an agent_message row. "relay" receives round_state and recommendation. */
+export const SPEAKERS = [...AGENT_NAMES, "humans", "relay"] as const;
+export const MESSAGE_TYPES = [
+  "proposal_request", "proposal", "revision", "verdict", "question", "answer", "recommendation", "round_state", "chat",
+] as const;
+export const AGENT_STATUSES = ["idle", "thinking", "speaking", "waiting"] as const;
+export const ROUND_STATES = ["idle", "running", "waiting_for_human", "done"] as const;
+export const TEXT_SOURCES = ["claude", "template", ""] as const;
+/** Largest payload the relay may store per message. */
+export const PAYLOAD_MAX = 64 * 1024;
