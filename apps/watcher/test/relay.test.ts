@@ -92,6 +92,17 @@ describe("relay", () => {
     ]);
   });
 
+  it("checks a side-effect payload before storing the message, so a 400 stores nothing", async () => {
+    const r = await post("/agent_message", message({
+      from: "coordinator", to: "relay", type: "round_state", payload: { sessionId: "demo", round: 2, state: "finished" },
+    }));
+    expect(r.status).toBe(400);
+    expect((await r.json()).error).toMatch(/^Invalid round_state payload: state: /);
+    const q = await post("/agent_message", message({ from: "coordinator", to: "humans", type: "question", payload: { ...question, choices: ["only one"] } }));
+    expect(q.status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
   it("keeps chat sessions in agent_message but writes nothing else for them", async () => {
     await post("/agent_message", message({
       sessionId: "chat-1a2b3c4d", from: "coordinator", to: "relay", type: "round_state",

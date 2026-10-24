@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "hospital": {
+    "id": "watcher_fixture",
+    "name": "Watcher fixture hospital (synthetic)",
+    "floors": [{ "id": "fl_0", "name": "Ground", "level": 0 }],
+    "rooms": [
+      { "id": "rm_er", "floorId": "fl_0", "name": "Emergency", "type": "er", "zone": "critical_care", "polygon": [[0, 0], [10, 0], [10, 8], [0, 8]] },
+      { "id": "rm_imaging", "floorId": "fl_0", "name": "Imaging", "type": "imaging", "zone": "imaging", "polygon": [[10, 0], [20, 0], [20, 8], [10, 8]] },
+      { "id": "rm_server", "floorId": "fl_0", "name": "Server room", "type": "server", "zone": "core", "polygon": [[0, 8], [10, 8], [10, 14], [0, 14]] },
+      { "id": "rm_admin", "floorId": "fl_0", "name": "Admin", "type": "admin", "zone": "admin", "polygon": [[10, 8], [20, 8], [20, 14], [10, 14]] }
+    ],
+    "devices": [
+      { "id": "ws_admin", "roomId": "rm_admin", "type": "workstation", "name": "Admin workstation", "os": "Windows 10", "vulnerable": true, "criticality": "low", "vlan": 40, "position": [14, 11] },
+      { "id": "srv_file", "roomId": "rm_server", "type": "server_rack", "role": "file_server", "name": "File server", "os": "Windows Server 2016", "vulnerable": true, "criticality": "high", "vlan": 10, "position": [3, 11] },
+      { "id": "srv_ehr", "roomId": "rm_server", "type": "server_rack", "role": "ehr_engine", "name": "EHR server", "os": "Windows Server 2019", "vulnerable": false, "criticality": "high", "vlan": 10, "position": [7, 11] },
+      { "id": "ws_img", "roomId": "rm_imaging", "type": "workstation", "name": "Imaging workstation", "os": "Windows 10", "vulnerable": true, "criticality": "medium", "vlan": 30, "position": [13, 3] },
+      { "id": "mri_1", "roomId": "rm_imaging", "type": "mri", "name": "MRI 1", "os": "Windows 7 Embedded", "vulnerable": true, "criticality": "high", "vlan": 30, "position": [17, 4] },
+      { "id": "ws_er", "roomId": "rm_er", "type": "workstation", "name": "ER workstation", "os": "Windows 10", "vulnerable": true, "criticality": "medium", "vlan": 20, "position": [4, 4] }
+    ],
+    "flows": [
+      { "id": "fl_1", "from": "ws_admin", "to": "srv_file", "protocol": "smb", "port": 445, "protected": false },
+      { "id": "fl_2", "from": "ws_img", "to": "srv_file", "protocol": "smb", "port": 445, "protected": false },
+      { "id": "fl_3", "from": "srv_ehr", "to": "srv_file", "protocol": "smb", "port": 445, "protected": false },
+      { "id": "fl_4", "from": "ws_er", "to": "srv_ehr", "protocol": "smb", "port": 445, "protected": false },
+      { "id": "fl_5", "from": "mri_1", "to": "ws_img", "protocol": "dicom", "port": 104, "protected": true }
+    ],
+    "services": [
+      { "id": "svc_ehr", "name": "Health records", "dependsOnDevices": ["srv_ehr"], "consequence": "ER intake slows down", "critical": true },
+      { "id": "svc_imaging", "name": "Imaging", "dependsOnDevices": ["ws_img", "mri_1"], "consequence": "Scans are rescheduled" }
+    ],
+    "patients": [
+      { "id": "pg_er", "roomId": "rm_er", "type": "er", "count": 14, "dependsOnServices": ["svc_ehr"] },
+      { "id": "pg_scan", "roomId": "rm_imaging", "type": "outpatient_scan", "count": 9, "dependsOnServices": ["svc_imaging"] }
+    ]
+  }
+}

@@ -1,14 +1,19 @@
-// End-to-end check of the agent loop against a running stack (AGENTS.md:
-// "show it working on two laptops or two tabs subscribed to the same session").
-// Skipped unless E2E_STDB_URI is set:
+// End-to-end checks against a running stack (AGENTS.md: "show it working on two
+// laptops or two tabs subscribed to the same session"). Skipped unless
+// E2E_STDB_URI is set:
 //
 //   spacetime start; npm run publish:local -w hippocratech-module
-//   npm run dev -w watcher                                 # with STDB_SERVER_TOKEN, RELAY_TOKEN
-//   cd agents && HIPPO_SIM_FIXTURES=1 WATCHER_RELAY_URL=http://127.0.0.1:8010 RELAY_TOKEN=… .venv/bin/python run_all.py
+//   cd engine && uv run uvicorn sim_core.api:app --port 8000
+//   npm run dev -w watcher                                 # with STDB_SERVER_TOKEN, RELAY_TOKEN, ENGINE_URL
+//   cd agents && WATCHER_RELAY_URL=http://127.0.0.1:8010 RELAY_TOKEN=… .venv/bin/python run_all.py
 //   E2E_STDB_URI=ws://127.0.0.1:3000 npm test -w watcher
 //
-// Two independent clients play two humans. Fixture results exist only for MRI 2.
+// "live run" needs only SpacetimeDB, the engine and the watcher (-t "live run").
+// It runs E2E_HOSPITAL (a hospital file; default data/hospitals/demo.json) from
+// E2E_PATIENT_ZERO (default mri_2). The agent tests use demo.json and MRI 2.
+// Two independent clients play two humans.
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import demo from "../../../data/hospitals/demo.json";
 import { DbConnection } from "../../web/lib/stdb/module_bindings";
@@ -16,6 +21,9 @@ import { DbConnection } from "../../web/lib/stdb/module_bindings";
 const URI = process.env.E2E_STDB_URI;
 const MODULE = process.env.STDB_MODULE ?? "hippocratech";
 const COORDINATOR = process.env.COORDINATOR_URL ?? "http://127.0.0.1:8004";
+const ENGINE = (process.env.ENGINE_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+const HOSPITAL_FILE: { hospital: object } = process.env.E2E_HOSPITAL ? JSON.parse(readFileSync(process.env.E2E_HOSPITAL, "utf8")) : demo;
+const PATIENT_ZERO = process.env.E2E_PATIENT_ZERO ?? "mri_2";
 
 function connect(): Promise<DbConnection> {
   return new Promise((resolve, reject) => {
@@ -104,6 +112,68 @@ describe.skipIf(!URI)("live aggregate fix", () => {
     await until(() => session(a).roundState === "done", "the round to resume and finish");
     expect(thread(a).some((r) => r.includes("humans>coordinator answer"))).toBe(true);
     console.log(`[e2e] ${sessionId}: asked ${q.questionId}, Dev answered, round ${session(a).round} ${session(a).roundState}`);
+    a.disconnect();
+    b.disconnect();
+  }, 120_000);
+});
+
+describe.skipIf(!URI)("live run", () => {
+  it("drives a run with the engine's frames, obeys reset and step, and both clients see the same rows", async () => {
+    const sessionId = `e2er_${Date.now().toString(36)}`;
+    const runId = `${sessionId}_run`;
+    const watch = (c: DbConnection) => new Promise<void>((resolve, reject) => {
+      c.subscriptionBuilder().onApplied(() => resolve()).onError((ctx) => reject(ctx.event)).subscribe([
+        `SELECT * FROM session WHERE id = '${sessionId}'`, `SELECT * FROM run WHERE session_id = '${sessionId}'`,
+        ...["tick_snapshot", "device_state", "sim_event"].map((t) => `SELECT * FROM ${t} WHERE run_id = '${runId}'`),
+      ]);
+    });
+    const [a, b] = await Promise.all([connect(), connect()]);
+    await Promise.all([watch(a), watch(b)]);
+    const session = (c: DbConnection) => c.db.session.id.find(sessionId);
+    const run = (c: DbConnection) => c.db.run.id.find(runId);
+    const rowsOf = (c: DbConnection) => ({
+      snapshots: [...c.db.tickSnapshot.iter()].map((s) => s.tick).sort((x, y) => x - y),
+      infected: [...c.db.deviceState.iter()].filter((d) => d.infected).map((d) => d.deviceId).sort(),
+      events: [...c.db.simEvent.iter()].map((e) => `${e.tick} ${e.kind} ${e.targetId}`).sort(),
+    });
+
+    await a.reducers.sessionCreate({ sessionId, hospitalJson: JSON.stringify(HOSPITAL_FILE) });
+    await until(() => (session(b)?.entryPointsJson ?? "[]") !== "[]", "the engine's entry points", 20_000);
+    expect(JSON.parse(session(b)!.entryPointsJson)).toContain(PATIENT_ZERO);
+
+    // What the engine says for the same inputs; the rows must say exactly that.
+    const resp = await fetch(`${ENGINE}/app/session`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ hospital: HOSPITAL_FILE.hospital, patient_zero: PATIENT_ZERO, policy: null, challenges: [] }),
+    });
+    const engine = await resp.json();
+    const last = engine.frames[engine.finalTick];
+    const want = {
+      snapshots: engine.frames.map((f: any) => f.tick),
+      infected: [...last.snapshot.infectedIds].sort(),
+      events: engine.frames.flatMap((f: any) => f.events.map((e: any) => `${f.tick} ${e.kind} ${e.targetId}`)).sort(),
+    };
+
+    await a.reducers.runStart({ sessionId, runId, label: "Baseline", patientZero: PATIENT_ZERO, seed: 1337, speed: 4, policyJson: "", pairId: "", autoplay: true });
+    await until(() => run(a)?.status === "done" && run(b)?.status === "done", "the run to finish on both clients", 60_000);
+    for (const c of [a, b]) {
+      expect(run(c)).toMatchObject({
+        tick: engine.finalTick, finalTick: engine.finalTick, devicesCompromised: last.summary.devicesCompromised,
+        patientsAffected: last.summary.patientsAffected, servicesDown: last.summary.servicesDown, detail: "",
+        removedFlowsJson: JSON.stringify(engine.removedFlows), assumptionsJson: JSON.stringify(engine.assumptions),
+      });
+      expect(rowsOf(c)).toEqual(want);
+    }
+
+    // Reset clears autoplay: the watcher recomputes and waits on frame 0, then a step sends one frame.
+    await a.reducers.runReset({ runId });
+    await until(() => run(b)?.status === "paused" && run(b)?.tick === 0 && Number(b.db.tickSnapshot.count()) === 1, "the recomputed frame 0");
+    await a.reducers.runStep({ runId });
+    await until(() => run(b)?.tick === 1, "one step");
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(run(b)).toMatchObject({ status: engine.finalTick === 1 ? "done" : "paused", tick: 1, stepPending: false });
+    expect(rowsOf(b)).toEqual(rowsOf(a));
+    console.log(`[e2e] ${sessionId}: ${runId} played ${engine.finalTick + 1} frames from ${PATIENT_ZERO}, reset and stepped`);
     a.disconnect();
     b.disconnect();
   }, 120_000);

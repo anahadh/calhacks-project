@@ -24,6 +24,7 @@ export function loadConfig() {
     stdbModule: process.env.STDB_MODULE?.trim() || process.env.NEXT_PUBLIC_STDB_MODULE?.trim() || "hippocratech",
     serverToken: need("STDB_SERVER_TOKEN"),
     coordinatorUrl: (process.env.COORDINATOR_URL?.trim() || "http://127.0.0.1:8004").replace(/\/+$/, ""),
+    engineUrl: (process.env.ENGINE_URL?.trim() || "http://127.0.0.1:8000").replace(/\/+$/, ""),
     relayPort: port,
     relayToken: need("RELAY_TOKEN"),
   };

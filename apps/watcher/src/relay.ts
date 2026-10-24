@@ -89,29 +89,40 @@ class HttpError extends Error {
 
 export async function relayMessage(deps: RelayDeps, body: unknown): Promise<void> {
   const row = parse(AgentMessageRow, body, "agent_message row");
+  // The side-effect payload is checked first, so a bad one writes nothing and
+  // the agent's 400 means the message was not stored (INTEGRATION.md risk 11).
+  const effect = sideEffect(deps, row);
   await deps.reducers.agentMessageAdd({
     sessionId: row.sessionId, round: row.round, fromAgent: row.from, toAgent: row.to, type: row.type,
     payloadJson: JSON.stringify(row.payload), reason: row.reason ?? "", reasonSource: row.reasonSource ?? "",
     direction: row.direction, fixture: row.fixture,
   });
+  await effect?.();
+}
+
+/** The table write a message implies, with its payload already checked; it runs after the agent_message row lands. */
+function sideEffect(deps: RelayDeps, row: z.infer<typeof AgentMessageRow>): (() => Promise<void>) | undefined {
   // Side effects come from the sender's copy only, and only for sessions that
   // exist in SpacetimeDB (chat rounds from ASI:One have none).
-  if (row.direction !== "sent" || !deps.session(row.sessionId)) return;
+  if (row.direction !== "sent" || !deps.session(row.sessionId)) return undefined;
   if (row.type === "question" && row.to === "humans") {
     const q = parse(QuestionPayload, row.payload, "question payload");
-    await deps.reducers.questionAdd({
+    return () => deps.reducers.questionAdd({
       sessionId: q.sessionId, questionId: q.id, round: q.round, agent: q.agent, targetId: q.targetId, text: q.text,
       textSource: q.textSource ?? "", choicesJson: JSON.stringify(q.choices), allowedRolesJson: JSON.stringify(q.allowedRoles),
     });
-  } else if (row.type === "round_state") {
+  }
+  if (row.type === "round_state") {
     const s = parse(RoundStatePayload, row.payload, "round_state payload");
-    await deps.reducers.roundStateSet({ sessionId: s.sessionId, round: s.round, state: s.state, detail: s.detail ?? "" });
-  } else if (row.type === "recommendation") {
+    return () => deps.reducers.roundStateSet({ sessionId: s.sessionId, round: s.round, state: s.state, detail: s.detail ?? "" });
+  }
+  if (row.type === "recommendation") {
     parse(RecommendationPayload, row.payload, "recommendation payload");
-    await deps.reducers.recommendationUpsert({
+    return () => deps.reducers.recommendationUpsert({
       sessionId: row.sessionId, round: row.round, recommendationJson: JSON.stringify(row.payload), fixture: row.fixture,
     });
   }
+  return undefined;
 }
 
 export async function relayStatus(deps: RelayDeps, body: unknown): Promise<void> {

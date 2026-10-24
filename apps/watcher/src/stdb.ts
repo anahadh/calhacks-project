@@ -3,20 +3,26 @@
 // reducers (AGENTS.md rule 11); a wrong token shows up as their errors.
 
 import type { Identity } from "spacetimedb";
-import { DbConnection } from "../../web/lib/stdb/module_bindings";
+import * as bindings from "../../web/lib/stdb/module_bindings";
+import type { DbConnection } from "../../web/lib/stdb/module_bindings";
 import type { Config } from "./config";
 
-/** The reducers the watcher calls. Narrowed so the relay can be tested without a server. */
+// tsx runs the generated bindings as CommonJS (apps/web has no "type": "module"),
+// so Node gives this ES module only their default export; vitest gives the named one.
+const { DbConnection: Connection } = (bindings as unknown as { default?: typeof bindings }).default ?? bindings;
+
+/** The reducers the watcher calls. Narrowed so the relay and the run driver can be tested without a server. */
 export type ServerReducers = Pick<
   DbConnection["reducers"],
-  "agentMessageAdd" | "agentStatusSet" | "questionAdd" | "recommendationUpsert" | "roundStateSet"
+  | "agentMessageAdd" | "agentStatusSet" | "questionAdd" | "recommendationUpsert" | "roundStateSet"
+  | "runFramesApply" | "runFail" | "sessionEntryPointsSet"
 >;
 
 export type SessionInfo = { roundState: string; round: number };
 
 export function connect(config: Config): Promise<{ conn: DbConnection; identity: Identity }> {
   return new Promise((resolve, reject) => {
-    DbConnection.builder()
+    Connection.builder()
       .withUri(config.stdbUri)
       .withDatabaseName(config.stdbModule)
       .withToken(config.serverToken)
@@ -37,13 +43,25 @@ export function subscribe(conn: DbConnection): Promise<void> {
       .subscriptionBuilder()
       .onApplied(() => resolve())
       .onError((ctx: any) => reject(new Error(String(ctx?.event?.message ?? ctx?.event ?? "Subscription failed."))))
-      .subscribe(["SELECT * FROM session", "SELECT * FROM defend_request_log", "SELECT * FROM question"]);
+      .subscribe(["SELECT * FROM session", "SELECT * FROM defend_request_log", "SELECT * FROM question", "SELECT * FROM run"]);
   });
 }
 
 export function sessionInfo(conn: DbConnection, sessionId: string): SessionInfo | undefined {
   const s = conn.db.session.id.find(sessionId);
   return s ? { roundState: s.roundState, round: s.round } : undefined;
+}
+
+/** The session's hospital as the engine takes it: the `hospital` of its `{schemaVersion, hospital}` file. */
+export function hospitalOf(conn: DbConnection, sessionId: string): object | undefined {
+  const s = conn.db.session.id.find(sessionId);
+  if (!s) return undefined;
+  try {
+    const h: unknown = (JSON.parse(s.hospitalJson) as { hospital?: unknown }).hospital;
+    return h !== null && typeof h === "object" && !Array.isArray(h) ? h : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
