@@ -46,7 +46,7 @@ A modal over the live, blurred session scene, so the hospital is visible right a
 
 - **Header:** hospital name, two view tabs (**1 Simulation**, **2 Agents**; the keys 1 and 2 switch), presence avatars, and **Log**.
 - **Simulation tab**, top to bottom:
-  - **Timeline rail:** play/pause, the sim clock with the run and patient zero, speed, **Following [name]** / **Rejoin**, a track with event markers and an infected-count heat strip, and the current beat (the latest events) with "Illustrative simulation…" under it. Only the presenter's controls change the shared run.
+  - **Timeline rail:** **Annotate** (then click anywhere on the track to write a note at that moment; everyone sees the note marker live; Esc stops), play/pause, the sim clock with the run and patient zero, speed, **Following [name]** / **Rejoin**, a track with event markers and an infected-count heat strip, and the current beat (the latest events) with "Illustrative simulation…" under it. Only the presenter's controls change the shared run.
   - **Demo steps:** 1 Run the attack → 2 Create aggregate fix (agents negotiate) → 3 Show the solution, with one line saying what to do next. Step 2 is disabled while a run is `running`.
   - **Scene (about 65%):** the live 3D hospital (see "The attack spreading" below), with **Change conditions** and the 3D/2D toggle in its header and a legend under it.
   - **Side column (about 35%):** **Patients affected** (headline and split, then devices compromised and delayed procedures), **Clinical services** (one tile per service, running or down), and **Inspector** (the hovered device's record; choke points when nothing is hovered).

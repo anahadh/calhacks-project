@@ -49,6 +49,7 @@ export const Annotation = __t.object("Annotation", {
   active: __t.bool(),
   createdAt: __t.timestamp(),
   clearedBy: __t.string(),
+  tick: __t.i32(),
 });
 export type Annotation = __Infer<typeof Annotation>;
 

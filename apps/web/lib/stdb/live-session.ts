@@ -203,7 +203,8 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
           .filter((a) => a.sessionId === sessionId && a.active)
           .map(
             (a): AnnotationRow => ({
-              id: a.id.toString(), targetId: a.targetId, note: a.note, authorName: a.authorName,
+              id: a.id.toString(), kind: a.kind === "note" ? "note" : "focus", runId: a.runId, targetId: a.targetId,
+              tick: a.tick >= 0 ? a.tick : undefined, note: a.note, authorName: a.authorName,
               role: (ROLES.has(a.role) ? a.role : "observer") as AnnotationRow["role"],
               active: a.active, mine: !!me && a.author.isEqual(me),
             }),
@@ -242,6 +243,7 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
     setSpeed: async (speed) => { if (runId) await (await need()).runSetSpeed({ runId, speed }); },
     join: async (name, role) => (await need()).presenceJoin({ sessionId, name, role }),
     addFocus: async (deviceId, note = "") => (await need()).annotationAdd({ sessionId, targetId: deviceId, note }),
+    addNote: async (tick, note) => (await need()).annotationAddNote({ sessionId, tick, note }),
     clearFocus: async (id) => (await need()).annotationClear({ annotationId: BigInt(id) }),
     defend: async () => (await need()).defendRequest({ sessionId }),
     answerQuestion: async (questionId, choice) => (await need()).questionAnswer({ sessionId, questionId, choice }),

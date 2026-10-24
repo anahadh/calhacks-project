@@ -250,3 +250,29 @@ describe("recommendations", () => {
     expect(rows("recommendation")).toEqual([expect.objectContaining({ name: "Keep scans v2", status: "ready" })]);
   });
 });
+
+describe("timeline notes", () => {
+  it("needs a run, then records a note at a tick on the active run, for everyone to see", () => {
+    expect(() => call(ANA, mod.annotation_add_note, { session_id: "demo", tick: 3, note: "PACS goes here" })).toThrow(/Run the attack first/);
+    startRun({ autoplay: false });
+    call(DEV, mod.annotation_add_note, { session_id: "demo", tick: 6, note: "  PACS falls: call radiology  " });
+    expect(rows("annotation")[0]).toMatchObject({
+      kind: "note", tick: 6, target_id: "", note: "PACS falls: call radiology", run_id: "run_1", author_name: "Dev", active: true,
+    });
+  });
+
+  it("refuses strangers, observers, empty and long notes", () => {
+    startRun({ autoplay: false });
+    expect(() => call(user("stranger"), mod.annotation_add_note, { session_id: "demo", tick: 1, note: "x" })).toThrow(/Join the session/);
+    expect(() => call(OBS, mod.annotation_add_note, { session_id: "demo", tick: 1, note: "x" })).toThrow(/Observers/);
+    expect(() => call(ANA, mod.annotation_add_note, { session_id: "demo", tick: 1, note: "   " })).toThrow(/Write something/);
+    expect(() => call(ANA, mod.annotation_add_note, { session_id: "demo", tick: 1, note: "x".repeat(281) })).toThrow(/280/);
+  });
+
+  it("can be cleared like a focus pin", () => {
+    startRun({ autoplay: false });
+    call(DEV, mod.annotation_add_note, { session_id: "demo", tick: 2, note: "hello" });
+    call(DEV, mod.annotation_clear, { annotation_id: rows("annotation")[0].id });
+    expect(rows("annotation")[0].active).toBe(false);
+  });
+});

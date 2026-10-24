@@ -107,9 +107,12 @@ export type PresenceRow = {
   following: boolean;
 };
 
-/** A focus pin (spec 7.8). Context for the agents, never an order. */
+/**
+ * An annotation. `focus`: a pin on a device (context for the agents, never an
+ * order). `note`: free text at a tick on a run's timeline.
+ */
 export type AnnotationRow = {
-  id: string; targetId: string; note: string; authorName: string;
+  id: string; kind: "focus" | "note"; runId: string; targetId: string; tick?: number; note: string; authorName: string;
   role: PresenceRow["role"]; active: boolean; mine: boolean;
 };
 
@@ -126,6 +129,8 @@ export type SessionActions = {
   setSpeed: (speed: 0.5 | 1 | 2 | 4) => Promise<void>;
   join: (name: string, role: PresenceRow["role"]) => Promise<void>;
   addFocus: (deviceId: string, note?: string) => Promise<void>;
+  /** A note at a tick on the active run's timeline. */
+  addNote: (tick: number, note: string) => Promise<void>;
   clearFocus: (annotationId: string) => Promise<void>;
   /** Create aggregate fix: writes defend_request. Refused while the active run is running. */
   defend: () => Promise<void>;

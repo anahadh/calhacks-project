@@ -156,15 +156,18 @@ const presence = table(
   },
 );
 
-/** Focus annotations (spec 7.8). Context for the agents, never an order. */
+/**
+ * Annotations. `focus`: a pin on a device (context for the agents, never an
+ * order). `note`: a free-text note at a tick on the run's timeline.
+ */
 const annotation = table(
   { name: "annotation", public: true },
   {
     id: t.u64().primaryKey().autoInc(),
     session_id: t.string().index("btree"),
     run_id: t.string(),
-    kind: t.string(), // focus
-    target_id: t.string(), // device id
+    kind: t.string(), // focus | note
+    target_id: t.string(), // device id for focus; "" for note
     note: t.string(),
     author: t.identity(),
     author_name: t.string(),
@@ -172,6 +175,7 @@ const annotation = table(
     active: t.bool(),
     created_at: t.timestamp(),
     cleared_by: t.string(), // "" while active
+    tick: t.i32().default(-1), // note: the tick it marks; -1 for focus. Default lets an existing database migrate
   },
 );
 

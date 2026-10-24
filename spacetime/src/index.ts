@@ -14,7 +14,9 @@ import {
   type Hospital, type HospitalFile, type Policy, type SimState, type StepResult,
 } from "@hippo/sim-core";
 
-import { ANNOTATING_ROLES, KEEP_ATTEMPT_TICKS, NOTE_MAX, ROLES, SPEEDS, TICK_MS } from "./constants";
+import {
+  ANNOTATING_ROLES, KEEP_ATTEMPT_TICKS, NOTE_MAX, ROLES, SPEEDS, TICK_MS, TIMELINE_NOTE_MAX, TIMELINE_TICK_MAX,
+} from "./constants";
 import spacetimedb, { fail, getSession, isServer, same, tick_timer } from "./schema";
 
 // Tables live in schema.ts; feature reducers in their own files, re-exported here.
@@ -383,6 +385,28 @@ export const annotation_add = spacetimedb.reducer(
     ctx.db.annotation.insert({
       id: 0n, session_id, run_id: s.active_run_id, kind: "focus", target_id, note: note.trim(),
       author: ctx.sender, author_name: p.name, role: p.role, active: true, created_at: ctx.timestamp, cleared_by: "",
+      tick: -1,
+    });
+  },
+);
+
+/** A note at a tick on the active run's timeline, written by anyone who has joined. */
+export const annotation_add_note = spacetimedb.reducer(
+  { session_id: t.string(), tick: t.u32(), note: t.string() },
+  (ctx, { session_id, tick, note }) => {
+    const s = getSession(ctx, session_id);
+    const p = ctx.db.presence.identity.find(ctx.sender);
+    if (!p || p.session_id !== session_id) fail("Join the session before adding a note.");
+    if (!(ANNOTATING_ROLES as readonly string[]).includes(p.role)) fail("Observers can see notes but can't add them.");
+    if (!s.active_run_id) fail("Run the attack first. Notes mark a moment in a run.");
+    if (tick > TIMELINE_TICK_MAX) fail(`Notes can mark ticks 0 to ${TIMELINE_TICK_MAX}.`);
+    const text = note.trim();
+    if (!text) fail("Write something in the note.");
+    if (text.length > TIMELINE_NOTE_MAX) fail(`Notes are at most ${TIMELINE_NOTE_MAX} characters.`);
+    ctx.db.annotation.insert({
+      id: 0n, session_id, run_id: s.active_run_id, kind: "note", target_id: "", note: text,
+      author: ctx.sender, author_name: p.name, role: p.role, active: true, created_at: ctx.timestamp, cleared_by: "",
+      tick,
     });
   },
 );

@@ -70,7 +70,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `packages/sim-core/test/engine.test.ts` | Base | The same inputs give identical ticks. Never skip |
 | `packages/hippo-sim/` (planned) | Base | `hippo-sim --hospital --policy --patient-zero --seed [--challenge]` → RunResult JSON |
 | `spacetime/src/schema.ts` | Base | All tables, including `config` (server identity), `defend_request_log`, `agent_message`, `agent_status`, `question`, `recommendation`, and the round state on `session` |
-| `spacetime/src/index.ts` | Base | Default-exports the schema and re-exports the feature reducers. Reducers: `config_set_server`, `session_create`, `presence_join`, `presence_heartbeat`, `set_presenter`, `run_start`, scheduled `run_tick`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `annotation_add`, `annotation_clear`. Still to add: `challenge_add`, `run_seek` |
+| `spacetime/src/index.ts` | Base | Default-exports the schema and re-exports the feature reducers. Reducers: `config_set_server`, `session_create`, `presence_join`, `presence_heartbeat`, `set_presenter`, `run_start`, scheduled `run_tick`, `run_pause`, `run_resume`, `run_set_speed`, `run_step`, `run_reset`, `annotation_add`, `annotation_add_note` (a timeline note at a tick on the active run), `annotation_clear`. Still to add: `challenge_add`, `run_seek` |
 | `spacetime/src/constants.ts` | Base | Tick length and other module constants |
 | `spacetime/test/module.test.ts` | Base | Module unit tests |
 | `spacetime/test/live.integration.test.ts` | Base | Two live clients against a running server (`STDB_URI=ws://127.0.0.1:3000`) |
@@ -174,6 +174,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/features/agents/defend-button.tsx` | F1 | **Create aggregate fix** — calls `defend_request`; disabled while a visible run is `running` |
 | `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles (basic version, Show the solution still disabled) |
 | `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name only (everyone joins as `security`, so anyone can answer questions), who is here, and for the session's creator the invite link; `presence_join`. Remembers the name per session in localStorage and rejoins after a reload |
+| `apps/web/features/review/timeline-notes.tsx` | F3 | **Annotate** toggle on the timeline rail; in annotate mode a click on the track opens a pop-up to write a note at that tick (`annotation_add_note`). Every note on the active run shows as a marker for everyone; click to read, author or presenter can delete |
 | `apps/web/features/review/invite.tsx` | F3 | The session link (`/s/<id>`) with Copy, and the header's Invite button |
 | `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |

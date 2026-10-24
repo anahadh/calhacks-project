@@ -23,4 +23,5 @@ export default __t.row({
   active: __t.bool(),
   createdAt: __t.timestamp().name("created_at"),
   clearedBy: __t.string().name("cleared_by"),
+  tick: __t.i32(),
 });

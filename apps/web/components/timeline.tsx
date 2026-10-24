@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { AnnotateToggle, TimelineNotes } from "@/features/review/timeline-notes";
 import { tickClock } from "@/lib/format";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot, SimEventRow } from "@/lib/stdb/types";
@@ -22,6 +23,7 @@ const DOT: Record<string, string> = {
 export function Timeline({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
   const run = session.runs.find((r) => r.id === session.activeRunId) ?? session.runs[0];
   const [err, setErr] = useState<string>();
+  const [annotating, setAnnotating] = useState(false);
   const can = session.isPresenter;
   const act = (fn: () => Promise<unknown>) => () => {
     setErr(undefined);
@@ -68,6 +70,9 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
         </div>
 
         <div className="ml-auto flex items-center gap-1">
+          <span className="mr-2">
+            <AnnotateToggle on={annotating} onChange={setAnnotating} session={session} />
+          </span>
           {([0.5, 1, 2, 4] as const).map((s) => (
             <button
               key={s}
@@ -91,7 +96,7 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
       </div>
 
       {/* Track */}
-      <div className="relative mt-3.5 h-[42px]">
+      <div className="relative mt-3.5 h-[66px]">
         {Array.from({ length: SPAN_TICKS / LABEL_EVERY + 1 }, (_, i) => i * LABEL_EVERY).map((t) => (
           <span key={t} className="num absolute top-0 -translate-x-1/2 text-[9.5px] text-ink-faint" style={{ left: pct(t) }}>
             {tickClock(t)}
@@ -115,6 +120,7 @@ export function Timeline({ session, index }: { session: SessionSnapshot; index: 
           style={{ left: pct(run.tick + 1) }}
           aria-label={`Tick ${run.tick}`}
         />
+        <TimelineNotes session={session} span={SPAN_TICKS} annotating={annotating} onStop={() => setAnnotating(false)} />
       </div>
 
       {/* Current beat */}
