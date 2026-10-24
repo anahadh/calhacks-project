@@ -108,8 +108,10 @@ class Sim:
     """Feeds events to a Round and plays Inventory and Clinical Workflow from the logic
     module, the way the agents will. Flow's proposals and humans' answers are scripted."""
 
-    def __init__(self):
+    def __init__(self, challenges=(), baseline="baseline"):
         self.round = Round("demo", H)
+        self.challenges, self.baseline = list(challenges), baseline
+        self.inventory_challenges: list[str] = []  # Inventory learns them from round 1's request
         self.inventory_confirmed: dict[str, str] = {}  # Inventory's own copy, updated by answer actions
         self.inventory_asked: dict[str, str] = {}  # question id → device, for the questions Inventory sent
         self.actions: list[Action] = []
@@ -134,7 +136,8 @@ class Sim:
         if a.to == "flow" and a.type == "proposal_request":
             self.pending_requests.append(m)
         elif a.to == "inventory" and a.type == "proposal_request":
-            qs = inventory.preflight(m.sessionId, m.round, m.baseline, H, self.inventory_confirmed)
+            self.inventory_challenges = m.challenges
+            qs = inventory.preflight(m.sessionId, m.round, m.baseline, H, self.inventory_confirmed, m.challenges)
             self.inventory_asked.update({q.id: q.targetId for q in qs})
             if qs:
                 self.log.append(("inventory", "coordinator", "question", "; ".join(describe(q) for q in qs)))
@@ -142,7 +145,9 @@ class Sim:
         elif a.to == "inventory" and a.type == "answer":
             self.inventory_confirmed[self.inventory_asked[m.questionId]] = m.choice
         elif a.to == "inventory" and a.type in ("proposal", "revision"):
-            verdict, q = inventory.check(m.sessionId, m.round, m.policyId, m.testResult, H, self.inventory_confirmed)
+            verdict, q = inventory.check(
+                m.sessionId, m.round, m.policyId, m.testResult, H, self.inventory_confirmed, self.inventory_challenges
+            )
             out = []
             if q:  # Inventory sends the Question before its Verdict
                 self.inventory_asked[q.id] = q.targetId
@@ -158,8 +163,9 @@ class Sim:
 
     # scripted events
     def start(self):
-        self._event("watcher", "start", RoundState(sessionId="demo", round=0, state="idle", detail="start_round run_baseline, patient zero mri_2"),
-                    self.round.start("run_baseline", "mri_2", result("baseline"), seed=1337))
+        detail = f"start_round run_baseline, patient zero mri_2, challenges {self.challenges or 'none'}"
+        self._event("watcher", "start", RoundState(sessionId="demo", round=0, state="idle", detail=detail),
+                    self.round.start("run_baseline", "mri_2", result(self.baseline), seed=1337, challenges=self.challenges))
 
     def propose(self, p: Proposal):
         self._event("flow", "proposal", p, self.round.on_proposal(p))
@@ -194,23 +200,35 @@ def by_type(sim, type):
 # --- unit checks ---
 
 
+CHALLENGE = ["unknown_device_imaging"]
+
+
 def test_hospital_index():
     assert H.room_type("mri_2") == "imaging" and H.zone("srv_pacs") == "it_core"
-    assert [f["id"] for f in H.flows_by_device["dev_unknown_7"]] == ["fl_unknown_7_smb"]
+    # fl_unknown_7_smb is inactive until the unknown_device_imaging challenge.
+    assert H.flows_by_device["dev_unknown_7"] == ()
+    assert [f["id"] for f in H.all_flows_by_device["dev_unknown_7"]] == ["fl_unknown_7_smb"]
     assert H.touched(result("b_revision")) == {"ws_img_1", "mri_2"}
 
 
 def test_flagged_devices():
-    assert inventory.flagged_devices(H, {}) == {"dev_unknown_7"}
-    assert inventory.flagged_devices(H, {"dev_unknown_7": "workstation"}) == set()
+    assert inventory.flagged_devices(H, {}) == set()  # dormant without its challenge
+    assert inventory.flagged_devices(H, {}, CHALLENGE) == {"dev_unknown_7"}
+    assert inventory.flagged_devices(H, {"dev_unknown_7": "workstation"}, CHALLENGE) == set()
+    assert inventory.flagged_devices(H, {}, ["vendor_link_mri3"]) == set()  # another challenge
 
 
 def test_preflight_asks_about_unknown_device_on_the_infection_path():
-    (q,) = inventory.preflight("demo", 1, result("baseline"), H, {})
+    assert inventory.preflight("demo", 1, result("baseline"), H, {}) == []
+    (q,) = inventory.preflight("demo", 1, result("baseline_challenge"), H, {}, CHALLENGE)
     assert q.id == "q-r1-dev_unknown_7" and q.targetId == "dev_unknown_7"
     assert "unknown" not in q.choices and len(q.choices) == 12
     assert q.allowedRoles == ["clinical_engineering", "security"] and q.text == "[question]"
-    assert inventory.preflight("demo", 1, result("baseline"), H, {"dev_unknown_7": "workstation"}) == []
+    # Its neighbor ws_img_1 is infected; the only flow between them is the challenge's.
+    assert inventory.preflight("demo", 1, result("baseline"), H, {}, CHALLENGE) == [q]
+    assert inventory.preflight("demo", 1, result("baseline_challenge"), H, {"dev_unknown_7": "workstation"}, CHALLENGE) == []
+    # Contained (only MRI 2 infected): dev_unknown_7 is not on the infection path.
+    assert inventory.preflight("demo", 1, result("b_revision"), H, {}, CHALLENGE) == []
 
 
 def test_clinical_exempts_services_patient_zero_takes_down():
@@ -273,6 +291,12 @@ def test_a_round_1_clinical_rejects_broken_protected_flow():
     assert sim.round.state == "running" and sim.round.round == 2
 
 
+def test_ab_without_the_challenge_asks_no_questions():
+    sim = scenario_ab()
+    assert not by_type(sim, "question") and sim.round.open_questions == {}
+    assert "waiting_for_human" not in [a.message.state for a in by_type(sim, "round_state")]
+
+
 def test_b_round_2_revision_accepted_by_both():
     sim = scenario_ab()
     (rec,) = [a.message for a in by_type(sim, "recommendation")]
@@ -283,33 +307,53 @@ def test_b_round_2_revision_accepted_by_both():
     assert sim.round.state == "done" and sim.actions[-1].message.state == "done"
 
 
-def test_c_unknown_device_pauses_for_a_human_then_resumes():
-    sim = Sim()
+def test_c_challenge_question_pauses_the_round_until_answered():
+    """With the challenge, the unidentified device is on the infection path: the round
+    pauses as soon as Inventory's preflight question is open, and resumes on the answer."""
+    sim = Sim(challenges=CHALLENGE, baseline="baseline_challenge")
     sim.start()
-    # Preflight already asked about dev_unknown_7 (it neighbors ws_img_1, which is infected).
     (q,) = [a.message for a in by_type(sim, "question")]
     assert q.targetId == "dev_unknown_7" and q.id == "q-r1-dev_unknown_7"
-
-    sim.propose(proposal(1, "pol_c", POLICY_B, result("c_unknown_cut")))
-    v, q2 = inventory.check("demo", 1, "pol_c", result("c_unknown_cut"), H, {})
-    assert v.decision == "reject" and v.constraint == Constraint(kind="confirm_device", targetIds=["dev_unknown_7"])
-    assert q2.targetId == "dev_unknown_7"
-    assert len(by_type(sim, "question")) == 1  # same device: humans are asked once
     assert sim.round.state == "waiting_for_human"
     assert sim.actions[-1].message == RoundState(sessionId="demo", round=1, state="waiting_for_human")
-    assert not by_type(sim, "recommendation")
+
+    # Flow's proposal arrives while the round waits: it is held, not judged.
+    sim.propose(proposal(1, "pol_c", POLICY_B, result("c_unknown_cut")))
+    assert not by_type(sim, "verdict") and [a.to for a in by_type(sim, "proposal")] == []
+    assert sim.round.state == "waiting_for_human"
 
     sim.answer(Answer(sessionId="demo", questionId=q.id, author="Dev", role="clinical_engineering", choice="workstation"))
     assert sim.round.confirmed == {"dev_unknown_7": "workstation"}
-    assert sim.round.constraints == []
+    after = sim.actions[[a.type for a in sim.actions].index("answer"):]
+    assert after[1].message.state == "running"  # resumed
+    assert [a.to for a in after if a.type == "proposal"] == ["inventory", "clinical_workflow"]
     (rec,) = [a.message for a in by_type(sim, "recommendation")]
-    assert rec.testResult.removedFlows == ["fl_8", "fl_unknown_7_smb"]  # the same cut, now accepted
-    assert [v.decision for v in rec.verdicts] == ["accept", "accept"] and rec.verdicts[0].round == 1
+    assert rec.testResult.removedFlows == ["fl_8", "fl_unknown_7_smb"]  # touches the device, now named
+    assert [v.decision for v in rec.verdicts] == ["accept", "accept"]
     assert sim.round.state == "done"
 
 
+def test_c2_challenge_question_mid_round_pauses_then_rejudges():
+    """The device is off the infection path, so no preflight question; the candidate cuts
+    its flow, Inventory asks while rejecting, and the round pauses before the verdicts land."""
+    sim = Sim(challenges=CHALLENGE, baseline="b_revision")
+    sim.start()
+    assert not by_type(sim, "question") and sim.round.state == "running"
+    sim.propose(proposal(1, "pol_c", POLICY_B, result("c_unknown_cut")))
+    (q,) = [a.message for a in by_type(sim, "question")]
+    assert q.targetId == "dev_unknown_7" and sim.round.state == "waiting_for_human"
+    assert sim.round.constraints == []  # the rejection arrived while paused and was dropped
+    assert not by_type(sim, "recommendation")
+
+    sim.answer(Answer(sessionId="demo", questionId=q.id, author="Ana", role="security", choice="workstation"))
+    proposals = [a.to for a in by_type(sim, "proposal")]
+    assert proposals == ["inventory", "clinical_workflow"] * 2  # judged again after the answer
+    (rec,) = [a.message for a in by_type(sim, "recommendation")]
+    assert [v.decision for v in rec.verdicts] == ["accept", "accept"] and rec.verdicts[0].round == 1
+
+
 def test_answers_are_checked():
-    sim = Sim()
+    sim = Sim(challenges=CHALLENGE, baseline="baseline_challenge")
     sim.start()
     (q,) = sim.round.open_questions.values()
     with pytest.raises(ValueError, match="may not answer"):

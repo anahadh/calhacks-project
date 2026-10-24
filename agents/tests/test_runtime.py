@@ -116,6 +116,9 @@ def test_runtime_fixtures_are_consistent():
             if ticks:
                 assert down[sid].downSinceTick == min(ticks) and down[sid].ticksDown == r.ticks - min(ticks), (path.name, sid)
         assert set(r.protectedBroken) <= set(r.removedFlows), path.name
+        if "@unknown_device_imaging" not in path.name:  # inactive flows aren't on the network to remove
+            assert all(H.flows[f].get("active", True) for f in r.removedFlows), path.name
+            assert "dev_unknown_7" not in infected, path.name
         assert all(H.flows[f]["protected"] for f in r.protectedBroken), path.name
     for path in sorted((tools.FIXTURES / "candidates").glob("*.json")):
         c = Candidate.parse_file(path)

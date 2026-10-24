@@ -174,7 +174,7 @@ node agents/scripts/export_fixture.mjs   # from the repo root, Node 22.18+
 
 The script exports `hospital` from `apps/web/lib/stdb/mock-session.ts` in the upload file format (`{ "schemaVersion": 1, "hospital": … }`) and adds one device:
 
-- **(a) `dev_unknown_7` was added for testing.** Type `unknown`, in `rm_imaging`, vulnerable, criticality `medium`, with one SMB/445 flow (`fl_unknown_7_smb`) to `ws_img_1`. The mock has no unknown device, and the Inventory Agent needs one. **`demo.json` should include this device** (the spec's `unknown_device_imaging` challenge needs it there, inactive until the challenge applies). `mock-session.ts` is unchanged.
+- **(a) `dev_unknown_7` was added for testing.** Type `unknown`, in `rm_imaging`, vulnerable, criticality `medium`, with one SMB/445 flow (`fl_unknown_7_smb`) to `ws_img_1`. That flow has `"active": false` (schema `Flow.active`): the device is on the network only while the `unknown_device_imaging` challenge is applied (spec 7.5). The mock has no unknown device, and the Inventory Agent needs one. **`demo.json` should include this device, with its flow inactive.** `mock-session.ts` is unchanged.
 - **(b) The mock devices have no `make` or `model`.** The spec's Inventory check also flags missing make or model, but on this data that would flag every device. **Until `demo.json` adds make and model, the Inventory Agent must flag only devices with `type: "unknown"` or with no flows.**
 
 Other gaps between the mock and `HOSPITAL_SCHEMA.md`, for the lead:
@@ -265,7 +265,13 @@ Pure functions; the agents only execute what they return (AGENTS.md rule 7). No 
 - "Devices a policy touches" are the endpoints of the flows in `RunResult.removedFlows`.
 - `inventory.check` rejects with `confirm_device` naming every flagged device touched, but asks about one device per check (the first, by id). The rest are asked about on the re-check after each answer.
 - `coordinator.Round` passes each Question to humans once per device. A confirmed device is never asked about again.
-- The round pauses (`waiting_for_human`) only when a rejection's `confirm_device` device has an open question. A preflight question about a device the candidate doesn't touch stays open without blocking the round (scenario a→b ends with one open).
-- After an answer, the round resumes. If the current candidate still breaks a remaining constraint, Flow is asked to revise (a new round). Otherwise both guardians re-check the same candidate in the same round.
+- **The unidentified device appears only with its challenge.** Inventory ignores a *dormant* device, one whose flows are all inactive (`logic.inventory.dormant`), unless `unknown_device_imaging` is among the round's challenges (`StartRound.challenges` → `ProposalRequest.challenges`). With that challenge, an unknown-type device's inactive flows count as its flows: it is flagged, and preflight finds it on the infection path from either side of its flow. Without the challenge, scenario a→b and the live round ask no questions at all.
+- **The round pauses as soon as a question is open** (spec, The Agents, step 5): `on_questions` moves it to `waiting_for_human`. This replaces the earlier rule, which paused only on a `confirm_device` rejection.
+  - While it waits, proposals and revisions are held, and verdicts on the current candidate are dropped.
+  - Between processes, Flow's proposal can reach the Coordinator before Inventory's preflight question. The guardians may then already be judging when the pause starts, and their verdicts are dropped (see `test_live_challenge_pauses_for_a_human_and_resumes`).
+- After the answer (`/resume`), the round resumes:
+  - A candidate that was mid-judgement goes back to both guardians.
+  - A candidate rejected only for want of the answer is judged again. If it still breaks another constraint, Flow is asked to revise instead.
+  - Held proposals and revisions are then processed in order.
 - **Runtime contract:** Inventory sends its `Question` before the `Verdict` it belongs to, and remembers which device each of its question ids is about, so it can apply an `answer` action. Both are implemented in `agents/inventory.py`.
 - Not handled yet: `Reassess` (challenges) has no event in `Round`.

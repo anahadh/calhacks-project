@@ -19,6 +19,7 @@ class HospitalIndex:
     flows: dict[str, Row]
     services: dict[str, Row]
     flows_by_device: dict[str, tuple[Row, ...]]  # active flows only, sorted by flow id
+    all_flows_by_device: dict[str, tuple[Row, ...]]  # active and inactive, sorted by flow id
 
     def room_type(self, device_id: str) -> str:
         return self.rooms[self.devices[device_id]["roomId"]]["type"]
@@ -43,17 +44,20 @@ def index(hospital: Row) -> HospitalIndex:
     """Build the index from the `hospital` object of a hospital file."""
     flows = {f["id"]: f for f in hospital["flows"]}
     by_device: dict[str, list[Row]] = {d["id"]: [] for d in hospital["devices"]}
+    all_by_device: dict[str, list[Row]] = {d["id"]: [] for d in hospital["devices"]}
     for fid in sorted(flows):
         flow = flows[fid]
-        if flow.get("active", True):  # inactive flows exist only for a challenge
-            by_device[flow["from"]].append(flow)
-            by_device[flow["to"]].append(flow)
+        for end in (flow["from"], flow["to"]):
+            all_by_device[end].append(flow)
+            if flow.get("active", True):  # inactive flows exist only for a challenge
+                by_device[end].append(flow)
     return HospitalIndex(
         devices={d["id"]: d for d in hospital["devices"]},
         rooms={r["id"]: r for r in hospital["rooms"]},
         flows=flows,
         services={s["id"]: s for s in hospital["services"]},
         flows_by_device={k: tuple(v) for k, v in by_device.items()},
+        all_flows_by_device={k: tuple(v) for k, v in all_by_device.items()},
     )
 
 

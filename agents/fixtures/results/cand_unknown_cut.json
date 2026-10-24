@@ -106,7 +106,5 @@
     "diverted": 14
   },
   "protectedBroken": [],
-  "removedFlows": [
-    "fl_unknown_7_smb"
-  ]
+  "removedFlows": []
 }

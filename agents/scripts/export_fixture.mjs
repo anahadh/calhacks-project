@@ -7,7 +7,9 @@
 // Needs Node 22.18+ (built-in TypeScript type stripping).
 //
 // Adds one device the mock lacks, for the Inventory Agent: an unidentified
-// device in Imaging with one SMB flow to an imaging workstation. All synthetic.
+// device in Imaging with one SMB flow to an imaging workstation. The flow is
+// inactive: the device appears only with the "unknown_device_imaging" challenge
+// (spec 7.5). All synthetic.
 
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -41,6 +43,7 @@ hospital.flows.push({
   protocol: "smb",
   port: 445,
   protected: false,
+  active: false, // off until the unknown_device_imaging challenge is applied
 });
 
 const out = join(root, "agents/fixtures/hospital.json");

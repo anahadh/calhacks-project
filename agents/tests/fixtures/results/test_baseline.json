@@ -1,6 +1,6 @@
 {
   "ticks": 48,
-  "infectedCount": 16,
+  "infectedCount": 15,
   "infectedDevices": [
     {
       "id": "mri_2",
@@ -12,10 +12,6 @@
     },
     {
       "id": "srv_file",
-      "tick": 3
-    },
-    {
-      "id": "dev_unknown_7",
       "tick": 3
     },
     {

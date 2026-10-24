@@ -1,0 +1,114 @@
+{
+  "ticks": 48,
+  "infectedCount": 17,
+  "infectedDevices": [
+    {
+      "id": "mri_2",
+      "tick": 0
+    },
+    {
+      "id": "ws_img_1",
+      "tick": 2
+    },
+    {
+      "id": "srv_file",
+      "tick": 3
+    },
+    {
+      "id": "dev_unknown_7",
+      "tick": 3
+    },
+    {
+      "id": "ws_img_2",
+      "tick": 4
+    },
+    {
+      "id": "srv_dc",
+      "tick": 5
+    },
+    {
+      "id": "srv_pacs",
+      "tick": 6
+    },
+    {
+      "id": "srv_ehr",
+      "tick": 7
+    },
+    {
+      "id": "ws_admin_1",
+      "tick": 7
+    },
+    {
+      "id": "ws_er_1",
+      "tick": 8
+    },
+    {
+      "id": "ws_lab",
+      "tick": 8
+    },
+    {
+      "id": "ws_reg",
+      "tick": 9
+    },
+    {
+      "id": "ws_ward",
+      "tick": 9
+    },
+    {
+      "id": "ws_pharm",
+      "tick": 11
+    },
+    {
+      "id": "ws_admin_2",
+      "tick": 12
+    },
+    {
+      "id": "ws_admin_3",
+      "tick": 12
+    },
+    {
+      "id": "pc_1",
+      "tick": 13
+    }
+  ],
+  "servicesDown": [
+    {
+      "id": "svc_mri",
+      "downSinceTick": 0,
+      "ticksDown": 48
+    },
+    {
+      "id": "svc_reading",
+      "downSinceTick": 6,
+      "ticksDown": 42
+    },
+    {
+      "id": "svc_ehr",
+      "downSinceTick": 7,
+      "ticksDown": 41
+    },
+    {
+      "id": "svc_er",
+      "downSinceTick": 8,
+      "ticksDown": 40
+    },
+    {
+      "id": "svc_lab",
+      "downSinceTick": 8,
+      "ticksDown": 40
+    },
+    {
+      "id": "svc_pharm",
+      "downSinceTick": 11,
+      "ticksDown": 37
+    }
+  ],
+  "patientCounts": {
+    "ok": 0,
+    "delayed": 42,
+    "disrupted": 56,
+    "diverted": 14
+  },
+  "protectedBroken": [],
+  "removedFlows": []
+}

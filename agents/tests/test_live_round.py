@@ -17,6 +17,7 @@ from config import PORTS, SEED_VARS
 
 AGENTS_DIR = Path(__file__).parent.parent
 SESSION = "live-test"
+CHALLENGE_SESSION = "live-challenge"
 TIMEOUT_S = 60
 
 
@@ -61,7 +62,7 @@ def agents(tmp_path):
     try:
         wait_until(lambda: all(listening(p) for p in PORTS.values()) or proc.poll() is not None, 30, "the agents to listen")
         assert proc.poll() is None, (tmp_path / "run_all.out").read_text()
-        yield tmp_path / f"{SESSION}.jsonl"
+        yield tmp_path
     finally:
         # Kill the whole process group (run_all and its four children), even on failure.
         try:
@@ -78,19 +79,24 @@ def agents(tmp_path):
         print((tmp_path / "run_all.out").read_text()[-4000:])
 
 
-def test_live_round(agents):
-    log = agents
-    body = {"sessionId": SESSION, "runId": "run_dev", "patientZero": "mri_2", "seed": 1337, "challenges": []}
+def start_round(session, challenges=()):
+    body = {"sessionId": session, "runId": "run_dev", "patientZero": "mri_2", "seed": 1337, "challenges": list(challenges)}
     r = httpx.post(f"http://127.0.0.1:{PORTS['coordinator']}/start_round", json=body, timeout=30)
     assert r.status_code == 200 and r.json()["ok"] is True, r.text
 
-    def done():
-        return any(m.get("type") == "round_state" and m["payload"]["state"] == "done" for m in messages(log))
 
-    wait_until(done, TIMEOUT_S, "the round to finish")
+def round_state(log, state):
+    return lambda: any(m.get("type") == "round_state" and m["payload"]["state"] == state for m in messages(log))
+
+
+def test_live_round(agents):
+    log = agents / f"{SESSION}.jsonl"
+    start_round(SESSION)
+    wait_until(round_state(log, "done"), TIMEOUT_S, "the round to finish")
     rows = messages(log)
     assert rows and all(row["fixture"] is True for row in rows)
     sent = [m for m in rows if m["table"] == "agent_message" and m["direction"] == "sent"]
+    assert not [m for m in sent if m["type"] == "question"]  # no challenge: no unidentified device
 
     expected = [
         ("proposal", lambda m: m["from"] == "flow" and m["payload"]["policyId"] == "cand_isolate_imaging"),
@@ -114,3 +120,49 @@ def test_live_round(agents):
     for m in sent:
         if m["to"] not in ("humans", "relay"):
             assert (m["from"], m["to"], m["type"], json.dumps(m["payload"], sort_keys=True)) in received, m
+
+
+def test_live_challenge_pauses_for_a_human_and_resumes(agents):
+    """unknown_device_imaging: Inventory's question pauses the round; /resume resumes it."""
+    log = agents / f"{CHALLENGE_SESSION}.jsonl"
+    start_round(CHALLENGE_SESSION, ["unknown_device_imaging"])
+    wait_until(round_state(log, "waiting_for_human"), TIMEOUT_S, "the round to pause")
+    # Let anything in flight land. Flow's proposal may reach the Coordinator before
+    # Inventory's preflight question; verdicts that arrive while paused must decide nothing.
+    time.sleep(1.5)
+    sent = [m for m in messages(log) if m["table"] == "agent_message" and m["direction"] == "sent"]
+    (q,) = [m["payload"] for m in sent if m["type"] == "question" and m["to"] == "humans"]  # asked once
+    assert q["targetId"] == "dev_unknown_7"
+    assert not [m for m in sent if m["type"] in ("recommendation", "proposal_request") and m["round"] > 1 or m["type"] == "recommendation"]
+    assert [m["payload"]["state"] for m in sent if m["type"] == "round_state"] == ["running", "waiting_for_human"]
+    judged_before = len([m for m in sent if m["type"] in ("proposal", "revision") and m["from"] == "coordinator"])
+    status = [m for m in messages(log) if m["table"] == "agent_status" and m["agent"] == "coordinator"]
+    assert status[-1]["status"] == "waiting"
+
+    wrong = {"sessionId": CHALLENGE_SESSION, "questionId": q["id"], "choice": "workstation", "author": "Kai", "role": "operations"}
+    r = httpx.post(f"http://127.0.0.1:{PORTS['coordinator']}/resume", json=wrong, timeout=30)
+    assert r.json()["ok"] is False and "may not answer" in r.json()["detail"]
+
+    answer = {**wrong, "author": "Dev", "role": "clinical_engineering"}
+    r = httpx.post(f"http://127.0.0.1:{PORTS['coordinator']}/resume", json=answer, timeout=30)
+    assert r.json()["ok"] is True, r.text
+    wait_until(round_state(log, "done"), TIMEOUT_S, "the round to finish")
+
+    rows = messages(log)
+    assert all(row["fixture"] is True for row in rows)
+    sent = [m for m in rows if m["table"] == "agent_message" and m["direction"] == "sent"]
+    types = [(m["type"], m["payload"].get("state")) for m in sent]
+    paused, resumed = types.index(("round_state", "waiting_for_human")), types.index(("round_state", "running"), 2)
+    answer_row = next(i for i, m in enumerate(rows) if m.get("type") == "answer" and m["from"] == "humans")
+    assert rows.index(sent[paused]) < answer_row < rows.index(sent[resumed])
+    # Nothing was decided while paused: the first constraint-bearing request comes after resume,
+    # and the paused candidate went back to both guardians.
+    assert all(i > resumed for i, m in enumerate(sent) if m["type"] == "proposal_request" and m["round"] > 1)
+    rejudged = [m["to"] for m in sent[resumed:] if m["type"] in ("proposal", "revision") and m["from"] == "coordinator"]
+    assert rejudged[:2] == ["inventory", "clinical_workflow"] or judged_before == 0
+    (rec,) = [m["payload"] for m in sent if m["type"] == "recommendation"]
+    assert "fl_unknown_7_smb" in rec["testResult"]["removedFlows"]  # touches the device, now named
+    assert rec["requiredRoles"] == ["security", "clinical_engineering"]
+    # After the answer, Inventory accepts every candidate that touches dev_unknown_7.
+    after = [m["payload"]["decision"] for m in sent[resumed:] if m["type"] == "verdict" and m["from"] == "inventory"]
+    assert after and set(after) == {"accept"}

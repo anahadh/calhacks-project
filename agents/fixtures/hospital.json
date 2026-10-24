@@ -1442,7 +1442,8 @@
         "to": "ws_img_1",
         "protocol": "smb",
         "port": 445,
-        "protected": false
+        "protected": false,
+        "active": false
       }
     ],
     "services": [

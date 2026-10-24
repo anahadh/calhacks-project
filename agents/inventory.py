@@ -25,6 +25,7 @@ H = hospital_mod.load(settings().hospital_path)
 @dataclass
 class Session:
     confirmed: dict[str, str] = field(default_factory=dict)  # device id → type a human named
+    challenges: list[str] = field(default_factory=list)  # from round 1's request
     asked: dict[str, str] = field(default_factory=dict)  # question id → device id
 
 
@@ -41,7 +42,8 @@ async def on_request(ctx: Context, sender: str, msg: ProposalRequest):
     try:
         await received(NAME, sender, "proposal_request", msg)
         s = sessions.setdefault(msg.sessionId, Session())
-        for q in inventory.preflight(msg.sessionId, msg.round, msg.baseline, H, s.confirmed):
+        s.challenges = list(msg.challenges)
+        for q in inventory.preflight(msg.sessionId, msg.round, msg.baseline, H, s.confirmed, s.challenges):
             await ask(ctx, s, q)
         await relay.status(msg.sessionId, NAME, "idle")
     except Exception as e:
@@ -52,7 +54,9 @@ async def judge(ctx: Context, sender: str, type: str, msg: Proposal | Revision):
     try:
         await received(NAME, sender, type, msg)
         s = sessions.setdefault(msg.sessionId, Session())
-        verdict, question = inventory.check(msg.sessionId, msg.round, msg.policyId, msg.testResult, H, s.confirmed)
+        verdict, question = inventory.check(
+            msg.sessionId, msg.round, msg.policyId, msg.testResult, H, s.confirmed, s.challenges
+        )
         if question is not None:
             await ask(ctx, s, question)
         await send(ctx, NAME, "coordinator", "verdict", verdict)

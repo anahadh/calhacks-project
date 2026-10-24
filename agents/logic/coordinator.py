@@ -7,6 +7,12 @@ always give the same actions.
 
 Message order the runtime must keep: Inventory sends its Question (on_questions)
 before the Verdict it belongs to (on_verdict).
+
+Pausing (spec, The Agents, step 5): the round goes to waiting_for_human as soon as a
+question is open. Proposals, revisions and verdicts that arrive while it waits are
+held. On resume, verdicts held for the current candidate are dropped and both
+guardians check it again (the answer may change Inventory's view). Held proposals
+and revisions are then processed in arrival order.
 """
 
 from dataclasses import dataclass
@@ -99,6 +105,9 @@ class Round:
         self._result: RunResult | None = None
         self._current: Proposal | Revision | None = None  # last proposal or revision, as received
         self._verdicts: dict[str, Verdict] = {}
+        self._decided = True  # no candidate is waiting for verdicts
+        self._held: list[Proposal | Revision] = []  # arrived while waiting_for_human
+        self._waiting_rejection = False  # paused after a confirm_device rejection
 
     # --- events ---
 
@@ -128,10 +137,16 @@ class Round:
             self.open_questions[q.id] = q
             asked.add(q.targetId)
             actions.append(Action("humans", "question", q))
+        if actions and self.state == "running":
+            self.state = "waiting_for_human"
+            actions.append(self._round_state())
         return actions
 
     def on_proposal(self, proposal: Proposal) -> list[Action]:
         self._check_session(proposal)
+        if self.state == "waiting_for_human":
+            self._held.append(proposal)
+            return []
         if self.state != "running" or proposal.round != self.round or self._policy is not None:
             return []
         self._policy = Policy(
@@ -145,6 +160,9 @@ class Round:
 
     def on_revision(self, revision: Revision) -> list[Action]:
         self._check_session(revision)
+        if self.state == "waiting_for_human":
+            self._held.append(revision)
+            return []
         if self.state != "running" or revision.round != self.round or self._policy is None:
             return []
         rules = flow.apply_diff(self._policy.rules, revision.diff)
@@ -158,11 +176,14 @@ class Round:
         if verdict.agent not in GUARDIANS:
             raise ValueError(f"verdict from {verdict.agent}, which is not a guardian")
         stale = self._current is None or (verdict.round, verdict.policyId) != (self._current.round, self._current.policyId)
-        if self.state != "running" or stale or verdict.agent in self._verdicts:
+        # While waiting, a verdict on the current candidate is dropped: on resume both
+        # guardians check it again with the human's answer.
+        if self.state != "running" or stale or self._decided or verdict.agent in self._verdicts:
             return []
         self._verdicts[verdict.agent] = verdict
         if len(self._verdicts) < len(GUARDIANS):
             return []
+        self._decided = True
 
         verdicts = [self._verdicts[a] for a in GUARDIANS]
         rejections = [v for v in verdicts if v.decision == "reject"]
@@ -173,6 +194,7 @@ class Round:
                 self.constraints = merge(self.constraints, v.constraint)
         if self._waiting_on_humans():
             self.state = "waiting_for_human"
+            self._waiting_rejection = True
             return [self._round_state()]
         return self._next_round()
 
@@ -220,7 +242,7 @@ class Round:
         )
 
     def _forward(self, msg: Proposal | Revision, type: ActionType) -> list[Action]:
-        self._current, self._result, self._verdicts = msg, msg.testResult, {}
+        self._current, self._result, self._verdicts, self._decided = msg, msg.testResult, {}, False
         return [Action(g, type, msg) for g in GUARDIANS]
 
     def _waiting_on_humans(self) -> bool:
@@ -242,10 +264,26 @@ class Round:
     def _resume(self) -> list[Action]:
         self.state = "running"
         actions = [self._round_state()]
-        if flow.violates(self._result, self.constraints, self.hospital, len(self._policy.rules)):
-            return actions + self._next_round()
-        # The answer may have cleared the only objection: ask both guardians again.
-        return actions + self._forward(self._current, "proposal" if isinstance(self._current, Proposal) else "revision")
+        reopen, self._waiting_rejection = self._waiting_rejection, False
+        again = "proposal" if isinstance(self._current, Proposal) else "revision"
+        if self._current is not None and not self._decided:
+            # Paused mid-judgement: verdicts that came in meanwhile were dropped; judge again.
+            actions += self._forward(self._current, again)
+        elif self._current is not None and reopen:
+            # Rejected for an unanswered question. If the answer cleared the only objection,
+            # ask both guardians again; otherwise move on to a revision.
+            if flow.violates(self._result, self.constraints, self.hospital, len(self._policy.rules)):
+                actions += self._next_round()
+            else:
+                actions += self._forward(self._current, again)
+        held, self._held = self._held, []
+        for msg in held:
+            if self.state != "running":  # a replayed message paused or ended the round again
+                self._held.append(msg)
+                continue
+            actions += self.on_proposal(msg) if isinstance(msg, Proposal) else self.on_revision(msg)
+        return actions
+
 
     def _next_round(self) -> list[Action]:
         if self.round >= MAX_ROUNDS:

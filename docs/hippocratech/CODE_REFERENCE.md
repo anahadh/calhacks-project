@@ -67,21 +67,21 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | `agents/addresses.py` | F1 | Addresses from seeds; the local `RulesBasedResolver` (address → `127.0.0.1:<port>/submit`) |
 | `agents/runtime.py` | F1 | Builds each Agent (local resolution, no Almanac); `send`/`received` relay every message and set status |
 | `agents/scripts/start_round.py`, `agents/scripts/answer.py` | F1 | POST `/start_round` and `/resume` to the Coordinator, as the watchers will |
-| `agents/fixtures/candidates/*.json`, `agents/fixtures/results/*.json` | F1 | Runtime fixtures: three candidates and their hand-written results plus `baseline.json`, for `HIPPO_SIM_FIXTURES=1` and no `HIPPO_OPT_BIN` |
+| `agents/fixtures/candidates/*.json`, `agents/fixtures/results/*.json` | F1 | Runtime fixtures: three candidates and their hand-written results plus `baseline.json`, and `<id>@unknown_device_imaging.json` variants for that challenge; for `HIPPO_SIM_FIXTURES=1` and no `HIPPO_OPT_BIN` |
 | `agents/logic/hospital.py` | F1 | Read-only hospital index: devices, rooms, flows, services by id; room type and zone per device; active flows per device |
 | `agents/logic/inventory.py` | F1 | `flagged_devices`, `preflight`, `check`: unidentified-device decisions and `Question`s (pure) |
 | `agents/logic/clinical.py` | F1 | `check` with `MAX_SERVICE_LOSS`: `keep_flow` and `keep_service` rejections (pure) |
 | `agents/logic/flow.py` | F1 | `violates`, `rank`, `diff`/`apply_diff` for candidates (pure) |
 | `agents/logic/coordinator.py` | F1 | `Round` state machine (events in, `Action`s out), `MAX_ROUNDS`, `required_roles` (pure) |
 | `agents/requirements.txt`, `agents/pytest.ini` | F1 | Python 3.11 deps (venv in `agents/.venv`, gitignored) and pytest config |
-| `agents/fixtures/hospital.json` | F1 | Test hospital until `data/hospitals/demo.json` exists: the mock hospital plus `dev_unknown_7`. Generated, don't edit |
+| `agents/fixtures/hospital.json` | F1 | Test hospital until `data/hospitals/demo.json` exists: the mock hospital plus `dev_unknown_7`, whose flow is inactive until the `unknown_device_imaging` challenge. Generated, don't edit |
 | `agents/scripts/export_fixture.mjs` | F1 | Regenerates `fixtures/hospital.json` from `mock-session.ts` |
 | `agents/tests/test_protocol.py` | F1 | Every model round-trips; extra fields and bad values are rejected |
 | `agents/tests/test_fixture.py` | F1 | The fixture loads and its references (flows → devices, etc.) exist |
 | `agents/tests/test_logic.py` | F1 | Guardians, ranking, and Coordinator scenarios a–g; `pytest -s` prints the a→b transcript |
 | `agents/tests/fixtures/results/test_*.json` | F1 | Hand-written RunResults for `test_logic.py`. Test-only, never loaded at runtime |
 | `agents/tests/test_runtime.py` | F1 | Config, local resolver, `make_agent`, `run_sim`/`optimize` fixtures and errors, fixture consistency, relay rows |
-| `agents/tests/test_live_round.py` | F1 | Four real agent processes, one full round over uAgents, checked from the relay log |
+| `agents/tests/test_live_round.py` | F1 | Four real agent processes over uAgents, checked from the relay log: a full round with no questions, and the challenge round that pauses for a human and resumes on `/resume` |
 | `agents/tests/test_uagents_api.py` | F1 | Runs the uAgents API snippets in `AGENT_NOTES.md` (seed address, mailbox, REST, chat protocol) |
 
 ## Optimizer

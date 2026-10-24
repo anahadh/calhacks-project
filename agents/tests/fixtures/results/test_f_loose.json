@@ -1,6 +1,6 @@
 {
   "ticks": 48,
-  "infectedCount": 3,
+  "infectedCount": 2,
   "infectedDevices": [
     {
       "id": "mri_2",
@@ -9,10 +9,6 @@
     {
       "id": "ws_img_1",
       "tick": 2
-    },
-    {
-      "id": "dev_unknown_7",
-      "tick": 3
     }
   ],
   "servicesDown": [
