@@ -76,13 +76,13 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | Path | Owner | Role |
 |---|---|---|
 | `apps/web/app/page.tsx` | Base | Load screen |
-| `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: header, scene (65%), right panel (35%), timeline |
-| `apps/web/components/shell/header.tsx` | Base | Hospital name, run selector, sim clock, session controls |
+| `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (rail, demo steps, scene, side column) and Agents tab |
+| `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence, Log |
 | `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
-| `apps/web/components/panel/side-panel.tsx` | Base | Damage / Agents / Recommendations tabs; F1 and F2 mount their views here |
+| `apps/web/components/panel/impact.tsx`, `services.tsx`, `inspector.tsx` | Base | Simulation side column: patients affected, service tiles, hovered-device record and choke points |
+| `apps/web/components/panel/counters.tsx` | Base | Counter strip on the Agents tab |
 | `apps/web/components/scene/*` | Base | Floors, rooms, device boxes, patients, arcs, subscribed to live state |
-| `apps/web/components/panel/dashboard.tsx` | Base | Live headline, services, procedures, choke points, feed |
-| `apps/web/components/timeline.tsx` | Base | Playback controls and scrubber (reads `tick_snapshot`) |
+| `apps/web/components/timeline.tsx` | Base | Timeline rail: playback, speed, follow, scrubber with event markers and heat strip, current beat (reads `tick_snapshot`, `sim_event`) |
 | `apps/web/features/scene/spread-fx.tsx` | F4 | Pulses and fizzles from `spread_attempt`, device flashes, room tints |
 | `apps/web/features/scene/service-icons.tsx` | F4 | Service icons, "down" badges, event toasts from `sim_event` |
 | `apps/web/features/scene/patients-fx.tsx` | F4 | Patient badges, ambulance diversion |
@@ -91,7 +91,8 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | `apps/web/features/solution/solution-view.tsx` | F4 | Lockstep split screen, plan on the building, before/after strip, what keeps working |
 | `apps/web/features/scene/challenge-menu.tsx` | F4 | **Change conditions** presets |
 | `apps/web/components/plan/plan-2d.tsx` | F4 | 2D fallback |
-| `apps/web/features/agents/agent-room.tsx` | F1 | Agent map, message particles, conversation thread, round header, readable pace |
+| `apps/web/features/agents/agent-room.tsx` | F1 | Agents tab: agent list and status, conversation thread, round header, recommendations column. Still to add: agent map, message particles, readable pace |
+| `apps/web/features/agents/agents.ts`, `agent-icon.tsx` | F1 | Agent names and objectives, message-type shapes, agent icons |
 | `apps/web/features/agents/scene-highlights.tsx` | F1 | Scene highlights driven by each `agent_message` |
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
 | `apps/web/features/agents/defend-button.tsx` | F1 | Calls `defend_request` |

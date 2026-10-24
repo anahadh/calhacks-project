@@ -19,7 +19,7 @@ Every screen exists to make one of those three visible. The demo walks them in o
 ## Rules
 
 1. **The human number leads.** Patients affected is the largest number on the panel. Devices compromised comes second.
-2. **State colors mean state.** Orange, blue, amber, rose, and purple appear only on devices, patients, arcs, zones, and spread effects. Agents, presence, buttons, and chrome use neutral colors.
+2. **State colors mean state.** Orange, blue, amber, rose, and purple appear only on devices, patients, arcs, zones, and spread effects. Agents, presence, buttons, and chrome use neutral colors or the teal chrome accent (`#58C6D8`), never a state color.
 3. **Never color alone.** Patient states have badges. Message types have shapes (◆ proposal, ● accept, ✕ reject, ↻ revision, ? question). Review verdicts have icons and words. Cut connections are dashed.
 4. **Every visual is backed by data.** A pulse means a `spread_attempt` row; a flash means a `device_state` change; a message particle means an `agent_message` row. Never animate something that didn't happen.
 5. **Readable before fast.** Agent messages reveal no faster than one every 1.2 seconds. Event toasts stay for at least 2 seconds. **Skip to result** is always available.
@@ -44,15 +44,15 @@ A modal over the live, blurred session scene, so the hospital is visible right a
 
 ### Session view `/s/[sessionId]`
 
-- **Header:** hospital name, run selector, sim clock, **Change conditions**, 3D/2D toggle, presence avatars, **Following [name]** / **Rejoin**, and **Log**.
-- **Scene (about 65%):** the live 3D hospital (see "The attack spreading" below).
-- **Right panel (about 35%)**, with tabs:
-  - **Damage:** the live patient headline and split, devices compromised, services down, delayed procedures, choke points, the event feed, **Run**, and **Defend**.
-  - **Agents:** the Agent Room (see "The agents talking" below). A badge shows unread messages when you're on another tab.
-  - **Recommendations:** up to three cards. Each card shows its rules, the "why this works" explanation, verified numbers, each agent's verdict, the required roles with their review status, and **Show the solution**.
+- **Header:** hospital name, two view tabs (**1 Simulation**, **2 Agents**; the keys 1 and 2 switch), presence avatars, and **Log**.
+- **Simulation tab**, top to bottom:
+  - **Timeline rail:** play/pause, the sim clock with the run and patient zero, speed, **Following [name]** / **Rejoin**, a track with event markers and an infected-count heat strip, and the current beat (the latest events) with "Illustrative simulation…" under it. Only the presenter's controls change the shared run.
+  - **Demo steps:** 1 Run the attack → 2 Agents defend → 3 Show the solution, with one line saying what to do next.
+  - **Scene (about 65%):** the live 3D hospital (see "The attack spreading" below), with **Change conditions** and the 3D/2D toggle in its header and a legend under it.
+  - **Side column (about 35%):** **Patients affected** (headline and split, then devices compromised and delayed procedures), **Clinical services** (one tile per service, running or down), and **Inspector** (the hovered device's record; choke points when nothing is hovered).
+- **Agents tab:** a counter strip (patients affected first and largest), then three columns: the agents and the humans in the session, with **Defend** and **Skip to result**; the Agent Room thread (see "The agents talking" below); and **Recommendations**, up to three cards. Each card shows its rules, the "why this works" explanation, verified numbers, each agent's verdict, the required roles with their review status, and **Show the solution**.
 - **Question banner:** when an agent asks a human something, a banner appears across the top of every screen until it is answered.
 - **Log drawer:** human decisions, the memo editor, **Approve memo**, and **Export**. This is the only drawer allowed.
-- **Footer:** playback controls and a timeline with event markers and an infected-count heat strip. Only the presenter's controls change the shared run.
 
 #### The attack spreading
 
