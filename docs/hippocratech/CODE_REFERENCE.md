@@ -39,6 +39,7 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | `spacetime/src/review.rs` | F3 | `review_submit`, the only writer of `recommendation.status` |
 | `spacetime/src/memo.rs` | F3 | `memo_save_draft` (server identity), `memo_approve` |
 | `apps/web/lib/stdb/` | Base | Generated bindings (`spacetime generate`) and a `useSession(id)` subscription hook |
+| `apps/web/lib/stdb/types.ts`, `mock-session.ts` | Base | Row shapes and a fixed mid-run demo snapshot that `useSession` returns until the module exists |
 
 ## Watchers
 
@@ -78,7 +79,10 @@ If the SpacetimeDB starter pack confirms TypeScript modules, `sim-core` and `hip
 | Path | Owner | Role |
 |---|---|---|
 | `apps/web/app/page.tsx` | Base | Load screen |
-| `apps/web/app/s/[sessionId]/page.tsx` | Base | Session view shell |
+| `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: header, scene (65%), right panel (35%), timeline |
+| `apps/web/components/shell/header.tsx` | Base | Hospital name, run selector, sim clock, session controls |
+| `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
+| `apps/web/components/panel/side-panel.tsx` | Base | Damage / Agents / Recommendations tabs; F1 and F2 mount their views here |
 | `apps/web/components/scene/*` | Base | Floors, rooms, device boxes, patients, arcs, subscribed to live state |
 | `apps/web/components/panel/dashboard.tsx` | Base | Live headline, services, procedures, choke points, feed |
 | `apps/web/components/timeline.tsx` | Base | Playback controls and scrubber (reads `tick_snapshot`) |
