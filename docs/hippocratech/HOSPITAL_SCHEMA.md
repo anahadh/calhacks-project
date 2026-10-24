@@ -202,6 +202,32 @@ What the agent returns and the simulation applies. Anything not allowed by a rul
 - `fastest_deploy` rules may select only by `vlan` and `port`, since that is what existing ACLs express. The validator enforces this.
 - Maximum 40 rules per policy.
 
+## RunResult (draft, needs lead approval)
+
+What `hippo-sim` prints for one test run, as one JSON object on stdout. The agents read it (`agents/protocol.py`, `RunResult`), and it is the `testResult` on `Proposal`, `Revision` and `Recommendation`. Every number comes from `sim-core`. Unknown fields are rejected.
+
+```jsonc
+{
+  "ticks": 48,                       // ticks simulated
+  "infectedCount": 11,               // devices infected at the end
+  "infectedDevices": [ { "id": "mri_2", "tick": 0 }, { "id": "ws_img_1", "tick": 2 } /* … */ ],
+  "servicesDown": [ { "id": "svc_reading", "downSinceTick": 6, "ticksDown": 42 } ],
+  "patientCounts": { "ok": 30, "delayed": 42, "disrupted": 26, "diverted": 14 },
+  "protectedBroken": [ "fl_2" ],     // protected flow ids the policy removed
+  "removedFlows": [ "fl_8", "fl_9" ] // every flow id the policy removed
+}
+```
+
+| Field | Type | Rule |
+|---|---|---|
+| `ticks` | integer | ≥ 0 |
+| `infectedCount` | integer | ≥ 0; equals the length of `infectedDevices` |
+| `infectedDevices` | `{ id, tick }[]` | device id and the tick it was infected |
+| `servicesDown` | `{ id, downSinceTick, ticksDown }[]` | services down at any point; `ticksDown` counts the ticks it was down |
+| `patientCounts` | `{ ok, delayed, disrupted, diverted }` | patients in each state at the end; the four add up to the hospital's total |
+| `protectedBroken` | string[] | flow ids |
+| `removedFlows` | string[] | flow ids; empty when there is no policy |
+
 ## Template
 
 `data/hospitals/template.json` is the smallest useful valid file: one floor, three rooms, eight devices, one protected flow, two services, three patient groups. Keep it valid; a test checks it.

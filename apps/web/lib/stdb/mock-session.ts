@@ -225,4 +225,56 @@ export const mockSession: SessionSnapshot = {
     { name: "Dev", role: "clinical_engineering", following: true },
     { name: "Kai", role: "operations", following: true },
   ],
+  roundState: { state: "running", round: 2, maxRounds: 4 },
+  agentStatus: [
+    { agent: "inventory", status: "idle" },
+    { agent: "flow", status: "idle" },
+    { agent: "clinical_workflow", status: "thinking" },
+    { agent: "coordinator", status: "waiting" },
+  ],
+  messages: [
+    {
+      round: 1, seq: 1, from: "inventory", to: "coordinator", type: "accept",
+      reason: "Every device on the infection path is identified. Nothing to ask a human yet.",
+    },
+    {
+      round: 1, seq: 2, from: "flow", to: "all", type: "proposal",
+      reason: "Blocking SMB between zones separates the file server from Imaging and the wards.",
+      rules: [
+        "Scanners may send images to PACS on DICOM 104. Nothing else.",
+        "Workstations may reach the EHR engine on HTTPS 443.",
+        "No SMB between zones.",
+      ],
+      tested: { patientsAffected: 19 },
+    },
+    {
+      round: 1, seq: 3, from: "clinical_workflow", to: "flow", type: "reject",
+      reason: "This cuts Lab WS → EHR engine on HL7, which carries lab results to charts.",
+      constraint: { kind: "keep_flow", targetIds: ["ws_lab", "srv_ehr"] },
+    },
+    {
+      round: 1, seq: 4, from: "inventory", to: "flow", type: "accept",
+      reason: "The proposal only touches identified devices.",
+    },
+    {
+      round: 2, seq: 5, from: "flow", to: "all", type: "revision",
+      reason: "Added the lab results flow back. Everything else is unchanged.",
+      diff: ["+ Lab WS may reach the EHR engine on HL7 2575."],
+      tested: { patientsAffected: 21 },
+    },
+  ],
+  annotations: [
+    { id: "1", targetId: "srv_file", note: "This file server is feeding the ER", authorName: "Dev", role: "clinical_engineering", active: true, mine: false },
+  ],
+  questions: [],
+  recommendations: [],
+  source: "mock",
+  isPresenter: false,
+  actions: (() => {
+    const noop = async () => {};
+    return {
+      startRun: noop, play: noop, pause: noop, step: noop, reset: noop, setSpeed: noop, join: noop, addFocus: noop,
+      clearFocus: noop, defend: noop, answerQuestion: noop,
+    };
+  })(),
 };

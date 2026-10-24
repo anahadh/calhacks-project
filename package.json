@@ -1,9 +1,13 @@
 {
   "name": "hippocratech",
   "private": true,
-  "packageManager": "pnpm@9.12.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "spacetime"
+  ],
   "scripts": {
-    "dev": "pnpm --filter web dev",
-    "typecheck": "pnpm -r typecheck"
+    "dev": "npm run dev -w web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   }
 }

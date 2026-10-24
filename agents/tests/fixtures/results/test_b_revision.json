@@ -1,0 +1,27 @@
+{
+  "ticks": 48,
+  "infectedDevices": [
+    {
+      "id": "mri_2",
+      "tick": 0
+    }
+  ],
+  "infectedCount": 1,
+  "servicesDown": [
+    {
+      "id": "svc_mri",
+      "downSinceTick": 0,
+      "ticksDown": 48
+    }
+  ],
+  "patientCounts": {
+    "ok": 86,
+    "delayed": 0,
+    "disrupted": 26,
+    "diverted": 0
+  },
+  "protectedBroken": [],
+  "removedFlows": [
+    "fl_8"
+  ]
+}

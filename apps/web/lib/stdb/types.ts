@@ -107,6 +107,31 @@ export type PresenceRow = {
   following: boolean;
 };
 
+/** A focus pin (spec 7.8). Context for the agents, never an order. */
+export type AnnotationRow = {
+  id: string; targetId: string; note: string; authorName: string;
+  role: PresenceRow["role"]; active: boolean; mine: boolean;
+};
+
+/** Where the snapshot came from. "mock" only when no SpacetimeDB host is configured. */
+export type SessionSource = "mock" | "connecting" | "live" | "missing" | "error";
+
+/** Playback and pin controls. Reducers reject anyone who isn't allowed. */
+export type SessionActions = {
+  startRun: (patientZero: string, speed?: 0.5 | 1 | 2 | 4) => Promise<void>;
+  play: () => Promise<void>;
+  pause: () => Promise<void>;
+  step: () => Promise<void>;
+  reset: () => Promise<void>;
+  setSpeed: (speed: 0.5 | 1 | 2 | 4) => Promise<void>;
+  join: (name: string, role: PresenceRow["role"]) => Promise<void>;
+  addFocus: (deviceId: string, note?: string) => Promise<void>;
+  clearFocus: (annotationId: string) => Promise<void>;
+  /** Create aggregate fix: writes defend_request. Refused while the active run is running. */
+  defend: () => Promise<void>;
+  answerQuestion: (questionId: string, choice: string) => Promise<void>;
+};
+
 export type SessionSnapshot = {
   hospital: Hospital;
   runs: RunRow[];
@@ -121,4 +146,83 @@ export type SessionSnapshot = {
   chokePoints: ChokePoint[];
   delayedProcedures: number;
   presence: PresenceRow[];
+  roundState: RoundState;
+  agentStatus: AgentStatusRow[];
+  messages: AgentMessageRow[];
+  annotations: AnnotationRow[];
+  questions: QuestionRow[];
+  recommendations: RecommendationRow[];
+  /** This browser's presence row, once it has joined. */
+  me?: PresenceRow;
+  source: SessionSource;
+  /** Set when source is "error". Shown as-is (AGENTS.md rule 14). */
+  error?: string;
+  /** True when this browser is the presenter and may control playback. */
+  isPresenter: boolean;
+  actions: SessionActions;
+};
+
+// --- Agent rows (agent_message, agent_status, session.roundState) ---
+
+export type AgentId = "inventory" | "flow" | "clinical_workflow" | "coordinator";
+export type Speaker = AgentId | "humans";
+export type MessageType = "request" | "proposal" | "accept" | "reject" | "revision" | "question" | "answer" | "recommendation";
+/** Who wrote a message's text (rule 14: a template is never passed off as Claude's). */
+export type TextSource = "claude" | "template";
+export type ReviewRole = "security" | "clinical_engineering" | "operations";
+
+export type AgentMessageRow = {
+  round: number;
+  seq: number;
+  from: Speaker;
+  to: Speaker | "all";
+  type: MessageType;
+  reason: string;
+  // Rejections carry the constraint they add; proposals and revisions carry
+  // rules or a diff, plus the hippo-sim test result.
+  constraint?: { kind: "keep_flow" | "keep_service" | "confirm_device" | "max_rules"; targetIds: string[] };
+  rules?: string[];
+  diff?: string[];
+  tested?: { patientsAffected: number };
+  source?: TextSource;
+  /** The numbers came from fixture files, not hippo-sim. */
+  fixture?: boolean;
+};
+
+export type AgentStatusRow = { agent: AgentId; status: "idle" | "thinking" | "speaking" | "waiting" };
+
+export type RoundState = {
+  state: "idle" | "running" | "waiting_for_human" | "done";
+  round: number;
+  maxRounds: number;
+  /** The Coordinator's detail, or an error from the watcher. Shown as-is. */
+  detail?: string;
+};
+
+export type QuestionRow = {
+  questionId: string;
+  round: number;
+  agent: AgentId;
+  targetId: string;
+  text: string;
+  source?: TextSource;
+  choices: string[];
+  allowedRoles: ReviewRole[];
+  answer?: { choice: string; author: string; role: ReviewRole };
+};
+
+/** A published plan. `status` changes only through human review (rule 9). */
+export type RecommendationRow = {
+  id: string;
+  round: number;
+  name: string;
+  rules: string[];
+  explanation: string;
+  source?: TextSource;
+  /** From hippo-sim's RunResult for this plan, on the same attack. */
+  verified: { patientsAffected: number; devicesCompromised: number; protectedBroken: string[]; removedFlows: string[] };
+  verdicts: { agent: AgentId; decision: "accept" | "reject"; reason: string }[];
+  requiredRoles: ReviewRole[];
+  status: "draft" | "ready";
+  fixture: boolean;
 };

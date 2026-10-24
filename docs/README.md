@@ -3,7 +3,7 @@
 An autonomous, multi-agent hospital cyber-defense simulator.
 
 1. **Watch the attack.** Load a synthetic hospital, infect one device, and watch ransomware spread through a 3D model of the building, tick by tick, live on every screen.
-2. **Watch the agents talk.** Four Fetch.ai agents argue out a defense on screen. A graph optimizer finds candidates, the Flow Agent tests each one against the same attack, and Claude explains every move.
+2. **Create an aggregate fix.** After the attack finishes, four Fetch.ai agents argue out a defense on screen (no agent traffic while the simulation is running). A graph optimizer finds candidates, the Flow Agent tests each one against the same attack, and Claude explains every move.
 3. **See the solution.** The same attack replays side by side, with and without the plan. Humans approve before anything is exported.
 
 Built at Cal Hacks 13.0. All hospital data is synthetic. Sponsor tracks: **Fetch.ai, Armadin, Microsoft, Anthropic, SpacetimeDB.**
@@ -11,15 +11,15 @@ Built at Cal Hacks 13.0. All hospital data is synthetic. Sponsor tracks: **Fetch
 ## Run it
 
 ```bash
-pnpm install
+npm install
 cp .env.example .env.local           # fill in keys; see the comments
 spacetime publish hippocratech        # terminal 1: the SpacetimeDB module (simulation + shared state)
-pnpm --filter web dev                 # terminal 2: the app, memo and export routes
-pnpm --filter watcher dev             # terminal 3: watchers connecting SpacetimeDB to the agents
+npm run dev -w web                    # terminal 2: the app, memo and export routes
+npm run dev -w watcher                # terminal 3: watchers connecting SpacetimeDB to the agents
 cd agents && python run_all.py        # terminal 4: the four uAgents
 ```
 
-Open the app and choose **Demo hospital**. Infect MRI 2, press **Run**, then **Defend**, then **Show the solution**.
+Open the app and choose **Demo hospital**. Infect MRI 2, press **Run**, wait for the run to finish, press **Create aggregate fix**, then **Show the solution**.
 
 ## How the simulation runs (SpacetimeDB)
 
@@ -37,7 +37,17 @@ The same engine (`sim-core`) is built into the `hippo-sim` CLI, which the agents
 | Sign-off Coordinator | Reach a plan humans can approve | Runs up to 4 rounds, pauses for human answers, and picks which roles must approve each recommendation. Cannot approve |
 
 - All four are uAgents registered on Agentverse, talking over uAgents messaging.
-- **Watchers** (SpacetimeDB subscription clients in `apps/watcher`) wake the agents when a run ends, a challenge appears, or a human answers. They also mirror every message into SpacetimeDB, and the Agent Room animates the conversation live from there. [Agentverse addresses here.]
+- **Watchers** (SpacetimeDB subscription clients in `apps/watcher`) wake the agents when a run ends, a challenge appears, or a human answers. They also mirror every message into SpacetimeDB, and the Agent Room animates the conversation live from there.
+- The Sign-off Coordinator also speaks the chat protocol: on ASI:One, type `simulate ransomware from MRI 2` and it runs a real round and sends you the summary.
+
+| Agent | Agentverse name | Handle | Address | Profile |
+|---|---|---|---|---|
+| Inventory | Hippocratech Inventory Agent | `@hippocratech-inventory` | *after registration* | *after registration* |
+| Flow | Hippocratech Flow Agent | `@hippocratech-flow` | *after registration* | *after registration* |
+| Clinical Workflow | Hippocratech Clinical Workflow Agent | `@hippocratech-clinical-workflow` | *after registration* | *after registration* |
+| Sign-off Coordinator | Hippocratech Sign-off Coordinator | `@hippocratech-coordinator` | *after registration* | *after registration* |
+
+Addresses come from the team's shared seed phrases, and the profile URLs from Agentverse. Both get filled in here after the agents are registered on a laptop ([`hippocratech/AGENTVERSE_SETUP.md`](hippocratech/AGENTVERSE_SETUP.md)).
 
 ## How Claude is used, and where it could go wrong (Anthropic)
 

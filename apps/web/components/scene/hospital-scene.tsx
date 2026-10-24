@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { C } from "@/lib/colors";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
+import { C } from "@/lib/colors";
 import { NetworkArc, type Arc } from "./arcs";
 import { FloorSlab, RoomShell } from "./building";
 import { DeviceBox } from "./devices";
@@ -13,9 +13,18 @@ import { RoomChip } from "./labels";
 import { PatientFigures } from "./patients";
 import { bounds, to3 } from "./space";
 
-export function HospitalScene({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
+export function HospitalScene({
+  session,
+  index,
+  hovered,
+  onHover,
+}: {
+  session: SessionSnapshot;
+  index: SessionIndex;
+  hovered: string | null;
+  onHover: (id: string | null) => void;
+}) {
   const { hospital } = session;
-  const [hovered, setHovered] = useState<string | null>(null);
 
   const floorLevel = useMemo(() => new Map(hospital.floors.map((f) => [f.id, f.level])), [hospital.floors]);
   const levelOfDevice = (id: string) => {
@@ -70,17 +79,24 @@ export function HospitalScene({ session, index }: { session: SessionSnapshot; in
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [6, 33, 70], fov: 34, near: 0.5, far: 400 }}
-      onPointerMissed={() => setHovered(null)}
+      camera={{ position: [4, 36, 76], fov: 34, near: 0.5, far: 400 }}
+      onPointerMissed={() => onHover(null)}
     >
       <color attach="background" args={[C.bg]} />
-      <fog attach="fog" args={[C.bg, 70, 140]} />
+      <fog attach="fog" args={[C.bg, 80, 150]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[20, 40, 25]} intensity={0.9} castShadow />
-      <OrbitControls target={[0, 6, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
+      <OrbitControls target={[0, 1, 0]} enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={110} />
 
       {hospital.floors.map((f) => (
-        <FloorSlab key={f.id} floor={f} />
+        <FloorSlab
+          key={f.id}
+          floor={f}
+          subtitle={hospital.rooms
+            .filter((r) => r.floorId === f.id)
+            .map((r) => r.name.toLowerCase())
+            .join(", ")}
+        />
       ))}
 
       {hospital.rooms.map((room) => {
@@ -113,9 +129,8 @@ export function HospitalScene({ session, index }: { session: SessionSnapshot; in
             device={d}
             level={levelOfDevice(d.id)}
             state={st}
-            infectedByName={st?.infectedBy ? index.device.get(st.infectedBy)?.name : undefined}
             hovered={hovered === d.id}
-            onHover={setHovered}
+            onHover={onHover}
           />
         );
       })}

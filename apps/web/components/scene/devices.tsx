@@ -1,8 +1,6 @@
 "use client";
 
-import { Html } from "@react-three/drei";
 import { C } from "@/lib/colors";
-import { tickClock } from "@/lib/format";
 import type { Device, DeviceStateRow, DeviceType } from "@/lib/stdb/types";
 import { to3 } from "./space";
 
@@ -22,14 +20,12 @@ export function DeviceBox({
   device,
   level,
   state,
-  infectedByName,
   hovered,
   onHover,
 }: {
   device: Device;
   level: number;
   state?: DeviceStateRow;
-  infectedByName?: string;
   hovered: boolean;
   onHover: (id: string | null) => void;
 }) {
@@ -55,35 +51,11 @@ export function DeviceBox({
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={infected ? 0.55 : hovered ? 0.35 : 0.12}
+          emissiveIntensity={hovered ? 0.9 : infected ? 0.55 : 0.1}
           roughness={0.5}
         />
       </mesh>
 
-      {hovered && (
-        <Html position={[0, h / 2 + 0.6, 0]} center zIndexRange={[40, 30]} style={{ pointerEvents: "none" }}>
-          <div className="w-max max-w-[220px] rounded-md border border-line bg-raised/95 px-3 py-2 text-xs shadow-lg">
-            <div className="font-medium text-ink">{device.name}</div>
-            <div className="num mt-0.5 text-[11px] text-ink-faint">{device.id}</div>
-            <div className="mt-1.5 flex items-center gap-1.5 text-ink-muted">
-              <span
-                className="inline-block h-2 w-2 rounded-sm"
-                style={{ background: color }}
-                aria-hidden
-              />
-              {infected ? (
-                <span>
-                  Infected at <span className="num">{tickClock(state?.infectedAtTick ?? 0)}</span>
-                  {infectedByName ? <> via {infectedByName}</> : <> (patient zero)</>}
-                </span>
-              ) : (
-                <span>Healthy</span>
-              )}
-            </div>
-            {device.vulnerable && <div className="mt-1 text-ink-muted">Unpatched or end-of-life</div>}
-          </div>
-        </Html>
-      )}
     </group>
   );
 }
