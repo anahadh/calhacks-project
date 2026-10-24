@@ -3,10 +3,12 @@
 import { useMemo } from "react";
 import { STDB_URI } from "./connection";
 import { useLiveSession } from "./live-session";
-import { mockSession } from "./mock-session";
+import { useEngineSession } from "./engine-session";
 import type { SessionSnapshot } from "./types";
 
-const useMock = (_sessionId: string): SessionSnapshot => mockSession;
+// No SpacetimeDB: run the demo hospital through the live causal engine (sim_core.api
+// /app/run), falling back to a baked run if the engine isn't up.
+const useMock = (_sessionId: string): SessionSnapshot => useEngineSession();
 
 // Live rows from SpacetimeDB when NEXT_PUBLIC_STDB_URI is set; otherwise the
 // labeled mock snapshot (source: "mock") so the UI can be built offline.

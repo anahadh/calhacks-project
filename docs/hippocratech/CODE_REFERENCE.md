@@ -34,7 +34,8 @@ not compute visible runs and is not wired into SpacetimeDB. Its CLI is
 | `engine/sim_core/cache.py` | Base | Content-addressed result store keyed by the replay fingerprint; atomic writes, validate-on-read |
 | `engine/sim_core/cli.py` | Base | `hippo-backtest` CLI: deterministic `replay` and separate `sensitivity` command |
 | `engine/sim_core/planner.py` | Base | Planner input boundary: exposes only Scenario + Plan schema; rejects embedded campaign/expected |
-| `engine/sim_core/api.py` | Base | FastAPI `POST /replay` + WebSocket trace stream; optional CUH demo registry (`demo=True`) and CORS for the dev origin; no transport computes a transition |
+| `engine/sim_core/app_bridge.py` | Base | Translate the app `hospital.json` ⇄ the causal engine (console split, SMB/RDP lateral, synthesized identity); `run_session` emits the UI sim rows |
+| `engine/sim_core/api.py` | Base | FastAPI `POST /replay`, `POST /app/run` (live UI run), WebSocket trace stream; CUH demo registry (`demo=True`), CORS for the dev origin; see [`docs/engine.md`](../engine.md) |
 | `engine/sim_core/research_runner.py` | Base | Runs `calibration.yaml` checks; CUH exploratory, HSE/BL reported unsupported (never fitted) |
 | `engine/sim_core/freeze_runner.py` | Base | Repo-root content freeze + one-use exploratory study ledger |
 | `engine/scripts/build_runs.py` | Base | Generates the deterministic CUH run grid into `apps/web/public/propagation-runs/` for the offline UI |

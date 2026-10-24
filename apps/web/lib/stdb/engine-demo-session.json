@@ -1,0 +1,589 @@
+{
+  "patientZero": "mri_2",
+  "finalTick": 15,
+  "devices": [
+    {
+      "deviceId": "ns_er",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_er_1",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_er_2",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_er_3",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_er_1",
+      "infected": true,
+      "infectedAtTick": 1,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "ip_er_1",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_reg",
+      "infected": true,
+      "infectedAtTick": 7,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "badge_er",
+      "infected": false
+    },
+    {
+      "deviceId": "mri_1",
+      "infected": false
+    },
+    {
+      "deviceId": "mri_2",
+      "infected": true,
+      "infectedAtTick": 0,
+      "infectedBy": ""
+    },
+    {
+      "deviceId": "mri_3",
+      "infected": false
+    },
+    {
+      "deviceId": "ct_1",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_img_1",
+      "infected": true,
+      "infectedAtTick": 11,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "ws_img_2",
+      "infected": true,
+      "infectedAtTick": 12,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "la_1",
+      "infected": false
+    },
+    {
+      "deviceId": "la_2",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_lab",
+      "infected": true,
+      "infectedAtTick": 3,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "pc_1",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_pharm",
+      "infected": true,
+      "infectedAtTick": 4,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "ws_admin_1",
+      "infected": true,
+      "infectedAtTick": 8,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "ws_admin_2",
+      "infected": true,
+      "infectedAtTick": 9,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "ws_admin_3",
+      "infected": true,
+      "infectedAtTick": 10,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "hvac_1",
+      "infected": false
+    },
+    {
+      "deviceId": "badge_admin",
+      "infected": false
+    },
+    {
+      "deviceId": "ns_icu",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_icu_1",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_icu_2",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_icu_3",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_icu_4",
+      "infected": false
+    },
+    {
+      "deviceId": "ip_icu_1",
+      "infected": false
+    },
+    {
+      "deviceId": "ip_icu_2",
+      "infected": false
+    },
+    {
+      "deviceId": "am_or_1",
+      "infected": false
+    },
+    {
+      "deviceId": "am_or_2",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_or_1",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_or_2",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_or",
+      "infected": false
+    },
+    {
+      "deviceId": "srv_pacs",
+      "infected": false
+    },
+    {
+      "deviceId": "srv_ehr",
+      "infected": true,
+      "infectedAtTick": 6,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "srv_file",
+      "infected": true,
+      "infectedAtTick": 14,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "srv_dc",
+      "infected": true,
+      "infectedAtTick": 5,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "ns_ward",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_ward_1",
+      "infected": false
+    },
+    {
+      "deviceId": "pm_ward_2",
+      "infected": false
+    },
+    {
+      "deviceId": "ip_ward_1",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_ward",
+      "infected": true,
+      "infectedAtTick": 13,
+      "infectedBy": "mri_2"
+    },
+    {
+      "deviceId": "ws_rad_1",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_rad_2",
+      "infected": false
+    },
+    {
+      "deviceId": "ws_rad_3",
+      "infected": false
+    }
+  ],
+  "services": [
+    {
+      "serviceId": "svc_mri",
+      "down": true,
+      "downSinceTick": 15
+    },
+    {
+      "serviceId": "svc_reading",
+      "down": false
+    },
+    {
+      "serviceId": "svc_ehr",
+      "down": true,
+      "downSinceTick": 15
+    },
+    {
+      "serviceId": "svc_er",
+      "down": true,
+      "downSinceTick": 15
+    },
+    {
+      "serviceId": "svc_icu",
+      "down": false
+    },
+    {
+      "serviceId": "svc_pharm",
+      "down": true,
+      "downSinceTick": 15
+    },
+    {
+      "serviceId": "svc_lab",
+      "down": true,
+      "downSinceTick": 15
+    }
+  ],
+  "patients": [
+    {
+      "groupId": "pg_er",
+      "state": "diverted"
+    },
+    {
+      "groupId": "pg_waiting",
+      "state": "disrupted"
+    },
+    {
+      "groupId": "pg_scan",
+      "state": "disrupted"
+    },
+    {
+      "groupId": "pg_icu",
+      "state": "disrupted"
+    },
+    {
+      "groupId": "pg_or",
+      "state": "disrupted"
+    },
+    {
+      "groupId": "pg_ward",
+      "state": "disrupted"
+    }
+  ],
+  "attempts": [
+    {
+      "tick": 1,
+      "from": "mri_2",
+      "to": "ws_er_1",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 2,
+      "from": "mri_2",
+      "to": "mri_2",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 3,
+      "from": "mri_2",
+      "to": "ws_lab",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 4,
+      "from": "mri_2",
+      "to": "ws_pharm",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 5,
+      "from": "mri_2",
+      "to": "srv_dc",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 6,
+      "from": "mri_2",
+      "to": "srv_ehr",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 7,
+      "from": "mri_2",
+      "to": "ws_reg",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 8,
+      "from": "mri_2",
+      "to": "ws_admin_1",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 9,
+      "from": "mri_2",
+      "to": "ws_admin_2",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 10,
+      "from": "mri_2",
+      "to": "ws_admin_3",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 11,
+      "from": "mri_2",
+      "to": "ws_img_1",
+      "flowId": "fl_8",
+      "success": true
+    },
+    {
+      "tick": 12,
+      "from": "mri_2",
+      "to": "ws_img_2",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 13,
+      "from": "mri_2",
+      "to": "ws_ward",
+      "flowId": "",
+      "success": true
+    },
+    {
+      "tick": 14,
+      "from": "mri_2",
+      "to": "srv_file",
+      "flowId": "",
+      "success": true
+    }
+  ],
+  "events": [
+    {
+      "tick": 0,
+      "kind": "patient_zero",
+      "targetId": "mri_2",
+      "text": "MRI 2 infected (patient zero)"
+    },
+    {
+      "tick": 1,
+      "kind": "device_infected",
+      "targetId": "ws_er_1",
+      "text": "ER WS 1 compromised"
+    },
+    {
+      "tick": 2,
+      "kind": "device_infected",
+      "targetId": "mri_2",
+      "text": "MRI 2 compromised"
+    },
+    {
+      "tick": 3,
+      "kind": "device_infected",
+      "targetId": "ws_lab",
+      "text": "Lab WS compromised"
+    },
+    {
+      "tick": 4,
+      "kind": "device_infected",
+      "targetId": "ws_pharm",
+      "text": "Pharmacy WS compromised"
+    },
+    {
+      "tick": 5,
+      "kind": "device_infected",
+      "targetId": "srv_dc",
+      "text": "Domain controller compromised"
+    },
+    {
+      "tick": 6,
+      "kind": "device_infected",
+      "targetId": "srv_ehr",
+      "text": "EHR engine compromised"
+    },
+    {
+      "tick": 7,
+      "kind": "device_infected",
+      "targetId": "ws_reg",
+      "text": "Registration WS compromised"
+    },
+    {
+      "tick": 8,
+      "kind": "device_infected",
+      "targetId": "ws_admin_1",
+      "text": "Admin WS 1 compromised"
+    },
+    {
+      "tick": 9,
+      "kind": "device_infected",
+      "targetId": "ws_admin_2",
+      "text": "Admin WS 2 compromised"
+    },
+    {
+      "tick": 10,
+      "kind": "device_infected",
+      "targetId": "ws_admin_3",
+      "text": "Admin WS 3 compromised"
+    },
+    {
+      "tick": 11,
+      "kind": "device_infected",
+      "targetId": "ws_img_1",
+      "text": "Imaging WS 1 compromised"
+    },
+    {
+      "tick": 12,
+      "kind": "device_infected",
+      "targetId": "ws_img_2",
+      "text": "Imaging WS 2 compromised"
+    },
+    {
+      "tick": 13,
+      "kind": "device_infected",
+      "targetId": "ws_ward",
+      "text": "Ward WS compromised"
+    },
+    {
+      "tick": 14,
+      "kind": "device_infected",
+      "targetId": "srv_file",
+      "text": "File server compromised"
+    },
+    {
+      "tick": 15,
+      "kind": "service_down",
+      "targetId": "svc_mri",
+      "text": "svc_mri offline"
+    },
+    {
+      "tick": 15,
+      "kind": "service_down",
+      "targetId": "svc_ehr",
+      "text": "svc_ehr offline"
+    },
+    {
+      "tick": 15,
+      "kind": "service_down",
+      "targetId": "svc_er",
+      "text": "svc_er offline"
+    },
+    {
+      "tick": 15,
+      "kind": "service_down",
+      "targetId": "svc_pharm",
+      "text": "svc_pharm offline"
+    },
+    {
+      "tick": 15,
+      "kind": "service_down",
+      "targetId": "svc_lab",
+      "text": "svc_lab offline"
+    }
+  ],
+  "snapshots": [
+    {
+      "tick": 0,
+      "infectedCount": 1
+    },
+    {
+      "tick": 1,
+      "infectedCount": 2
+    },
+    {
+      "tick": 2,
+      "infectedCount": 2
+    },
+    {
+      "tick": 3,
+      "infectedCount": 3
+    },
+    {
+      "tick": 4,
+      "infectedCount": 4
+    },
+    {
+      "tick": 5,
+      "infectedCount": 5
+    },
+    {
+      "tick": 6,
+      "infectedCount": 6
+    },
+    {
+      "tick": 7,
+      "infectedCount": 7
+    },
+    {
+      "tick": 8,
+      "infectedCount": 8
+    },
+    {
+      "tick": 9,
+      "infectedCount": 9
+    },
+    {
+      "tick": 10,
+      "infectedCount": 10
+    },
+    {
+      "tick": 11,
+      "infectedCount": 11
+    },
+    {
+      "tick": 12,
+      "infectedCount": 12
+    },
+    {
+      "tick": 13,
+      "infectedCount": 13
+    },
+    {
+      "tick": 14,
+      "infectedCount": 14
+    },
+    {
+      "tick": 15,
+      "infectedCount": 14
+    }
+  ],
+  "chokePoints": [
+    {
+      "deviceId": "mri_2",
+      "share": 1.0
+    }
+  ],
+  "delayedProcedures": 6,
+  "assumptions": [
+    "[S] synthesized one domain-admin H\\da with a session on each of 18 workstations and admin_to=* (identity layer invented; not in the hospital file).",
+    "[S] SMB/RDP links carry admin-class (lateral) reach; HTTPS/DICOM/HL7 stay application-layer.",
+    "[S] Windows medical consoles are modeled as attackable IT nodes; the vendor scanners never encrypt."
+  ],
+  "encryptedHosts": 14,
+  "medicalDevicesEncrypted": 0
+}
