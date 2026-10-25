@@ -53,7 +53,6 @@ export function DemoRoom({ onClose, options, status }: { onClose?: () => void; o
       events={script.slice(0, shown)}
       done={done}
       subtitle={`Round ${script[Math.max(0, shown - 1)]?.round ?? 1} of 3 · ${done ? "agreed" : "negotiating"}`}
-      badge="Scripted demo"
       controls={
         <>
           {!done && <button type="button" onClick={() => setPlaying((p) => !p)} className="ctl h-9 px-3 text-[13px]">{playing ? "Pause" : "Play"}</button>}
