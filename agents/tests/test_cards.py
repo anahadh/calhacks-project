@@ -218,3 +218,17 @@ def test_progress_card_is_compact_one_row_per_agent_with_its_latest_move():
     assert meta["card_kind"] == "carousel" and [i["title"] for i in p["items"]] == ["Flow", "Inventory", "Clinical Workflow"]
     assert p["items"][1]["badges"][0]["label"] == "rejected" and "too many rules" in p["items"][1]["secondary_text"]
     assert "Round 2" in p["title"] and len(m.text()) < 400
+
+
+def test_live_card_is_a_feed_with_no_buttons_and_the_scene_image():
+    lines = ["[ @hippocratech-coordinator ] MCP hospital.test_run(mri_2) → 9 devices infected over 9 ticks.",
+             "[ @hippocratech-coordinator ] asked @hippocratech-flow for a plan (round 1).",
+             '[ @hippocratech-flow · round 1 ] proposed "Wall off imaging": 5 devices infected with it, 9 without.',
+             "[ @hippocratech-clinical-workflow · round 1 ] rejected: it cuts imaging. Needs: keep MRI 2 → PACS."]
+    m = cards.live_card(lines, 1, "MRI 2", 9, "https://hippocratech.vercel.app/asi1/spread-mri_2.png")
+    meta, root = payload(m)
+    s = json.dumps(root, ensure_ascii=False)
+    assert not [n for n in walk(root) if n["type"] == "button"] and not [i for i in walk_items(root) if i.get("action")]
+    assert any(n["type"] == "image" and n["src"].endswith("spread-mri_2.png") for n in walk(root))
+    assert "MCP" in s and "Flow → Coordinator" in s and "Coordinator → Flow" in s and "Clinical Workflow → Coordinator" in s
+    assert meta["is_terminal"] == "true"

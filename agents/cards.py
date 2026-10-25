@@ -106,7 +106,7 @@ TEXT_STYLES = {"body", "muted", "emphasis"}
 HEADING_LEVELS = {1, 2, 3}
 
 
-def image(src: str | None, alt: str) -> list[Node]:
+def image(src: str | None, alt: str) -> list[Node]:  # noqa: E302
     """An image node only for a hosted https image: ASI:One drops the whole card (and shows
     plain text) when an image src is a data: URI, which is what happened live."""
     if not src or not src.startswith("https://"):
@@ -411,3 +411,37 @@ def progress_card(lines: list[str], round: int, device_label: str, baseline_infe
     agent_lines = [l for l in lines if TAG.match(l) and TAG.match(l).group("handle") != "hippocratech-coordinator"]
     newest = narrate.pretty(agent_lines[-1]) if agent_lines else narrate.pretty(lines[-1]) if lines else "Starting…"
     return _card(newest, CarouselCardPayload(title=f"Round {round} · the agents are negotiating", subtitle=sub, items=items))
+
+
+
+def feed_row(line: str) -> Node | None:
+    """One line of the live feed as "who → whom: what". MCP calls get their own badge."""
+    m = TAG.match(line)
+    if not m:
+        return item([text(line, "body")])
+    rest = ROUND_IN_TEXT.sub("", m.group("rest")).strip()
+    who = SHORT.get(m.group("handle"), m.group("handle")).replace("Clinical", "Clinical Workflow")
+    if m.group("handle") == "hippocratech-coordinator":
+        if rest.startswith("MCP "):
+            return item([group([badge("MCP", "info"), text(rest[4:], "muted")], direction="row", gap=8)])
+        to = re.search(r"@hippocratech-([a-z-]+)", rest)
+        if to:
+            target = {"flow": "Flow", "inventory": "Inventory", "clinical-workflow": "Clinical Workflow"}.get(to.group(1), to.group(1))
+            what = re.sub(r"\s*@hippocratech-[a-z-]+\s*", " ", rest).replace("  ", " ").strip()
+            return item([text(f"Coordinator → {target}: {what}", "muted")])
+        return item([text(f"Coordinator: {rest}", "emphasis")])
+    label, variant = agent_state([line], "@" + m.group("handle"))
+    return item([group([badge(label, variant), text(f"{who} → Coordinator: {rest}", "body")], gap=4)])
+
+
+def live_card(lines: list[str], round: int, device_label: str, baseline_infected: int | None, scene: str | None) -> ChatMessage:
+    """While the agents work on their own: the 3D picture of what's at stake, then a feed of
+    who said what to whom and every MCP call, newest last. No buttons: nothing to steer."""
+    import narrate
+    sub = f"Attack from {device_label}" + (f" · {baseline_infected} devices infected with no plan" if baseline_infected is not None else "")
+    rows = [r for r in (feed_row(l) for l in lines[-TRACE_LINES:]) if r]
+    children = image(scene, "Where the attack spreads with no plan") + [{"type": "list", "items": rows}]
+    agent_lines = [l for l in lines if TAG.match(l) and TAG.match(l).group("handle") != "hippocratech-coordinator"]
+    newest = narrate.pretty(agent_lines[-1]) if agent_lines else (narrate.pretty(lines[-1]) if lines else "Starting…")
+    root = section(f"Round {round} · the agents are negotiating", children, subtitle=sub)
+    return message(newest, root, False)

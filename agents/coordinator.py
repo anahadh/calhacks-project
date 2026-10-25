@@ -302,8 +302,9 @@ async def _flush_trace(ctx: Context, session_id: str, wait: float) -> None:
         return
     c.last_sent = time.monotonic()
     rnd = rounds.get(session_id)
-    msg = cards.progress_card(list(c.trace), rnd.round if rnd else 1, c.device_name,
-                              len(c.infected) if c.infected is not None else None)
+    start = getattr(rnd, "patient_zero", None) if rnd else None
+    msg = cards.live_card(list(c.trace), rnd.round if rnd else 1, c.device_name,
+                          len(c.infected) if c.infected is not None else None, viz.scene_url(f"spread-{start}") if start else None)
     await reply_card(ctx, c.sender, msg, session_id)
 
 
@@ -343,8 +344,7 @@ async def _summary(ctx: Context, rnd: Round) -> None:
             text = (f"✅ After {rounds_n} round{'s' if rounds_n != 1 else ''} the agents agree on **{rec.policy.name}**"
                     + (f": {before} → {rec.testResult.infectedCount} devices infected." if before is not None else ".")
                     + " It's a recommendation, not a decision: the people listed must sign off.")
-            hero = viz.floor_url(start=getattr(rnd, "patient_zero", None), infected={d.id for d in rnd.baseline.infectedDevices},
-                                 after={d.id for d in rec.testResult.infectedDevices}) if rnd.baseline else None
+            hero = viz.scene_url(f"spread-{getattr(rnd, 'patient_zero', '')}")
             await reply_card(ctx, c.sender, cards.result_card(H, rec, rnd.baseline, hero, text), rnd.sessionId)
         else:
             await reply(ctx, c.sender, f"The agents couldn't agree on a plan after {rnd.round} rounds, so there is no recommendation.",
@@ -528,7 +528,7 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
     if chat.wants_hospital(text):  # "let me view my hospital": the floor plan and where an attack could start, in code
         listed = await mcp_server.call("list_devices", {})
         n = len(listed) if isinstance(listed, list) else len(H.devices)
-        await reply_card(ctx, sender, cards.hospital_card(H, chat.devices_on_network(H), viz.floor_url(),
+        await reply_card(ctx, sender, cards.hospital_card(H, chat.devices_on_network(H), viz.scene_url("overview"),
                          f"Here's your hospital: {len(H.rooms)} rooms and {n} devices on the network. "
                          f"Tap a device to see what a ransomware attack starting there would do."), sid)
         return

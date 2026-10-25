@@ -61,3 +61,11 @@ def test_floor_urls_point_at_the_hosted_image_route(monkeypatch):
     assert "infected=mri_2%2Csrv_pacs" in u and "after=mri_2" in u
     monkeypatch.setenv("IMAGE_BASE_URL", "https://example.dev/")
     assert viz.floor_url().startswith("https://example.dev/api/floor")
+
+
+def test_scene_url_only_for_captured_shots(monkeypatch, tmp_path):
+    monkeypatch.delenv("IMAGE_BASE_URL", raising=False)
+    monkeypatch.setattr(viz, "SCENES", tmp_path)
+    assert viz.scene_url("spread-mri_2") is None
+    (tmp_path / "spread-mri_2.png").write_bytes(b"x" * 70_000)
+    assert viz.scene_url("spread-mri_2") == "https://hippocratech.vercel.app/asi1/spread-mri_2.png"

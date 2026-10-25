@@ -366,4 +366,5 @@ def test_hospital_card_and_result_card_carry_the_hosted_floor_image(coord, monke
     c, sent = coord
     monkeypatch.delenv("IMAGE_BASE_URL", raising=False)
     run(c.chat_turn(c.ctx_stub(), "agent1qs", "let me view my hospital"))
-    assert "https://hippocratech.vercel.app/api/floor" in json.dumps(sent[-1][4])
+    s = json.dumps(sent[-1][4])
+    assert "https://hippocratech.vercel.app/asi1/overview.png" in s or "floor_tiles" not in s

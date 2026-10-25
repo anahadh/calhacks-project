@@ -183,3 +183,17 @@ def floor_url(start: str | None = None, infected=None, after=None, title: str | 
     if title:
         q["title"] = title
     return f"{base}/api/floor" + (f"?{urlencode(q)}" if q else "")
+
+
+
+SCENES = __import__("pathlib").Path(__file__).resolve().parents[1] / "apps" / "web" / "public" / "asi1"
+
+
+def scene_url(name: str) -> str | None:
+    """A screenshot of the real 3D scene (agents/scripts/snap_scenes.py), served by the deployed
+    web app at /asi1/<name>.png; None when that shot was never captured."""
+    f = SCENES / f"{name}.png"
+    if not f.exists() or f.stat().st_size < 60_000:
+        return None
+    base = (os.environ.get("IMAGE_BASE_URL", "").strip() or "https://hippocratech.vercel.app").rstrip("/")
+    return f"{base}/asi1/{name}.png"
