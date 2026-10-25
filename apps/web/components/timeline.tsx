@@ -2,28 +2,18 @@
 
 import { useMemo, useState } from "react";
 
-import { initials, ROLE_LABEL, runStatusLabel, tickClock } from "@/lib/format";
+import { initials, ROLE_LABEL, tickClock } from "@/lib/format";
 import { AddNoteButton, TimelineNotes } from "@/features/review/timeline-notes";
 import { ROLE_SHORT } from "@/lib/role-views";
-import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
-// The top of the simulation panel: the runs strip, the transport row (with
+// The top of the simulation panel: the transport row (with
 // Add note), and the track for the selected run with everyone's notes on it. History comes from
 // tick_snapshot rows; nothing here computes the simulation.
 const SPEEDS = [0.5, 1, 2, 4] as const;
 const MIN_SPAN = 16; // 4 simulated hours, until the run settles
 
-export function Timeline({
-  session,
-  index,
-  onNewRun,
-}: {
-  session: SessionSnapshot;
-  index: SessionIndex;
-  /** + New run: the view clears the hospital so a device can be clicked as the next patient zero. */
-  onNewRun?: () => void;
-}) {
+export function Timeline({ session }: { session: SessionSnapshot }) {
   const run = session.runs.find((r) => r.id === session.activeRunId) ?? session.runs[0];
   const [err, setErr] = useState<string>();
   const [annotating, setAnnotating] = useState(false);
@@ -42,14 +32,8 @@ export function Timeline({
     });
   }, [session.snapshots, span, runTick]);
 
-  // Before any attack there is no run; show just the runs strip (with + New run).
-  if (!run) {
-    return (
-      <div className="flex flex-col gap-4 border-b border-line p-5">
-        <RunsStrip session={session} index={index} onNewRun={onNewRun} />
-      </div>
-    );
-  }
+  // Before any attack there is no run, so no timeline.
+  if (!run) return null;
   const can = session.isPresenter;
   const act = (fn: () => Promise<unknown>) => () => {
     setErr(undefined);
@@ -63,8 +47,6 @@ export function Timeline({
 
   return (
     <div className="flex flex-col gap-4 border-b border-line p-5">
-      <RunsStrip session={session} index={index} onNewRun={onNewRun} />
-
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <div className="flex gap-2.5">
           <button
@@ -179,71 +161,6 @@ export function Timeline({
         </div>
       </div>
     </div>
-  );
-}
-
-/** One tab per baseline run, then + New run. The selected tab is the run on screen. */
-function RunsStrip({
-  session,
-  index,
-  onNewRun,
-}: {
-  session: SessionSnapshot;
-  index: SessionIndex;
-  onNewRun?: () => void;
-}) {
-  const runs = session.runs.filter((r) => r.id && !r.pairId);
-  return (
-    <div role="group" aria-label="Runs in this session" className="flex flex-wrap items-center gap-2.5 border-b border-line pb-4">
-      <span className="eyebrow mr-2">Runs</span>
-      {runs.length === 0 && <span className="text-[13px] text-ink-muted">No runs yet. Start one from a patient zero.</span>}
-      {runs.map((r, i) => {
-        const on = r.id === session.activeRunId;
-        return (
-          <button
-            key={r.id}
-            type="button"
-            aria-pressed={on}
-            disabled={!on}
-            title={on ? undefined : "Switching the run on screen comes with several-runs support."}
-            className={`tab ${on ? "tab-on" : "disabled:cursor-not-allowed"}`}
-          >
-            <span className="font-medium">
-              Run {i + 1} · {index.device.get(r.patientZero)?.name ?? r.patientZero}
-            </span>
-            <span className={`text-[13px] leading-4 ${on ? "text-[#4A5258]" : "text-ink-muted"}`}>{runStatusLabel(r)}</span>
-          </button>
-        );
-      })}
-      <NewRun session={session} onNewRun={onNewRun} />
-    </div>
-  );
-}
-
-/**
- * + New run: clears the hospital on screen so the presenter clicks the next
- * patient zero straight on the building. No picker here; the scene is the picker.
- */
-function NewRun({ session, onNewRun }: { session: SessionSnapshot; onNewRun?: () => void }) {
-  const blocker =
-    session.source !== "live" ? "Connect to SpacetimeDB to start a run."
-    : !session.me ? "Join the session to start a run."
-    : !session.isPresenter ? `Only ${session.presenterName} starts runs.`
-    : null;
-
-  return (
-    <button
-      type="button"
-      disabled={!!blocker || !onNewRun}
-      title={blocker ?? "Click a device on the building to start the next attack"}
-      onClick={onNewRun}
-      className="num flex min-h-[60px] items-center gap-2.5 rounded-ctl border border-dashed border-line2 px-4 text-[14px] text-ink enabled:hover:border-ink-faint disabled:cursor-not-allowed disabled:opacity-disabled"
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
-        <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-      New run
-    </button>
   );
 }
 

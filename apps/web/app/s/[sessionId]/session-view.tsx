@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Counters } from "@/components/panel/counters";
 import { DeviceCard } from "@/components/panel/device-card";
 import { SpreadStats, SystemsDown } from "@/components/panel/spread";
@@ -26,23 +26,11 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   const [view, setView] = useState<ViewId>("simulation");
   const [hovered, setHovered] = useState<string | null>(null);
   const [floor, setFloor] = useState("all");
-  const [pickingNew, setPickingNew] = useState(false);
   const [pickError, setPickError] = useState<string>();
-  // Leave picking as soon as a new run is the active one in the rows, not when the reducer's promise
-  // settles: a slow or lost promise left the board blank until a reload.
-  const pickedFrom = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (pickingNew && session.activeRunId && session.activeRunId !== pickedFrom.current) setPickingNew(false);
-  }, [pickingNew, session.activeRunId]);
-
-  // Picking patient zero: before the first attack, or after + New run. The
-  // building itself is the picker — the presenter clicks a device to start.
-  const picking = !session.activeRun || pickingNew;
-  // While picking a new run, show the empty hospital (no run's rows), not the last attack.
-  const shown: SessionSnapshot =
-    picking && session.activeRun
-      ? { ...session, devices: [], services: [], patients: [], attempts: [], events: [], snapshots: [], activeRun: undefined, activeRunId: "" }
-      : session;
+  // Picking patient zero: before the first attack. The building itself is the
+  // picker — the presenter clicks a device to start.
+  const picking = !session.activeRun;
+  const shown = session;
   const index = useSessionIndex(shown);
   const roleView = useRoleView(shown);
   const canPick = picking && session.isPresenter && session.source === "live";
@@ -51,7 +39,6 @@ export function SessionView({ sessionId }: { sessionId: string }) {
     setPickError(undefined);
     try {
       await session.actions.startRun(id);
-      setPickingNew(false);
     } catch (e) {
       setPickError((e as Error).message);
     }
@@ -108,7 +95,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       {view === "simulation" ? (
         <main className="flex flex-grow flex-wrap items-stretch gap-6 p-4 md:p-6">
           <section aria-label="Simulation" className="panel flex min-w-0 flex-[999_1_760px] flex-col overflow-hidden">
-            <Timeline session={session} index={index} onNewRun={() => { pickedFrom.current = session.activeRunId; setPickingNew(true); }} />
+            <Timeline session={session} />
 
             <div className="flex flex-grow flex-col bg-scene-ground">
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4">

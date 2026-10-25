@@ -151,11 +151,7 @@ See [Out of Scope](#out-of-scope).
 
 Click a device to make it patient zero, then press **Run**. The simulation runs in SpacetimeDB (see [Simulation in SpacetimeDB](#simulation-in-spacetimedb)), and every laptop renders the same live state.
 
-**Several runs per session, each monitored separately.** A session holds any number of baseline runs, each started from a different machine (patient zero). Anyone in the session can press **+ New run**, pick a device, and start one: "Run 1 · MRI 2" by Maya, "Run 2 · HVAC controller" by Dev, "Run 3 · Imaging WS 1" by Jo. Runs can be running at the same time, each on its own clock.
-
-- Every run keeps its own rows (device, service and patient state, spread attempts, events, snapshots), its own timeline, notes and dashboard numbers. Nothing is merged across runs in the simulation.
-- The **runs strip** above the timeline has one tab per run: the run number and patient zero, then who started it and its status ("settles T+4:30" once it has settled). Selecting a tab shows that run in the scene, dashboard and timeline. While following the presenter, you see the run the presenter selected.
-- All the runs are the agents' context: **Create segmentation plan** hands every run to the agents, which must find one plan that contains all of them (7.4).
+**One run per session on screen.** The presenter picks patient zero on the building and the run starts; there is no runs strip and no **+ New run** (the several-runs idea was dropped on Oct 25, 2026).
 
 What judges see each tick (one tick is 15 simulated minutes; at 1× a tick lasts 1 second):
 
@@ -505,7 +501,7 @@ config          { serverIdentity }
 ```
 
 - `defend_request_log` holds one row per **Create segmentation plan** press (the `defend_request` reducer; a table can't share a reducer's name), listing every baseline run in the session at that moment. The round watcher wakes the Coordinator on each new row.
-- `session.activeRunId` is the run the presenter has selected in the runs strip. Baseline runs are the session's runs with no `pairId` and no policy.
+- `session.activeRunId` is the run on screen. Baseline runs are the session's runs with no `pairId` and no policy.
 - In the module, `session.roundState` is the columns `round_state`, `round` and `round_detail` (the Coordinator's detail, or a watcher error to show). `agent_message` also stores `direction` (sent or received), `reasonSource` and `fixture` (AGENT_NOTES.md "Relay rows").
 
 - `recommendation.status` is written only by the `review_submit` reducer.
@@ -674,6 +670,7 @@ Import from real asset inventories, connect to existing segmentation tools, and 
 | Oct 24, 2026 | **Several runs per session, all given to the agents.** Anyone can start a run from a different machine (**+ New run**); each is monitored separately (own rows, timeline, notes, numbers, runs-strip tab with who started it and when it settles). **Create segmentation plan** hands every baseline run to the agents, which must find one plan that contains all of them; candidates are tested with `hippo-sim` once per run. Changes `StartRound`, `ProposalRequest`, test results and `defend_request_log` (see AGENT_NOTES.md) |
 | Oct 24, 2026 | **Timeline notes.** `annotation` gains `kind: note` and `tick`; anyone in the session can pin free text (≤ 280 chars) to a moment of the active run, shared live. Notes are for people; agents don't read them |
 | Oct 24, 2026 | **Join by name only.** The people joining are real people; the join modal asks no role. Everyone joins with the same role (`security`), so anyone can answer an agent's question. Per-role sign-off needs roles back later |
+| Oct 25, 2026 | **Several-runs UI dropped.** The runs strip and **+ New run** are removed from the simulation view; the presenter starts one run from patient zero. The reducers and agent contracts are unchanged. |
 | Oct 24, 2026 | **Fourth role and short cards.** Adds **Network Engineer** (`network`, added to `ROLES` and `ANNOTATING_ROLES`; agents never require it). Device cards are cut to name, state, type and room plus at most three short role lines (lists show the first item and "+N more"), because a ten-field card reads badly in the demo. VLAN and ports move from the CISO to the Network Engineer; the CISO keeps risk, infected-by and SMB/RDP exposure, and on hover sees lateral-movement links emphasized. `my_device_card` now carries `lines_json` |
 | Oct 24, 2026 | **Role-based views (supersedes "Join by name only"; needs the lead's sign-off).** The join card asks for a role: Chief Information Security Officer, Clinical IT Team or Hospital Management, mapped to the existing ids `security`, `clinical_engineering`, `operations` (no new ids, no schema change). The role is a lens: every role sees the same infection, but the device card and the hovered device's connections differ. Only the infection path is drawn all the time (recent hops bright, older hops faint); a device's connections appear on hover, and unconnected devices fade. The mapping is one file, `spacetime/src/role_views.ts`; the per-caller SpacetimeDB views `my_device_card` and `my_arcs` apply it from the role on the caller's presence row (no new tables or reducers). `session.hospital_json` stays public, so this shapes views; it is not access control. Agent questions are answerable only by their allowed roles again, and the UI says when no one present has one |
 | Oct 24, 2026 | **Agent loop hooked up.** Tables in `spacetime/src/schema.ts`; agent reducers in `agents.ts`, `question.ts`, `recommendation.ts`; watchers in `apps/watcher`; the Agent Room reads the live rows. The defend table is `defend_request_log` |
