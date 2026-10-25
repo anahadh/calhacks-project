@@ -82,3 +82,68 @@ def test_handler_sends_the_error_when_the_loop_fails(monkeypatch, tmp_path):
     run(agent_chat.handle_chat(agent_chat.ctx_stub(), "flow", "agent1qjudge",
                                ChatMessage(content=[TextContent(text="hi")]), lambda: []))
     assert any(isinstance(m, ChatMessage) and "ASI:One error 500" in m.text() for m in sent)
+
+
+def test_coordinator_as_sender_is_not_relayed_as_a_human(monkeypatch, tmp_path):
+    """The Coordinator's ask_agent already relays both ends; the specialist must not add
+    humans→agent rows for a question no human typed (rule 10 attribution)."""
+    import addresses
+    monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
+    monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
+
+    async def fake_respond(storage, who, sender, text, tools, system, session_id=None):
+        return brain.Turn(text="Two devices.", source="asi1")
+
+    monkeypatch.setattr(brain, "respond", fake_respond)
+
+    async def fake_send(ctx, to, message):
+        pass
+
+    monkeypatch.setattr(agent_chat, "send_chat", fake_send)
+    from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+    run(agent_chat.handle_chat(agent_chat.ctx_stub(), "inventory", addresses.address("coordinator"),
+                               ChatMessage(content=[TextContent(text="which devices?")]), lambda: []))
+    assert not (tmp_path / "asi1-chat.jsonl").exists()
+
+
+def test_handler_reports_any_failure_as_the_reply(monkeypatch, tmp_path):
+    monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
+    monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
+
+    async def boom(*a, **k):
+        raise RuntimeError("relay down")
+
+    monkeypatch.setattr(agent_chat.mcp_server, "as_brain_tools", boom)
+    sent = []
+
+    async def fake_send(ctx, to, message):
+        sent.append(message)
+
+    monkeypatch.setattr(agent_chat, "send_chat", fake_send)
+    from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+    run(agent_chat.handle_chat(agent_chat.ctx_stub(), "flow", "agent1qjudge",
+                               ChatMessage(content=[TextContent(text="hi")]), lambda: []))
+    assert any(isinstance(m, ChatMessage) and "RuntimeError: relay down" in m.text() for m in sent)
+
+
+def test_on_chat_does_not_block_the_message_queue(monkeypatch):
+    """A judge's chat must not hold the specialist's inbound queue for the model's round trips."""
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_handle(ctx, name, sender, msg, tools):
+        started.set()
+        await release.wait()
+
+    monkeypatch.setattr(agent_chat, "handle_chat", slow_handle)
+
+    async def scenario():
+        from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+        on_chat = agent_chat.chat_handler("flow", lambda: [])
+        await on_chat(agent_chat.ctx_stub(), "agent1qjudge", ChatMessage(content=[TextContent(text="hi")]))
+        await asyncio.sleep(0)
+        assert started.is_set() and not release.is_set()  # the handler returned while the turn is still running
+        release.set()
+        await asyncio.sleep(0)
+
+    run(scenario())

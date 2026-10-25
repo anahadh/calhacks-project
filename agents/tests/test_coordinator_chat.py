@@ -147,3 +147,54 @@ def test_summary_is_sent_once(coord, monkeypatch):
 
     run(twice())
     assert sum(1 for s in sent if s[3] == "Done.") == 1
+
+
+def test_chat_turn_reports_any_failure_as_the_reply(coord, monkeypatch):
+    c, sent = coord
+
+    async def boom(*a, **k):
+        raise RuntimeError("relay down")
+
+    monkeypatch.setattr(c.mcp_server, "as_brain_tools", boom)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "hi"))
+    assert "RuntimeError: relay down" in sent[-1][3]
+
+
+def test_summary_failure_reaches_the_thread(coord, monkeypatch):
+    c, sent = coord
+
+    async def boom(*a, **k):
+        raise RuntimeError("model down")
+
+    monkeypatch.setattr(c.brain, "respond", boom)
+    c.chats["s"] = c.ChatRound(sender="agent1qs", device_name="MRI 2")
+    rnd = type("R", (), {"state": "done", "round": 2, "sessionId": "s", "recommendation": None, "baseline": None})()
+
+    async def go():
+        await c.notify_chat(c.ctx_stub(), rnd)
+        await asyncio.sleep(0.05)
+
+    run(go())
+    assert any(s[3] and "model down" in s[3] for s in sent)
+
+
+def test_on_chat_does_not_block_the_message_queue(coord, monkeypatch):
+    c, _ = coord
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_turn(ctx, sender, text, session_id=None, relay_in=True):
+        started.set()
+        await release.wait()
+
+    monkeypatch.setattr(c, "chat_turn", slow_turn)
+
+    async def scenario():
+        from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+        await c.on_chat(c.ctx_stub(), "agent1qs", ChatMessage(content=[TextContent(text="hi")]))
+        await asyncio.sleep(0)
+        assert started.is_set() and not release.is_set()
+        release.set()
+        await asyncio.sleep(0)
+
+    run(scenario())

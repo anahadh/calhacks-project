@@ -155,3 +155,22 @@ def test_claude_tool_use_round_trip(monkeypatch):
 def test_no_key_is_an_error(monkeypatch):
     with pytest.raises(brain.BrainError, match="ASI1_API_KEY"):
         run(None, "hi")
+
+
+def test_transport_failures_are_brain_errors(monkeypatch):
+    monkeypatch.setenv("ASI1_API_KEY", "k")
+
+    async def post(body):
+        raise ValueError("not json")
+
+    with pytest.raises(brain.BrainError, match="not json"):
+        run(post, "hi")
+
+
+def test_prompts_have_no_forbidden_words():
+    from pathlib import Path
+    from llm import FORBIDDEN
+    for p in (Path(__file__).parent.parent / "prompts").glob("*.md"):
+        text = p.read_text()
+        assert not FORBIDDEN.search(text), (p.name, FORBIDDEN.search(text).group(0))
+        assert "safe to deploy" not in text.lower(), p.name
