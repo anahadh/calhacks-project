@@ -30,12 +30,13 @@ export const CARD_FIELDS: Record<ViewRole, readonly CardField[]> = {
 };
 
 /**
- * Which connections the scene draws for each role. The infection path is drawn
- * for everyone on top of these.
+ * How the scene styles a hovered device's connections for each role. Only the
+ * infection path is drawn all the time (for everyone); a device's connections
+ * appear when it is hovered, so the building stays readable.
  * - network: every active flow, labeled with protocol and port.
- * - clinical: protected, DICOM and HL7 flows strong; every other flow faint.
- * - dependencies: no device-to-device flows; a line from each device to the services that rely on it.
- * - none: only the hovered device's flows (the pre-role behavior).
+ * - clinical: protected, DICOM and HL7 flows strong and labeled with their purpose; every other flow faint.
+ * - dependencies: no device-to-device flows; a line from the device to each service that relies on it.
+ * - none: the hovered device's flows, plain (no role yet).
  */
 export type ArcMode = "network" | "clinical" | "dependencies" | "none";
 export const ARC_MODE: Record<ViewRole, ArcMode> = {
