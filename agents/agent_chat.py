@@ -1,33 +1,37 @@
-"""The chat protocol (ASI:One) for the three specialist agents, in plain code.
+"""The chat protocol (ASI:One) for the three specialist agents, on the reasoning loop.
 
-Each specialist answers a chat with what it was created to do (its profile's first
-section) and the last thing it said in a round, so a judge who finds Inventory, Flow
-or Clinical Workflow on Agentverse sees a working agent rather than a dead end. It
-never starts a round (only the Coordinator does) and never reads the text with a
-language model. Every chat in or out is relayed first (rule 10), like the
-Coordinator's; acks aren't.
+A specialist answers a chat, from the Coordinator's ask_agent or a judge who found it on
+Agentverse, with brain.respond over its own tools: who it is (its profile), the last
+thing it said in a round, the state it keeps per session (flow.tools(), inventory.tools(),
+clinical_workflow.tools()) and the hospital's MCP tools. It never starts a round (only the
+Coordinator does; it has no start_round tool). Every chat in or out is relayed first
+(rule 10), like the Coordinator's; acks aren't.
 """
 
+import logging
 import re
-from datetime import datetime, timezone
-from uuid import uuid4
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Callable
 
 from uagents import Agent, Context, Model, Protocol
 from uagents_core.contrib.protocols.chat import ChatAcknowledgement, ChatMessage, TextContent, chat_protocol_spec
 
-from pathlib import Path
-
+import brain
+import mcp_server
 from runtime import PROFILES
 from tools import relay
 
-CHAT_SESSION = "asi1-chat"  # the Coordinator's relay session for chat outside a round
+CHAT_SESSION = "asi1-chat"  # the relay session for chat outside a round
 COORDINATOR = "Hippocratech Coordinator (@hippocratech-coordinator)"
+PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 last_said: dict[str, str] = {}  # agent name → its last message in a round, in one line
+chat_protocol = Protocol(spec=chat_protocol_spec)  # one spec; each agent includes its own instance
 
 
 def note(name: str, line: str) -> None:
-    """Remember the last thing an agent said in a round, for its chat reply."""
+    """Remember the last thing an agent said in a round, for its chat tools."""
     last_said[name] = line
 
 
@@ -43,36 +47,78 @@ def intro(name: str) -> str:
     return " ".join(x for x in (plain(head), plain(own)) if x)
 
 
-def reply_text(name: str) -> str:
-    said = last_said.get(name)
-    tail = f" Last round, I said: \"{said}\"" if said else " I haven't spoken in a round yet."
-    return (f"{intro(name)}{tail} I only talk to the Coordinator during a round. To start one, chat with "
-            f"{COORDINATOR}: \"simulate ransomware from MRI 2\". Nothing here touches a real network, and "
-            f"only humans sign off a plan.")
+def system_prompt(name: str) -> str:
+    return (PROMPTS_DIR / f"{name}.md").read_text()
 
 
-def make_chat(name: str, agent: Agent) -> Protocol:
+# --- tools every specialist has ---
+
+NO_ARGS = {"type": "object", "properties": {}}
+
+
+def intro_tool(name: str) -> brain.Tool:
+    async def who_am_i(args: dict):
+        return {"intro": intro(name), "handle": "@" + PROFILES[name].handle,
+                "note": f"I only talk to the Coordinator during a round. To start one, chat with {COORDINATOR}."}
+    return brain.Tool("who_am_i", "Who this agent is and the one thing it owns, from its Agentverse profile.", NO_ARGS, who_am_i)
+
+
+def last_said_tool(name: str) -> brain.Tool:
+    async def last(args: dict):
+        said = last_said.get(name)
+        return {"said": said} if said else {"none": True, "note": "I haven't spoken in a round yet."}
+    return brain.Tool("last_said", "The last thing this agent said in a negotiation round, in one line.", NO_ARGS, last)
+
+
+# --- the handler ---
+
+
+def ctx_stub():
+    """A Context stand-in for tests: storage and a logger. Not used at runtime."""
+    class Store(dict):
+        def get(self, k):
+            return super().get(k)
+
+        def set(self, k, v):
+            self[k] = v
+
+    return SimpleNamespace(storage=Store(), logger=logging.getLogger("agent_chat.test"))
+
+
+async def send_chat(ctx: Context, to: str, message: Model) -> None:
+    status = await ctx.send_raw(
+        destination=to,
+        message_schema_digest=Model.build_schema_digest(message),
+        message_body=message.model_dump_json(),
+        protocol_digest=chat_protocol.digest,
+    )
+    if status.status.value not in ("delivered", "sent"):
+        ctx.logger.error(f"chat reply to {to[:16]}… not delivered: {status.detail}")
+
+
+async def handle_chat(ctx: Context, name: str, sender: str, msg: ChatMessage, tools: Callable[[], list[brain.Tool]]) -> None:
+    """One chat turn for a specialist: ack, relay in, respond with its tools, relay out, send."""
+    await send_chat(ctx, sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
+    text = msg.text().strip()
+    if not text:
+        return
+    await relay.post(CHAT_SESSION, 0, "humans", name, "chat", {"text": text, "via": "asi1"}, direction="received")
+    try:
+        all_tools = await mcp_server.as_brain_tools() + list(tools()) + [intro_tool(name), last_said_tool(name)]
+        turn = await brain.respond(ctx.storage, name, sender, text, all_tools, system_prompt(name))
+        answer = turn.text
+    except brain.BrainError as e:
+        answer = f"I couldn't answer: {e}"
+    await relay.post(CHAT_SESSION, 0, name, "humans", "chat", {"text": answer, "via": "asi1"}, direction="sent")
+    await send_chat(ctx, sender, ChatMessage(content=[TextContent(text=answer)]))
+
+
+def make_chat(name: str, agent: Agent, tools: Callable[[], list[brain.Tool]] = lambda: []) -> Protocol:
     chat = Protocol(spec=chat_protocol_spec)
-
-    async def send(ctx: Context, to: str, message: Model) -> None:
-        status = await ctx.send_raw(
-            destination=to,
-            message_schema_digest=Model.build_schema_digest(message),
-            message_body=message.model_dump_json(),
-            protocol_digest=chat.digest,
-        )
-        if status.status.value not in ("delivered", "sent"):
-            ctx.logger.error(f"chat reply to {to[:16]}… not delivered: {status.detail}")
 
     @chat.on_message(ChatMessage)
     async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
-        await send(ctx, sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
-        text = msg.text().strip()
-        await relay.post(CHAT_SESSION, 0, "humans", name, "chat", {"text": text, "via": "asi1"}, direction="received")
-        answer = reply_text(name)
-        await relay.post(CHAT_SESSION, 0, name, "humans", "chat", {"text": answer, "via": "asi1"}, direction="sent")
-        await send(ctx, sender, ChatMessage(timestamp=datetime.now(timezone.utc), msg_id=uuid4(),
-                                            content=[TextContent(type="text", text=answer)]))
+        await handle_chat(ctx, name, sender, msg, tools)
 
     @chat.on_message(ChatAcknowledgement)
     async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):

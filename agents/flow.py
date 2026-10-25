@@ -14,12 +14,14 @@ Claude (llm.py) words "why this plan" as the message's reason; the choice is cod
 """
 
 import json
+from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
 from uagents import Context
 
 import agent_chat
 
+import brain
 import facts
 import llm
 from config import settings
@@ -30,11 +32,61 @@ from logic import hospital as hospital_mod
 from protocol import Alternative, Candidate, Policy, Proposal, ProposalRequest, Revision
 from runtime import fail, make_agent, received, send
 from tools import optimize, relay, run_sim
+from protocol import RunResult  # the chat tools' FlowSession
 
 NAME = "flow"
 agent, protocol = make_agent(NAME)
 H = hospital_mod.load(settings().hospital_path)
 current: dict[str, Candidate] = {}  # session → the candidate last sent
+
+@dataclass
+class FlowSession:
+    """What the chat tools answer from: the plans tested, the one sent, the baseline, and why it was revised."""
+    tested: list[tuple[Candidate, RunResult]]
+    last: Proposal | Revision | None
+    baseline: RunResult | None
+    reason: str | None = None  # the last revision's reason, if the last message was a revision
+
+
+history: dict[str, FlowSession] = {}
+last_session: list[str] = []
+
+
+def tools() -> list[brain.Tool]:
+    """What this agent can tell a chat, from the plans it tested (code only; the engine tested them)."""
+    def latest() -> FlowSession | None:
+        return history.get(last_session[0]) if last_session else None
+
+    async def last_proposal(args: dict):
+        h = latest()
+        if h is None or h.last is None:
+            return {"none": True, "note": "I haven't proposed a plan yet."}
+        m = h.last
+        return {"round": m.round, "policy_name": getattr(m, "name", None) or m.policyId, "policy_id": m.policyId,
+                "infected_with": m.testResult.infectedCount,
+                "infected_without": h.baseline.infectedCount if h.baseline else None,
+                "connections_cut": len(m.testResult.removedFlows), "reason": m.reason}
+
+    async def candidates(args: dict):
+        h = latest()
+        if h is None:
+            return {"none": True}
+        return [{"id": c.id, "name": c.policy.name, "strategy": c.policy.strategy, "infected": r.infectedCount,
+                 "rules": len(c.policy.rules), "protected_flows_broken": len(r.protectedBroken)} for c, r in h.tested]
+
+    async def why_revised(args: dict):
+        h = latest()
+        if h is None or h.reason is None:
+            return {"none": True, "note": "the last plan was a first proposal, not a revision"}
+        return {"reason": h.reason}
+
+    obj = lambda props, req=(): {"type": "object", "properties": props, "required": list(req)}
+    return [
+        brain.Tool("last_proposal", "The plan this agent last sent: name, infected devices with and without it, connections cut, and why.", obj({}), last_proposal),
+        brain.Tool("candidates", "Every plan this agent designed and tested in the last round, with each one's infected count.", obj({}), candidates),
+        brain.Tool("why_revised", "Why the last plan was revised, when it was.", obj({}), why_revised),
+    ]
+CONTAINED = 3  # an attack held to this many devices counts as contained wherever it went
 CONTAINED = 3  # an attack held to this many devices counts as contained wherever it went
 
 
@@ -148,6 +200,8 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
                   for a in msg.alternatives]
         msg = await llm.worded(msg.copy(update={"alternatives": worded}), type, words)
         current[req.sessionId] = cand
+        history[req.sessionId] = FlowSession(tested, msg, req.baseline, msg.reason if type == "revision" else None)
+        last_session[:] = [req.sessionId]
         await send(ctx, NAME, "coordinator", type, msg)
         agent_chat.note(NAME, f"{type} \"{msg.name}\": {msg.reason}" if msg.reason else f"{type} \"{msg.name}\"")
         await relay.status(req.sessionId, NAME, "idle")
@@ -158,7 +212,7 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
 agent.include(protocol)
 # The chat protocol, so the agent answers a judge on ASI:One; the manifest goes to the
 # Almanac only when the agent registers there (as the Coordinator does).
-agent.include(agent_chat.make_chat(NAME, agent), publish_manifest=settings().mailbox or not settings().local_resolve)
+agent.include(agent_chat.make_chat(NAME, agent, tools), publish_manifest=settings().mailbox or not settings().local_resolve)
 
 if __name__ == "__main__":
     agent.run()
