@@ -10,7 +10,7 @@ import { demoScript, eventsFromRows, reopenedFromRows, type DemoEvent, type Verb
 import type { Names } from "./negotiation";
 import { RevealClock } from "./reveal";
 import { createdMs, elapsedLabel, entryOf } from "./transcript";
-import type { AgentMessageRow, RoundState } from "@/lib/stdb/types";
+import type { AgentMessageRow, MessageType, RoundState, Speaker } from "@/lib/stdb/types";
 
 // The scripted negotiation, top and center: a web of the four agents around the
 // Coordinator, a particle travelling along the edge each message takes and the
@@ -38,7 +38,7 @@ const VERB: Record<Verb, { label: string; color: string; glyph: string }> = {
   recommends: { label: "sends for sign-off", color: "#3DD68C", glyph: "■" },
 };
 
-export function DemoRoom({ onClose, options, status, chat }: { onClose?: () => void; options?: ReactNode; status?: string; /** The session's real agent rows, for the Full chat tab. */ chat?: { rows: readonly AgentMessageRow[]; names: Names } }) {
+export function DemoRoom({ onClose, options, status }: { onClose?: () => void; options?: ReactNode; status?: string }) {
   const [script, setScript] = useState<DemoEvent[]>(() => demoScript());
   const [shown, setShown] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -48,6 +48,8 @@ export function DemoRoom({ onClose, options, status, chat }: { onClose?: () => v
     return () => window.clearTimeout(id);
   }, [playing, shown, script.length]);
   const done = shown >= script.length;
+  // The Full chat is the same script as a terminal log, one line per contribution, revealed in step with it.
+  const chat = useMemo(() => scriptedLines(script.slice(0, shown)), [script, shown]);
   return (
     <NegotiationRoom
       events={script.slice(0, shown)}
@@ -55,14 +57,13 @@ export function DemoRoom({ onClose, options, status, chat }: { onClose?: () => v
       controls={
         <>
           {!done && <button type="button" onClick={() => setPlaying((p) => !p)} className="ctl h-9 px-3 text-[13px]">{playing ? "Pause" : "Play"}</button>}
-          {!done && <button type="button" onClick={() => setShown(script.length)} className="ctl h-9 px-3 text-[13px]">Skip to result</button>}
           {done && <button type="button" onClick={() => { setScript(demoScript()); setShown(0); setPlaying(true); }} className="ctl h-9 px-3 text-[13px]">Replay</button>}
         </>
       }
       onClose={onClose}
       options={options}
       status={status}
-      chat={chat && chat.rows.length ? chat : undefined}
+      chat={{ lines: chat, source: "scripted_demo.log" }}
     />
   );
 }
@@ -99,18 +100,16 @@ export function LiveNegotiationRoom({ messages, roundState, names, onClose, opti
   const revealing = shownRows.length < messages.length;
   const done = !revealing && roundState.state === "done";
   const round = events[events.length - 1]?.round ?? roundState.round ?? 1;
-  const skip = () => { const t = Date.now(); clock.current.flush(t); setNow(t); };
   return (
     <NegotiationRoom
       events={events}
       done={done}
       reopened={reopened}
       badge={roundState.detail?.startsWith("Cached run") ? "Cached run" : undefined}
-      controls={revealing ? <button type="button" onClick={skip} className="ctl h-9 px-3 text-[13px]">Skip to result</button> : null}
       onClose={onClose}
       options={options}
       status={status}
-      chat={{ rows: shownRows, names }}
+      chat={{ lines: rowLines(shownRows, names), source: "agent_message.log" }}
     />
   );
 }
@@ -119,8 +118,8 @@ function NegotiationRoom({ events, done, reopened, badge, controls, onClose, opt
   events: DemoEvent[];
   done: boolean;
   reopened?: string[];
-  /** Live only: the real rows behind the cards, for the Full chat tab. */
-  chat?: { rows: readonly AgentMessageRow[]; names: Names };
+  /** The Full chat tab: the live round's rows, or the script's lines in the scripted room. */
+  chat?: { lines: TermLine[]; source: string };
   badge?: string;
   controls?: ReactNode;
   onClose?: () => void;
@@ -164,12 +163,12 @@ function NegotiationRoom({ events, done, reopened, badge, controls, onClose, opt
                   Contributions
                 </button>
                 <button type="button" role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")} className={`h-9 rounded-ctl px-3 text-[14px] ${tab === "chat" ? "bg-select-wash text-ink" : "text-ink-muted hover:text-ink"}`}>
-                  Full chat <span className="num text-ink-faint">{chat.rows.length}</span>
+                  Full chat <span className="num text-ink-faint">{chat.lines.length}</span>
                 </button>
               </div>
             )}
             {chat && tab === "chat" ? (
-              <TerminalLog rows={chat.rows} names={chat.names} />
+              <TerminalLog lines={chat.lines} source={chat.source} />
             ) : (
               <ol ref={feed} className="scroll-quiet m-0 flex min-h-0 flex-1 list-none flex-col gap-2 overflow-y-auto p-5">
                 {events.map((e, i) => (
@@ -327,35 +326,73 @@ function Bubble({ e, fresh }: { e: DemoEvent; fresh: boolean }) {
   );
 }
 
-/** The full chat as a terminal: every row, full text, mono and phosphor on black. */
-function TerminalLog({ rows, names }: { rows: readonly AgentMessageRow[]; names: Names }) {
+/** One line of the Full chat terminal, from an agent_message row or a scripted event. */
+type TermLine = {
+  seq: number;
+  /** ms since the round opened. */
+  at?: number;
+  from: Speaker;
+  to: Speaker | "all";
+  type: MessageType;
+  subject: string;
+  detail?: string;
+  quote?: string;
+  /** Where the quote's words came from. */
+  tag?: string;
+};
+
+function rowLines(rows: readonly AgentMessageRow[], names: Names): TermLine[] {
+  const times = rows.map((m) => createdMs(m));
+  const start = Math.min(...times.filter((t): t is number => t !== undefined), Infinity);
+  return rows.map((m, i) => {
+    const e = entryOf(m, names);
+    const t = times[i];
+    return {
+      seq: m.seq, at: t === undefined || start === Infinity ? undefined : t - start, from: m.from, to: m.to, type: m.type,
+      subject: e.subject, detail: e.detail, quote: e.quote, tag: e.asi1 ? "asi1" : e.template ? "template" : "claude",
+    };
+  });
+}
+
+const VERB_TYPE: Record<Verb, MessageType> = {
+  opens: "request", proposes: "proposal", revises: "revision", declines: "reject", approves: "accept", asks: "question", recommends: "recommendation",
+};
+
+/** The scripted negotiation as log lines: the same events, in the same order, as the Contributions. */
+function scriptedLines(events: readonly DemoEvent[]): TermLine[] {
+  return events.map((e, i) => ({
+    seq: e.seq, at: i * STEP_MS, from: e.agent, to: e.to, type: VERB_TYPE[e.verb],
+    subject: `Round ${e.round} · ${VERB[e.verb].label}`,
+    detail: e.plan
+      ? `${e.plan.name}: ${e.plan.devices} machines, ${e.plan.patients} patients${e.plan.cuts !== undefined ? `, ${e.plan.cuts} links cut` : ""}, ${e.plan.rules} rules`
+      : e.needs ? `needs: ${e.needs}` : undefined,
+    quote: e.line,
+  }));
+}
+
+/** The full chat as a terminal: every line, full text, mono and phosphor on black. */
+function TerminalLog({ lines, source }: { lines: readonly TermLine[]; source: string }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight });
-  }, [rows.length]);
-  const times = rows.map((m) => createdMs(m));
-  const start = Math.min(...times.filter((t): t is number => t !== undefined), Infinity);
+  }, [lines.length]);
   return (
     <div ref={box} className="scroll-quiet mx-5 mb-5 mt-3 min-h-0 flex-1 overflow-y-auto rounded-panel border border-[#1F3A2A] bg-[#060907] p-4 font-mono text-[12.5px] leading-[1.55] text-[#9FE6B0]">
-      <div className="text-[#4C8A5C]">hippocratech@agents:~$ tail -f agent_message.log</div>
-      {rows.map((m) => {
-        const e = entryOf(m, names);
-        const t = times[rows.indexOf(m)];
-        return (
-          <div key={m.seq} className="mt-2 whitespace-pre-wrap break-words">
-            <span className="text-[#4C8A5C]">[{elapsedLabel(t === undefined || start === Infinity ? undefined : t - start)}]</span>{" "}
-            <span className="text-[#E6F5EA]">#{m.seq}</span>{" "}
-            <span style={{ color: SPEAKER_COLOR[m.from] }}>{m.from}</span>
-            <span className="text-[#4C8A5C]"> → </span>
-            <span style={{ color: SPEAKER_COLOR[m.to] }}>{m.to}</span>{" "}
-            <span className="text-[#E6F5EA]">{m.type}</span>
-            {" · "}
-            {e.subject}
-            {e.detail && <div className="pl-6 text-[#6FB07F]">{e.detail}</div>}
-            {e.quote && <div className="pl-6 text-[#D7F3DF]">“{e.quote}”{e.asi1 ? "  [asi1]" : e.template ? "  [template]" : "  [claude]"}</div>}
-          </div>
-        );
-      })}
+      <div className="text-[#4C8A5C]">hippocratech@agents:~$ tail -f {source}</div>
+      {lines.map((l) => (
+        <div key={l.seq} className="mt-2 whitespace-pre-wrap break-words">
+          <span className="text-[#4C8A5C]">[{elapsedLabel(l.at)}]</span>{" "}
+          <span className="text-[#E6F5EA]">#{l.seq}</span>{" "}
+          <span style={{ color: SPEAKER_COLOR[l.from] }}>{l.from}</span>
+          <span className="text-[#4C8A5C]"> → </span>
+          <span style={{ color: SPEAKER_COLOR[l.to] }}>{l.to}</span>{" "}
+          <span className="text-[#E6F5EA]">{l.type}</span>
+          {" · "}
+          {l.subject}
+          {l.detail && <div className="pl-6 text-[#6FB07F]">{l.detail}</div>}
+          {l.quote && <div className="pl-6 text-[#D7F3DF]">“{l.quote}”{l.tag ? `  [${l.tag}]` : ""}</div>}
+        </div>
+      ))}
       <div className="mt-2 text-[#4C8A5C]">
         <span className="animate-pulse">▌</span>
       </div>
