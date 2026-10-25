@@ -530,7 +530,8 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         tools = await mcp_server.as_brain_tools() + local_tools(ctx, sender)
         turn = await brain.respond(ctx.storage, NAME, sender, text, tools, SYSTEM_PROMPT, session_id=sid)
     except brain.BrainError as e:
-        await reply(ctx, sender, f"I couldn't answer: {e}", sid)
+        await reply(ctx, sender, "Sorry, I couldn't put that answer together from the facts I have. Try asking it another way, "
+                                 f"or say \"view my hospital\" or \"simulate ransomware from MRI 2\". (Detail: {e})", sid)
         return
     except Exception as e:  # rule 14: any failure (MCP, relay, a tool) is shown, never silent
         ctx.logger.error(f"chat turn failed: {e!r}")

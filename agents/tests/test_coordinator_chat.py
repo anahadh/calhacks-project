@@ -149,7 +149,7 @@ def test_brain_error_is_sent_as_the_reply(coord, monkeypatch):
 
     monkeypatch.setattr(c.brain, "respond", boom)
     run(c.chat_turn(c.ctx_stub(), "agent1qs", "hi"))
-    assert "ASI:One error 500" in sent[-1][3]
+    assert sent[-1][3].startswith("Sorry, I couldn't put that answer together") and "ASI:One error 500" in sent[-1][3]
 
 
 def test_summary_is_sent_once(coord, monkeypatch):

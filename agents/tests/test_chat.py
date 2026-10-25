@@ -87,7 +87,8 @@ def test_ask_selection_carries_the_agent_and_the_line():
 
 
 @pytest.mark.parametrize("text", ["let me view my hospital", "show me the hospital", "view hospital",
-                                  "@hippocratech-coordinator support bot, let me view my hospital", "what does my hospital look like?"])
+                                  "@hippocratech-coordinator support bot, let me view my hospital", "what does my hospital look like?",
+                                  "can i view the hopsital", "show me the hosptial", "lemme view my hospital twin"])
 def test_wants_hospital(text):
     assert chat.wants_hospital(text)
 

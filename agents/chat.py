@@ -25,12 +25,20 @@ ATTACK_DEVICE = [
 QUESTION_WORDS = re.compile(r"^(?:why|how|which|who|where|when|can|could|should|is|are|do|does|what (?:is|was|are|were|did|does|do)\b)", re.I)
 
 
-HOSPITAL = re.compile(r"\b(?:view|see|show|look at|open|tour|explore)\b.*\bhospital\b|\bwhat does (?:my|the) hospital look like\b|^\s*(?:my |the )?hospital\s*\??$", re.I)
+VIEW_WORDS = {"view", "see", "show", "look", "open", "tour", "explore", "visit"}
+
+
+def _hospital_word(w: str) -> bool:
+    return w.startswith("hosp") or difflib.SequenceMatcher(None, w, "hospital").ratio() >= 0.75
 
 
 def wants_hospital(text: str) -> bool:
-    """A request to see the hospital itself ("let me view my hospital"); decided in code."""
-    return bool(HOSPITAL.search(text)) and not ATTACK.search(text)
+    """A request to see the hospital itself ("let me view my hospital", typos included); decided in code."""
+    words = re.findall(r"[a-z]+", text.lower())
+    if not any(_hospital_word(w) for w in words) or ATTACK.search(text):
+        return False
+    return bool(VIEW_WORDS & set(words)) or re.search(r"\bwhat does (?:my|the) \w+ look like\b", text, re.I) is not None \
+        or len(words) <= 3
 
 
 def wants_round(text: str) -> str | None:
