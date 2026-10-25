@@ -9,6 +9,7 @@ import { DemoScene } from "./demo-scene";
 import { demoScript, eventsFromRows, reopenedFromRows, type DemoEvent, type Verb } from "./demo-script";
 import type { Names } from "./negotiation";
 import { RevealClock } from "./reveal";
+import { Transcript } from "./agent-room";
 import type { AgentMessageRow, RoundState } from "@/lib/stdb/types";
 
 // The scripted negotiation, top and center: a web of the four agents around the
@@ -111,14 +112,17 @@ export function LiveNegotiationRoom({ messages, roundState, names, onClose, opti
       onClose={onClose}
       options={options}
       status={status}
+      chat={{ rows: shownRows, names }}
     />
   );
 }
 
-function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, onClose, options, status }: {
+function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, onClose, options, status, chat }: {
   events: DemoEvent[];
   done: boolean;
   reopened?: string[];
+  /** Live only: the real rows behind the cards, for the Full chat tab. */
+  chat?: { rows: readonly AgentMessageRow[]; names: Names };
   subtitle: string;
   badge?: string;
   controls?: ReactNode;
@@ -132,6 +136,7 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
   }, [events.length]);
   const newest = events[events.length - 1];
   const plans = useMemo(() => events.filter((e) => e.plan).map((e) => e.plan!), [events]);
+  const [tab, setTab] = useState<"cards" | "chat">("cards");
 
   return (
     <div className="flex h-full w-full flex-col rounded-panel border border-line bg-panel shadow-overlay">
@@ -156,13 +161,29 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
           <section aria-label="Who is talking" className="relative border-b border-line">
             <Web newest={newest} />
           </section>
-          <section aria-label="Contributions" className="min-h-0">
-            <ol ref={feed} className="scroll-quiet m-0 flex h-full list-none flex-col gap-2 overflow-y-auto p-5">
-              {events.map((e, i) => (
-                <Bubble key={e.seq} e={e} fresh={i === events.length - 1} />
-              ))}
-              {!events.length && <li className="num text-[13px] text-ink-faint">{status ?? "Waiting for the Coordinator to open the round…"}</li>}
-            </ol>
+          <section aria-label="Contributions" className="flex min-h-0 flex-col">
+            {chat && (
+              <div role="tablist" aria-label="View" className="flex gap-1 px-5 pt-3">
+                <button type="button" role="tab" aria-selected={tab === "cards"} onClick={() => setTab("cards")} className={`h-9 rounded-ctl px-3 text-[14px] ${tab === "cards" ? "bg-select-wash text-ink" : "text-ink-muted hover:text-ink"}`}>
+                  Contributions
+                </button>
+                <button type="button" role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")} className={`h-9 rounded-ctl px-3 text-[14px] ${tab === "chat" ? "bg-select-wash text-ink" : "text-ink-muted hover:text-ink"}`}>
+                  Full chat <span className="num text-ink-faint">{chat.rows.length}</span>
+                </button>
+              </div>
+            )}
+            {chat && tab === "chat" ? (
+              <div className="flex min-h-0 flex-1 flex-col px-5 pb-5">
+                <Transcript messages={chat.rows} names={chat.names} />
+              </div>
+            ) : (
+              <ol ref={feed} className="scroll-quiet m-0 flex min-h-0 flex-1 list-none flex-col gap-2 overflow-y-auto p-5">
+                {events.map((e, i) => (
+                  <Bubble key={e.seq} e={e} fresh={i === events.length - 1} />
+                ))}
+                {!events.length && <li className="num text-[13px] text-ink-faint">{status ?? "Waiting for the Coordinator to open the round…"}</li>}
+              </ol>
+            )}
           </section>
         </div>
         <section aria-label="The plan on the hospital" className="relative min-h-[420px]">

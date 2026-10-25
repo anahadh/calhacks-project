@@ -595,7 +595,7 @@ function ConstraintRail({ constraints }: { constraints: ConstraintChip[] }) {
 
 // --- The transcript: one entry per row, newest marked, scrolled to the newest. ---
 
-function Transcript({ messages, names }: { messages: readonly (TimedMessage & { revealedAt?: number })[]; names: Names }) {
+export function Transcript({ messages, names }: { messages: readonly (TimedMessage & { revealedAt?: number })[]; names: Names }) {
   const list = useRef<HTMLOListElement>(null);
   useEffect(() => {
     const el = list.current;
