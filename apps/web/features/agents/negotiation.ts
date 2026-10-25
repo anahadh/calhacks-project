@@ -21,6 +21,8 @@ export type PlanColumn = {
   name: string;
   /** "3 rules" or "2 changes". */
   size: string;
+  /** The rules (a proposal) or the diff lines (a revision), in the agents' plain words. */
+  lines: string[];
   patientsAffected?: number;
   devicesCompromised?: number;
   verdicts: Partial<Record<AgentId, Stamp>>;
@@ -73,6 +75,7 @@ export function negotiationOf(messages: readonly AgentMessageRow[], names: Names
       const size = m.type === "proposal" ? `${m.rules?.length ?? 0} rules` : `${m.diff?.length ?? 0} changes`;
       const col: PlanColumn = {
         round: m.round, kind: m.type, name, size, verdicts: {}, seq: m.seq,
+        lines: (m.type === "proposal" ? m.rules : m.diff) ?? [],
         patientsAffected: m.tested?.patientsAffected, devicesCompromised: m.tested?.devicesCompromised,
       };
       col.policyId = m.policyId;
@@ -84,7 +87,7 @@ export function negotiationOf(messages: readonly AgentMessageRow[], names: Names
       // The orchestrator puts one of Flow's alternatives on the table once the lead plan is accepted.
       const col: PlanColumn = {
         round: m.round, policyId: m.policyId, kind: "alternative", name: m.name ?? m.policyId,
-        size: `${m.rules?.length ?? 0} rules`, verdicts: {}, seq: m.seq,
+        size: `${m.rules?.length ?? 0} rules`, lines: m.rules ?? [], verdicts: {}, seq: m.seq,
         patientsAffected: m.tested?.patientsAffected, devicesCompromised: m.tested?.devicesCompromised,
       };
       plans.push(col);
@@ -103,4 +106,89 @@ export function negotiationOf(messages: readonly AgentMessageRow[], names: Names
     }
   }
   return { plans, constraints };
+}
+
+// --- The four agents as lanes: what each did this round, as counts, from the same rows ---
+
+export type Lane = {
+  agent: AgentId;
+  /** agent_status row, or idle when there is none. */
+  status: "idle" | "thinking" | "speaking" | "waiting";
+  /** Badges, in order: what the agent did, counted from its messages. */
+  badges: { label: string; tone: "info" | "ok" | "warn" }[];
+};
+
+/**
+ * One lane per agent. The Coordinator counts rounds and messages routed; Flow
+ * counts plans tested and revisions; each reviewer counts accepts, rejects and
+ * questions. A thinking or speaking agent gets a live badge. Nothing is inferred
+ * beyond counting rows.
+ */
+export function lanesOf(
+  messages: readonly AgentMessageRow[],
+  agentStatus: readonly { agent: AgentId; status: Lane["status"] }[],
+  round: { state: string; round: number },
+): Lane[] {
+  const status = new Map(agentStatus.map((s) => [s.agent, s.status]));
+  const live = round.state === "running" || round.state === "waiting_for_human";
+  const liveBadge = (agent: AgentId): Lane["badges"] => {
+    const s = status.get(agent);
+    if (s === "thinking") return [{ label: "thinking", tone: "ok" }];
+    if (s === "speaking") return [{ label: "speaking", tone: "ok" }];
+    if (s === "waiting" && live) return [{ label: "waiting for a human", tone: "warn" }];
+    return [];
+  };
+  const agentRows = messages.filter((m) => m.type !== "chat");
+  const routed = agentRows.filter((m) => m.from === "coordinator").length;
+  const plans = agentRows.filter((m) => (m.type === "proposal" || m.type === "revision") && m.from === "flow").length;
+  const revisions = agentRows.filter((m) => m.type === "revision" && m.from === "flow").length;
+  const published = agentRows.filter((m) => m.type === "recommendation").length;
+  const lanes: Lane[] = [
+    {
+      agent: "coordinator",
+      status: status.get("coordinator") ?? "idle",
+      badges: [
+        ...(round.round ? [{ label: `round ${round.round}`, tone: "info" as const }] : []),
+        ...(routed ? [{ label: `${routed} ${routed === 1 ? "message" : "messages"} routed`, tone: "info" as const }] : []),
+        ...(published ? [{ label: `${published} ${published === 1 ? "option" : "options"} published`, tone: "ok" as const }] : []),
+        ...liveBadge("coordinator"),
+      ],
+    },
+    {
+      agent: "flow",
+      status: status.get("flow") ?? "idle",
+      badges: [
+        ...(plans ? [{ label: `${plans} ${plans === 1 ? "plan" : "plans"} tested`, tone: "info" as const }] : []),
+        ...(revisions ? [{ label: `revised ${revisions}×`, tone: "info" as const }] : []),
+        ...liveBadge("flow"),
+      ],
+    },
+  ];
+  for (const agent of REVIEWERS) {
+    const mine = agentRows.filter((m) => m.from === agent);
+    const ok = mine.filter((m) => m.type === "accept").length;
+    const no = mine.filter((m) => m.type === "reject").length;
+    const asked = mine.filter((m) => m.type === "question").length;
+    lanes.push({
+      agent,
+      status: status.get(agent) ?? "idle",
+      badges: [
+        ...(ok ? [{ label: `● accepted ${ok}`, tone: "ok" as const }] : []),
+        ...(no ? [{ label: `✕ rejected ${no}`, tone: "warn" as const }] : []),
+        ...(asked ? [{ label: `? asked a human${asked > 1 ? ` ${asked}×` : ""}`, tone: "warn" as const }] : []),
+        ...liveBadge(agent),
+      ],
+    });
+  }
+  return lanes;
+}
+
+/** What the Coordinator did with each plan: routed it to the reviewers, and later published it as an option. */
+export function coordinatorStamp(messages: readonly AgentMessageRow[], plan: PlanColumn): { routed: number; option?: number } {
+  const routed = messages.filter(
+    (m) => m.from === "coordinator" && (m.type === "proposal" || m.type === "revision") && m.round === plan.round
+      && (plan.policyId ? m.policyId === plan.policyId || !m.policyId : true),
+  ).length;
+  const rec = messages.find((m) => m.type === "recommendation" && m.round === plan.round && m.name === plan.name);
+  return { routed, option: rec?.option ?? (rec ? 1 : undefined) };
 }

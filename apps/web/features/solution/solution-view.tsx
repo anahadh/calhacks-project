@@ -6,17 +6,17 @@ import { HospitalScene } from "@/components/scene/hospital-scene";
 import { SceneBoundary } from "@/components/scene/scene-boundary";
 import { PatientBadge } from "@/components/shell/badges";
 import { Brand } from "@/components/shell/brand";
-import { MESSAGE_SHAPE, SPEAKER_COLOR, SPEAKER_LABEL } from "@/features/agents/agents";
 import { initials, ROLE_LABEL, tickClock } from "@/lib/format";
 import { useRoleView } from "@/lib/role-views";
 import { pairOf, roundRefusal, SPEEDS, type PlaybackControl } from "@/lib/stdb/run-status";
 import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
-import type { AgentMessageRow, RecommendationRow, RunRow, SessionSnapshot } from "@/lib/stdb/types";
+import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import {
-  beforeAfter, cutStops, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending, withoutSegmentation,
+  beforeAfter, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending, withoutSegmentation,
   type Delta, type Segment,
 } from "./pair";
+import { Conclusion } from "./conclusion";
 import { SegmentOutlines } from "./segment-outlines";
 
 // The segmentation plan screen (UX.md "Solution view"): the same attack
@@ -53,7 +53,6 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   // The plan's segments (the zones the walls go around), with the run's infected counts.
   const segments = useMemo(() => segmentsOf(hospital, planScene.devices), [hospital, planScene.devices]);
   const hoveredZone = hovered ? index.room.get(index.device.get(hovered)?.roomId ?? "")?.zone ?? null : null;
-  const stops = useMemo(() => cutStops(flows.cut, rows.devices), [flows.cut, rows.devices]);
   const rowsError = base.error ?? rows.error;
   // The side column: this step's count on both sides, and the final numbers once each side is done.
   const infectedNow = planScene.devices.filter((d) => d.infected).length;
@@ -179,7 +178,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
           </div>
         </section>
 
-        <Conclusion session={session} index={index} rec={rec} none={base.run ?? none} plan={planRun} stops={stops} />
+        <Conclusion session={session} rec={rec} none={base.run ?? none} plan={planRun} planDevices={rows.devices} segments={segments} />
       </main>
 
       <footer className="num mt-auto border-t border-line px-4 py-3 text-[11px] text-ink-faint md:px-6">
@@ -187,196 +186,6 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
       </footer>
     </div>
   );
-}
-
-/**
- * The conclusion under the map: the agents' negotiation for this plan, read
- * from the round's agent_message rows (every message they sent, in order), the
- * compromises those messages added as constraints, the plan's rules, and how
- * the plan held this attack (the two run rows and the cut connections the
- * infection reached). Nothing here is computed: it is the rows, written out.
- */
-function Conclusion({
-  session,
-  index,
-  rec,
-  none,
-  plan,
-  stops,
-}: {
-  session: SessionSnapshot;
-  index: SessionIndex;
-  rec?: RecommendationRow;
-  none?: RunRow;
-  plan?: RunRow;
-  stops: readonly { id: string; from: string; to: string; purpose?: string }[];
-}) {
-  const round = rec?.round;
-  const messages = useMemo(
-    () =>
-      session.messages
-        .filter((m) => (round === undefined || m.round === round) && m.type !== "chat" && m.type !== "request")
-        .sort((a, b) => a.round - b.round || a.seq - b.seq),
-    [session.messages, round],
-  );
-  const name = (id: string) => index.device.get(id)?.name ?? index.service.get(id)?.name ?? index.flow.get(id)?.purpose ?? id;
-  const compromises = messages.filter((m) => m.type === "reject" && m.constraint);
-  const questions = messages.filter((m) => m.type === "question");
-  const answers = messages.filter((m) => m.type === "answer");
-  const settled = none?.status === "done" && plan?.status === "done";
-  const before = none?.devicesCompromised;
-  const after = plan?.devicesCompromised;
-  const patientsBefore = none?.patientsAffected;
-  const patientsAfter = plan?.patientsAffected;
-
-  return (
-    <section aria-labelledby="conclusion" className="panel flex flex-col gap-6 p-5 md:p-6">
-      <div className="flex flex-col gap-2">
-        <h2 id="conclusion" className="m-0 text-[22px] leading-7 text-ink">How the agents got to this plan, and what it held back</h2>
-        {settled && before !== undefined && after !== undefined ? (
-          <p className="m-0 max-w-[70ch] text-[15px] leading-6 text-ink-muted">
-            The same attack, started from the same device. Without segmentation it reached {before} devices and
-            disrupted care for {patientsBefore ?? 0} patients. With {rec?.name ? `“${rec.name}”` : "the plan"} in place it reached {after}
-            {after === 1 ? " device" : " devices"} and {patientsAfter ? `${patientsAfter} patients` : "no patients"}
-            {rec && rec.verified.protectedBroken.length === 0 ? ", and every protected clinical connection kept working." : "."}
-          </p>
-        ) : (
-          <p className="m-0 text-[15px] leading-6 text-ink-muted">The final comparison fills in once both replays settle.</p>
-        )}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        <div className="flex flex-col gap-3">
-          <h3 className="m-0 text-[15px] font-medium text-ink">What the agents negotiated</h3>
-          {messages.length === 0 ? (
-            <p className="num m-0 text-xs text-ink-faint">No agent round is recorded for this plan yet.</p>
-          ) : (
-            <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
-              {messages.map((m) => (
-                <Step key={`${m.round}:${m.seq}`} m={m} name={name} />
-              ))}
-            </ol>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-3">
-            <h3 className="m-0 text-[15px] font-medium text-ink">The compromises</h3>
-            {compromises.length === 0 && questions.length === 0 ? (
-              <p className="num m-0 text-xs text-ink-faint">The first proposal was accepted as it was: nothing had to be given up.</p>
-            ) : (
-              <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                {compromises.map((m) => (
-                  <li key={`${m.round}:${m.seq}`} className="rounded-panel border border-line bg-panel2 px-3.5 py-3 text-[13px] leading-5 text-ink">
-                    <span className="font-medium" style={{ color: SPEAKER_COLOR[m.from] }}>{SPEAKER_LABEL[m.from]}</span>{" "}
-                    {constraintLine(m.constraint!, name)}
-                    <span className="text-ink-muted"> Flow redrew the plan around it.</span>
-                  </li>
-                ))}
-                {questions.map((q, i) => {
-                  const a = answers[i];
-                  return (
-                    <li key={`q${q.round}:${q.seq}`} className="rounded-panel border border-line bg-panel2 px-3.5 py-3 text-[13px] leading-5 text-ink">
-                      <span className="font-medium" style={{ color: SPEAKER_COLOR[q.from] }}>{SPEAKER_LABEL[q.from]}</span> stopped to ask a person
-                      {q.constraint?.targetIds.length ? ` about ${q.constraint.targetIds.map(name).join(", ")}` : ""}.
-                      {a ? <span className="text-ink-muted"> A human answered: “{a.reason}”</span> : <span className="text-ink-muted"> Waiting for an answer.</span>}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          {rec && (
-            <div className="flex flex-col gap-3">
-              <h3 className="m-0 text-[15px] font-medium text-ink">What the plan does</h3>
-              {rec.explanation && <p className="m-0 text-[13px] leading-5 text-ink-muted">{rec.explanation}</p>}
-              <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] leading-5 text-ink">
-                {rec.rules.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-              {rec.tradeoff && <p className="m-0 text-[13px] leading-5 text-ink-muted">{rec.tradeoff}</p>}
-            </div>
-          )}
-
-          <div className="flex flex-col gap-3">
-            <h3 className="m-0 text-[15px] font-medium text-ink">How it stopped the attack</h3>
-            {stops.length === 0 ? (
-              <p className="num m-0 text-xs text-ink-faint">
-                {plan?.status === "done" ? "The attack never reached a cut connection: it stayed inside its own segment." : "Watching the replay…"}
-              </p>
-            ) : (
-              <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                {stops.map((f) => (
-                  <li key={f.id} className="flex items-start gap-2.5 text-[13px] leading-5 text-ink">
-                    <span aria-hidden className="font-disp mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full border border-state-infected text-[12px] font-bold text-state-infected">✕</span>
-                    <span>
-                      The infection reached <span className="font-medium">{name(f.from)}</span> and tried to cross to{" "}
-                      <span className="font-medium">{name(f.to)}</span>. The plan had cut that connection, so it stopped there.
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {rec && (
-              <p className="m-0 text-[13px] leading-5 text-ink-muted">
-                {rec.verified.protectedBroken.length === 0
-                  ? "No protected clinical connection was cut: scans still reach radiologists, vitals still reach charts."
-                  : `Protected connections this plan cuts: ${rec.verified.protectedBroken.map(name).join(", ")}.`}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/** One message of the round as a line in the story: who, what kind, and their reason in their words. */
-function Step({ m, name }: { m: AgentMessageRow; name: (id: string) => string }) {
-  const shape = MESSAGE_SHAPE[m.type];
-  const what =
-    m.type === "proposal"
-      ? `proposed ${m.name ? `“${m.name}”` : "a plan"}${m.rules?.length ? ` with ${m.rules.length} rules` : ""}`
-      : m.type === "revision"
-        ? `revised the plan${m.name ? ` into “${m.name}”` : ""}`
-        : m.type === "reject"
-          ? "rejected it"
-          : m.type === "accept"
-            ? "accepted it"
-            : m.type === "question"
-              ? "asked a person"
-              : m.type === "answer"
-                ? "answered"
-                : "recommended it to the reviewers";
-  return (
-    <li className="flex items-start gap-3 rounded-panel border border-line px-3.5 py-3">
-      <span aria-hidden className="num mt-px w-4 text-center text-[13px]" style={{ color: SPEAKER_COLOR[m.from] }}>{shape.glyph}</span>
-      <div className="flex min-w-0 flex-col gap-1 text-[13px] leading-5">
-        <span className="text-ink">
-          <span className="font-medium" style={{ color: SPEAKER_COLOR[m.from] }}>{SPEAKER_LABEL[m.from]}</span> {what}
-          {m.tested ? <span className="text-ink-muted"> · tested: {m.tested.patientsAffected} patients affected</span> : null}
-        </span>
-        {m.reason && <span className="text-ink-muted">“{m.reason}”</span>}
-        {m.constraint && <span className="text-ink-muted">{constraintLine(m.constraint, name)}</span>}
-      </div>
-    </li>
-  );
-}
-
-function constraintLine(c: NonNullable<AgentMessageRow["constraint"]>, name: (id: string) => string): string {
-  const targets = c.targetIds.map(name).join(", ");
-  switch (c.kind) {
-    case "keep_flow":
-      return `insisted the plan keep ${targets || "a protected clinical connection"}.`;
-    case "keep_service":
-      return `insisted ${targets || "a clinical service"} stay online.`;
-    case "confirm_device":
-      return `would not touch ${targets || "an unidentified device"} until a person confirmed what it is.`;
-    case "max_rules":
-      return "asked for fewer rules so the plan stays something people can run.";
-  }
 }
 
 function Transport({

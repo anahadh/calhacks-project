@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentMessageRow } from "@/lib/stdb/types";
-import { negotiationOf } from "./negotiation";
+import { lanesOf, negotiationOf } from "./negotiation";
 
 const names = {
   device: new Map([["mri_1", { name: "MRI 1" }], ["srv_pacs", { name: "PACS" }], ["ws_x", { name: "WS X" }]]),
@@ -69,5 +69,25 @@ describe("alternatives on the table", () => {
 
   it("lists an alternative's rejection as a constraint learned too: the next round repairs every plan", () => {
     expect(constraints).toEqual([expect.objectContaining({ agent: "clinical_workflow", label: "Keep MRI 1 → PACS" })]);
+  });
+});
+
+describe("lanesOf", () => {
+  it("counts each agent's work as badges and marks who is live", () => {
+    const rows: AgentMessageRow[] = [
+      m({ type: "request", from: "coordinator", to: "flow" }),
+      m({ type: "proposal", name: "A", rules: ["a"] }),
+      m({ type: "proposal", from: "coordinator", to: "inventory", name: "A" }),
+      m({ type: "proposal", from: "coordinator", to: "clinical_workflow", name: "A" }),
+      m({ type: "reject", from: "clinical_workflow", constraint: { kind: "keep_flow", targetIds: ["fl_1"] } }),
+      m({ type: "accept", from: "inventory" }),
+      m({ type: "revision", round: 2 }),
+    ];
+    const lanes = lanesOf(rows, [{ agent: "flow", status: "thinking" }], { state: "running", round: 2 });
+    expect(lanes.map((l) => l.agent)).toEqual(["coordinator", "flow", "inventory", "clinical_workflow"]);
+    expect(lanes[0].badges.map((b) => b.label)).toEqual(["round 2", "3 messages routed"]);
+    expect(lanes[1].badges.map((b) => b.label)).toEqual(["2 plans tested", "revised 1×", "thinking"]);
+    expect(lanes[2].badges.map((b) => b.label)).toEqual(["● accepted 1"]);
+    expect(lanes[3].badges.map((b) => b.label)).toEqual(["✕ rejected 1"]);
   });
 });

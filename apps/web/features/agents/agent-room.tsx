@@ -8,7 +8,7 @@ import { showBlocker } from "@/features/solution/pair";
 import { AgentGlyph } from "./agent-icon";
 import { SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
 import { DefendButton } from "./defend-button";
-import { negotiationOf, REVIEWERS, type ConstraintChip, type Names, type PlanColumn, type Stamp } from "./negotiation";
+import { coordinatorStamp, lanesOf, negotiationOf, REVIEWERS, type ConstraintChip, type Lane, type Names, type PlanColumn, type Stamp } from "./negotiation";
 import { RevealClock } from "./reveal";
 import { createdMs, elapsedLabel, entryOf, statusLine, type TimedMessage } from "./transcript";
 
@@ -82,6 +82,7 @@ export function AgentRoomFrame(props: {
   if (newest) speaking.add(newest.from);
   const thinking = new Set(props.agentStatus.filter((s) => s.status === "thinking").map((s) => s.agent));
   const { plans, constraints } = useMemo(() => negotiationOf(shown, names), [shown, names]);
+  const lanes = useMemo(() => lanesOf(shown, props.agentStatus, roundState), [shown, props.agentStatus, roundState]);
   // Which plan each published recommendation is: option number by (round, plan name).
   const options = new Map(shown.filter((m) => m.type === "recommendation").map((m) => [`${m.round}:${m.name}`, m.option ?? 1]));
   const optionOf = (p: PlanColumn) => options.get(`${p.round}:${p.name}`);
@@ -142,14 +143,15 @@ export function AgentRoomFrame(props: {
         </section>
 
         <section aria-label="Negotiation" className="flex min-h-0 flex-col p-5">
-          <div role="tablist" aria-label="View" className="flex gap-1">
+          <LanesStrip lanes={lanes} />
+          <div role="tablist" aria-label="View" className="mt-4 flex gap-1">
             <Tab on={tab === "table"} onClick={() => setTab("table")}>Negotiation</Tab>
             <Tab on={tab === "transcript"} onClick={() => setTab("transcript")}>
               Transcript <span className="num text-ink-faint">{shown.length}</span>
             </Tab>
           </div>
           {tab === "table" ? (
-            <NegotiationTable plans={plans} optionOf={optionOf} thinking={thinking} newestSeq={newest?.seq} running={roundState.state === "running"} />
+            <NegotiationTable plans={plans} messages={shown} optionOf={optionOf} thinking={thinking} newestSeq={newest?.seq} running={roundState.state === "running"} />
           ) : (
             <Transcript messages={shown} names={names} />
           )}
@@ -336,7 +338,41 @@ function Node({ who, glow, dim }: { who: Speaker; glow: boolean; dim?: boolean }
   );
 }
 
-// --- The negotiation table: one column per plan, one row per reviewing agent. ---
+// --- The four agents, as lanes: a live badge and what each has done, counted from the rows. ---
+
+const CHIP = {
+  info: "border-line2 text-ink-muted",
+  ok: "border-[#3DD68C66] bg-[#3DD68C14] text-[#3DD68C]",
+  warn: "border-[#FF5C5C66] bg-[#FF5C5C14] text-[#FF5C5C]",
+} as const;
+
+function Chip({ tone, title, children }: { tone: keyof typeof CHIP; title?: string; children: ReactNode }) {
+  return <span title={title} className={`num inline-flex h-6 max-w-full items-center truncate rounded-ctl border px-1.5 text-[11px] ${CHIP[tone]}`}>{children}</span>;
+}
+
+function LanesStrip({ lanes }: { lanes: Lane[] }) {
+  return (
+    <ul aria-label="The four agents" className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2 xl:grid-cols-4">
+      {lanes.map((l) => {
+        const live = l.status === "thinking" || l.status === "speaking";
+        return (
+          <li key={l.agent} className={`flex min-w-0 flex-col gap-2 rounded-panel border px-3 py-2.5 ${live ? "border-line2 bg-select-wash" : "border-line"}`}>
+            <span className="inline-flex items-center gap-2 text-[13px]" style={{ color: SPEAKER_COLOR[l.agent] }}>
+              <AgentGlyph who={l.agent} size={14} />
+              <span className="truncate">{SPEAKER_LABEL[l.agent].replace(" Agent", "")}</span>
+              {live && <span className="ml-auto h-2 w-2 animate-pulse rounded-full" style={{ background: SPEAKER_COLOR[l.agent] }} aria-hidden />}
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {l.badges.length ? l.badges.map((b) => <Chip key={b.label} tone={b.tone}>{b.label}</Chip>) : <Chip tone="info">idle</Chip>}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// --- The negotiation table: one column per plan, one row per reviewing agent, and the Coordinator's row. ---
 
 const STAMP = {
   accept: { glyph: "●", label: "Accepts", color: "#3DD68C" },
@@ -344,7 +380,7 @@ const STAMP = {
   question: { glyph: "?", label: "Asked a human", color: "#F2C14E" },
 } as const;
 
-function NegotiationTable(props: { plans: PlanColumn[]; optionOf: (p: PlanColumn) => number | undefined; thinking: Set<string>; newestSeq?: number; running: boolean }) {
+function NegotiationTable(props: { plans: PlanColumn[]; messages: readonly AgentMessageRow[]; optionOf: (p: PlanColumn) => number | undefined; thinking: Set<string>; newestSeq?: number; running: boolean }) {
   const { plans, optionOf, newestSeq } = props;
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -375,7 +411,13 @@ function NegotiationTable(props: { plans: PlanColumn[]; optionOf: (p: PlanColumn
               {optionOf(p) && <span className="rounded-ctl border border-ink px-1.5 py-px text-ink">■ Option {optionOf(p)}</span>}
             </div>
             <div className="mt-1 text-[16px] leading-6 text-ink">{p.name}</div>
-            <div className="num text-[12px] text-ink-faint">{p.size}</div>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              <Chip tone="info">{p.size}</Chip>
+              {p.lines.slice(0, 2).map((l, i) => (
+                <Chip key={i} tone="info" title={l}>{l.length > 34 ? `${l.slice(0, 32)}…` : l}</Chip>
+              ))}
+              {p.lines.length > 2 && <Chip tone="info" title={p.lines.slice(2).join("\n")}>+{p.lines.length - 2}</Chip>}
+            </div>
           </div>
         ))}
 
@@ -400,6 +442,18 @@ function NegotiationTable(props: { plans: PlanColumn[]; optionOf: (p: PlanColumn
           <ReviewerRow key={agent} agent={agent} plans={plans} optionOf={optionOf} newestSeq={newestSeq}
             pending={props.running} thinking={props.thinking.has(agent)} lastRound={last.round} />
         ))}
+
+        <RowLabel who="coordinator" label="Coordinator" />
+        {plans.map((p) => {
+          const c = coordinatorStamp(props.messages, p);
+          return (
+            <div key={`c${colKey(p)}`} className={`flex flex-wrap content-start gap-1 border-b border-l border-line px-4 py-3 ${optionOf(p) ? "bg-select-wash" : ""}`}>
+              {c.routed > 0 && <Chip tone="info">→ routed to {c.routed} {c.routed === 1 ? "reviewer" : "reviewers"}</Chip>}
+              {c.option !== undefined && <Chip tone="ok">■ published as option {c.option}</Chip>}
+              {c.routed === 0 && c.option === undefined && <span className="num text-[13px] text-ink-faint">—</span>}
+            </div>
+          );
+        })}
       </div>
       <div ref={end} />
     </div>
@@ -448,8 +502,7 @@ function StampCell({ stamp, fresh }: { stamp: Stamp; fresh: boolean }) {
         <span aria-hidden>{look.glyph}</span>
         {look.label}
       </span>
-      {stamp.needs && <div className="num mt-2 text-[12px] leading-5 text-ink">Needs: {stamp.needs}</div>}
-      {stamp.reason && <p className="m-0 mt-1 line-clamp-2 text-[13px] leading-5 text-ink-muted">{stamp.reason}</p>}
+      {stamp.needs && <div className="num mt-2 line-clamp-2 text-[12px] leading-5 text-ink" title={stamp.needs}>Needs: {stamp.needs}</div>}
     </div>
   );
 }
