@@ -1,6 +1,6 @@
 {
-  "ticks": 10,
-  "infectedCount": 10,
+  "ticks": 9,
+  "infectedCount": 9,
   "infectedDevices": [
     {
       "id": "mri_2",
@@ -37,31 +37,27 @@
     {
       "id": "ws_rad_2",
       "tick": 8
-    },
-    {
-      "id": "ws_rad_3",
-      "tick": 9
     }
   ],
   "servicesDown": [
     {
       "id": "svc_ehr",
-      "downSinceTick": 10,
+      "downSinceTick": 9,
       "ticksDown": 1
     },
     {
       "id": "svc_lab",
-      "downSinceTick": 10,
+      "downSinceTick": 9,
       "ticksDown": 1
     },
     {
       "id": "svc_mri",
-      "downSinceTick": 10,
+      "downSinceTick": 9,
       "ticksDown": 1
     },
     {
       "id": "svc_pharm",
-      "downSinceTick": 10,
+      "downSinceTick": 9,
       "ticksDown": 1
     }
   ],

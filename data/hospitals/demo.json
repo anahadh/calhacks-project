@@ -1477,14 +1477,12 @@
         "tier": "service_desk_admin",
         "admin_to": [
           "ws_admin_2",
-          "ws_admin_3",
           "ws_reg",
           "ws_lab",
           "ws_pharm"
         ],
         "sessions_on": [
-          "ws_admin_2",
-          "ws_admin_3"
+          "ws_admin_2"
         ]
       },
       {
@@ -1521,8 +1519,7 @@
           "ws_img_2",
           "mri_2",
           "ws_rad_1",
-          "ws_rad_2",
-          "ws_rad_3"
+          "ws_rad_2"
         ],
         "sessions_on": [
           "ws_lab",
@@ -1531,8 +1528,7 @@
           "ws_img_2",
           "mri_2",
           "ws_rad_1",
-          "ws_rad_2",
-          "ws_rad_3"
+          "ws_rad_2"
         ]
       },
       {
