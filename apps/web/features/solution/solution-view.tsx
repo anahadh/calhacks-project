@@ -39,7 +39,14 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const [closing, setClosing] = useState(false);
 
   const { hospital } = session;
+  // Click a ringed device on either side to rerun both sides from that entry point (the plan is for any of them).
+  const pickable = useMemo(() => new Set(session.isPresenter ? session.entryPoints : []), [session.isPresenter, session.entryPoints]);
   const rec = session.recommendations.find((r) => r.id === plan?.recommendationId);
+  const pick = (deviceId: string) => {
+    if (!rec) return;
+    setErr(undefined);
+    session.actions.showSolution(rec.id, undefined, deviceId).catch((x: Error) => setErr(x.message));
+  };
   const sides = [none, planRun];
   const clock = pairClock(sides);
   // One clock for both sides: the longer run sets it, so playback shows the whole spread without segmentation.
@@ -108,24 +115,6 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
               <span className="eyebrow">Same attack, twice</span>
               <span className="readout text-[19px] leading-6 text-ink">{rec?.name ?? planRun?.label ?? "Computing the plan…"}</span>
               <span className="num text-xs text-ink-muted">{subtitle}</span>
-              {rec && session.isPresenter && session.entryPoints.length > 0 && (
-                <label className="num ml-auto flex items-center gap-2 text-xs text-ink-muted">
-                  Attack starts at
-                  <select
-                    value={planRun?.patientZero ?? ""}
-                    onChange={(e) => {
-                      setErr(undefined);
-                      session.actions.showSolution(rec.id, undefined, e.target.value).catch((x: Error) => setErr(x.message));
-                    }}
-                    className="ctl h-9 bg-panel2 px-2 text-[13px] text-ink"
-                    title="Rerun both sides from another entry point: the plan is designed for any of them"
-                  >
-                    {session.entryPoints.map((id) => (
-                      <option key={id} value={id}>{index.device.get(id)?.name ?? id}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
             </div>
 
             <Transport session={session} sides={sides} tick={tick} statusLine={clock.line.startsWith("Step") ? undefined : clock.line} onError={setErr} />
@@ -179,6 +168,8 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     hoveredZone={hoveredZone}
                     onHoverZone={setHoveredZone}
                     floorId={floor === "all" ? undefined : floor}
+                    pickable={pickable}
+                    onPick={pick}
                   />
                 </SceneBoundary>
               </Side>
@@ -203,11 +194,18 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     hoveredZone={hoveredZone}
                     onHoverZone={setHoveredZone}
                     floorId={floor === "all" ? undefined : floor}
+                    pickable={pickable}
+                    onPick={pick}
                   />
                 </SceneBoundary>
               </Side>
             </div>
-            <span className="num px-4 py-2 text-[11px] text-ink-faint">
+            {pickable.size > 0 && rec && (
+                <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-ctl border border-ink bg-bg/90 px-4 py-2 text-[14px] text-ink">
+                  Click any ringed device to start the attack there: both sides rerun from it
+                </div>
+              )}
+              <span className="num px-4 py-2 text-[11px] text-ink-faint">
               Drag either building to turn both · scroll to zoom · hover a device
             </span>
           </div>

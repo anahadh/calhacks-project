@@ -59,6 +59,8 @@ export function PlanScene({
   hoveredZone,
   onHoverZone,
   floorId,
+  pickable,
+  onPick,
 }: {
   /** Which side this is, for the shared camera. */
   id: string;
@@ -78,6 +80,9 @@ export function PlanScene({
   onHoverZone: (zone: string | null) => void;
   /** Show one floor, brought down to ground height; all floors when unset. */
   floorId?: string;
+  /** Devices an attack can start from; clicking one calls onPick (rerun both sides from there). */
+  pickable?: ReadonlySet<string>;
+  onPick?: (deviceId: string) => void;
 }) {
   const floorLevel = useMemo(() => new Map(hospital.floors.map((f) => [f.id, f.level])), [hospital.floors]);
   const room = useMemo(() => new Map(hospital.rooms.map((r) => [r.id, r])), [hospital.rooms]);
@@ -203,6 +208,7 @@ export function PlanScene({
             infected={!!state.get(d.id)?.infected}
             zero={d.id === patientZero}
             onHover={(on) => onHoverZone(on ? zoneOf(d) : null)}
+            pick={onPick && pickable?.has(d.id) && d.id !== patientZero ? () => onPick(d.id) : undefined}
           />
         ))}
       </group>
@@ -311,16 +317,31 @@ function DeviceDot({
   infected,
   zero,
   onHover,
+  pick,
 }: {
   position: Vec3;
   infected: boolean;
   zero: boolean;
   onHover: (on: boolean) => void;
+  /** Set on a device an attack can start from: click to rerun from it. */
+  pick?: () => void;
 }) {
   const color = zero ? C.zero : infected ? C.infected : C.healthy;
   return (
     <group position={position}>
+      {pick && (
+        // A ringed entry point: click to start the attack here.
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.62, 0.74, 28]} />
+          <meshBasicMaterial color={C.ok} transparent opacity={0.45} side={THREE.DoubleSide} />
+        </mesh>
+      )}
       <mesh
+        onClick={(e) => {
+          if (!pick) return;
+          e.stopPropagation();
+          pick();
+        }}
         onPointerOver={(e) => {
           e.stopPropagation();
           onHover(true);
