@@ -58,6 +58,7 @@ export function DeviceBox({
   distanceFactor = 22,
   onPick,
   pickable,
+  dimmed,
 }: {
   device: Device;
   level: number;
@@ -74,6 +75,8 @@ export function DeviceBox({
   onPick?: (id: string) => void;
   /** While picking, false dims a device the engine won't accept as patient zero. */
   pickable?: boolean;
+  /** Another device is hovered and this one isn't connected to it: fade it back, keeping its state color. */
+  dimmed?: boolean;
 }) {
   const infected = !!state?.infected;
   const hot = infected || !!zero;
@@ -119,7 +122,7 @@ export function DeviceBox({
             position: "relative",
             width: CHIP_PX,
             height: CHIP_PX,
-            opacity: pickable === false ? 0.28 : 1,
+            opacity: pickable === false || dimmed ? 0.28 : 1,
             cursor: onPick && pickable !== false ? "pointer" : undefined,
             transition: "opacity 160ms ease",
           }}

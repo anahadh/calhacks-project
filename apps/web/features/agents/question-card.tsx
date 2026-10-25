@@ -28,6 +28,8 @@ export function QuestionCard({ q, session, index }: { q: QuestionRow; session: S
   const device = index.device.get(q.targetId);
   const canAnswer = !!session.me && (q.allowedRoles as string[]).includes(session.me.role);
   const who = q.allowedRoles.map((r) => ROLE_LABEL[r]).join(" or ");
+  // Roles come from the join card now, so nobody present may be allowed to answer.
+  const answerable = session.presence.some((p) => (q.allowedRoles as string[]).includes(p.role));
 
   const answer = async (choice: string) => {
     setError(undefined);
@@ -67,7 +69,11 @@ export function QuestionCard({ q, session, index }: { q: QuestionRow; session: S
           ))}
         </div>
       ) : (
-        <span className="num text-[10.5px] text-ink-faint">Waiting for {who} to answer</span>
+        <span className="num max-w-[320px] text-[10.5px] text-ink-faint">
+          {answerable
+            ? `Waiting for ${who} to answer`
+            : `No one here can answer: it needs ${who}. Invite someone in that role; the round waits until then.`}
+        </span>
       )}
     </div>
   );

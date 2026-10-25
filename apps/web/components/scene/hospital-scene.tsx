@@ -3,12 +3,14 @@
 import { useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import { ARC_MODE } from "../../../../spacetime/src/role_views";
+import type { RoleView } from "@/lib/role-views";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 import { C } from "@/lib/colors";
 import { SpreadFx } from "@/features/scene/spread-fx";
 import { SpreadTracker, stoppedAt, type Toast } from "@/features/scene/spread-timing";
-import { NetworkArc, type Arc, type Vec3 } from "./arcs";
+import { NetworkArc, ServiceAnchor, type Arc, type Vec3 } from "./arcs";
 import { FloorSlab, RoomShell } from "./building";
 import { CHIP_LIFT, DeviceBox } from "./devices";
 import { RoomChip } from "./labels";
@@ -22,6 +24,8 @@ const CAM_FOV = 30;
 /** drei Html scale so a 30px chip is 30px at the default camera distance: tan(fov/2) × distance. */
 const CAM_DIST = Math.hypot(...CAM_OFFSET);
 const HTML_FACTOR = Math.tan((CAM_FOV / 2) * (Math.PI / 180)) * CAM_DIST;
+/** Infection hops this recent (in ticks) are drawn bright: the spread happening now. Older hops fade to a trail. */
+const RECENT_TICKS = 2;
 
 export function HospitalScene({
   session,
@@ -31,6 +35,7 @@ export function HospitalScene({
   floorId,
   onPick,
   pickable,
+  view,
 }: {
   session: SessionSnapshot;
   index: SessionIndex;
@@ -42,6 +47,8 @@ export function HospitalScene({
   onPick?: (id: string) => void;
   /** While picking, which devices the engine accepts as patient zero (others dim). */
   pickable?: (id: string) => boolean;
+  /** The caller's role view: how the hovered device's connections look (spacetime/src/role_views.ts). */
+  view: RoleView;
 }) {
   const { hospital } = session;
   const run = session.activeRun ?? session.runs.find((r) => r.id === session.activeRunId);
@@ -90,7 +97,41 @@ export function HospitalScene({
     return m;
   }, [hospital.devices, index.deviceState]);
 
-  // Infection paths from infected_by (one per infected device), plus the hovered device's own flows.
+  const mode = ARC_MODE[view.role];
+  const tick = run?.tick ?? 0;
+
+  // What the hovered device touches: its flows' other ends. Everything else dims.
+  const neighbors = useMemo(() => {
+    if (!hovered) return null;
+    const m = new Set([hovered]);
+    for (const fl of hospital.flows) {
+      if (fl.active === false) continue;
+      if (fl.from === hovered) m.add(fl.to);
+      if (fl.to === hovered) m.add(fl.from);
+    }
+    return m;
+  }, [hovered, hospital.flows]);
+
+  // Where each service's dependency lines meet (Hospital Management): above the middle of its devices.
+  const serviceAnchor = useMemo(() => {
+    const m = new Map<string, Vec3>();
+    if (mode !== "dependencies") return m;
+    for (const svc of hospital.services) {
+      const pts = svc.dependsOnDevices.map((id) => devicePoint(id)).filter((p): p is Vec3 => !!p);
+      if (!pts.length) continue;
+      const avg = (k: 0 | 1 | 2) => pts.reduce((n, p) => n + p[k], 0) / pts.length;
+      m.set(svc.id, [avg(0), Math.max(...pts.map((p) => p[1])) + 5, avg(2)]);
+    }
+    return m;
+    // devicePoint only reads from index and floorLevel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, hospital.services, index, floorLevel]);
+
+  // Only two kinds of line, so the building stays readable:
+  // 1. Infection paths from infected_by, for every role. Hops from the last
+  //    RECENT_TICKS ticks are bright (the spread happening now); older ones fade.
+  // 2. The hovered device's connections, styled by the role view: the CISO's
+  //    protocol and port, Clinical IT's clinical flows, Management's services.
   const arcs = useMemo<Arc[]>(() => {
     const shown = (id: string) => shownRoom(index.device.get(id)?.roomId ?? "");
     const out: Arc[] = [];
@@ -100,22 +141,53 @@ export function HospitalScene({
       const from = devicePoint(s.infectedBy);
       const to = devicePoint(s.deviceId);
       if (!from || !to) continue;
-      out.push({ key: `inf_${s.deviceId}`, from, to, kind: "infection", since: timing.flashAt.get(s.deviceId) });
+      out.push({
+        key: `inf_${s.deviceId}`, from, to, kind: "infection", since: timing.flashAt.get(s.deviceId),
+        emphasis: tick - (s.infectedAtTick ?? 0) < RECENT_TICKS ? "strong" : "faint",
+      });
     }
-    if (hovered) {
+    if (!hovered) return out;
+
+    if (mode === "none") {
+      // No role yet: the hovered device's flows, plain.
       for (const fl of hospital.flows) {
         if (fl.active === false || (fl.from !== hovered && fl.to !== hovered)) continue;
         if (!shown(fl.from) || !shown(fl.to)) continue;
-        if (out.some((a) => a.key === `inf_${fl.to}` || a.key === `inf_${fl.from}`)) continue;
         const from = devicePoint(fl.from);
         const to = devicePoint(fl.to);
         if (from && to) out.push({ key: fl.id, from, to, kind: fl.protected ? "protected" : "flow" });
       }
+      return out;
+    }
+
+    for (const a of view.arcs) {
+      if (a.from !== hovered && a.to !== hovered) continue;
+      const from = devicePoint(a.from);
+      if (!from || !shown(a.from)) continue;
+      if (a.kind === "dependency") {
+        const anchor = serviceAnchor.get(a.to);
+        if (anchor) out.push({ key: a.id, from, to: anchor, kind: "dependency", emphasis: "strong" });
+        continue;
+      }
+      const to = devicePoint(a.to);
+      if (!to || !shown(a.to)) continue;
+      out.push({
+        key: a.id, from, to, kind: index.flow.get(a.id)?.protected ? "protected" : "flow",
+        // Clinical IT's non-clinical flows stay thin; everything else on hover is clear.
+        emphasis: a.emphasis === "faint" ? "normal" : "strong",
+        label: a.label || undefined,
+      });
     }
     return out;
     // devicePoint only reads from index and floorLevel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.devices, hospital.flows, hovered, index, floorLevel, floorId, timing.flashAt]);
+  }, [session.devices, hospital.flows, hovered, index, floorLevel, floorId, timing.flashAt, mode, view.arcs, serviceAnchor, tick]);
+
+  // Management's service labels: only the hovered device's services.
+  const anchorsShown = useMemo(
+    () => (hovered ? [...serviceAnchor].filter(([id]) => index.service.get(id)?.dependsOnDevices.includes(hovered)) : []),
+    [hovered, serviceAnchor, index],
+  );
 
   // Cut connections the infection reached but did not cross (run.removed_flows_json).
   const stops = useMemo(() => {
@@ -215,6 +287,7 @@ export function HospitalScene({
               level={levelOfDevice(d.id)}
               state={st}
               hovered={hovered === d.id}
+              dimmed={!!neighbors && !neighbors.has(d.id)}
               zero={d.id === patientZero && !!st?.infected}
               onHover={onHover}
               flashAt={timing.flashAt.get(d.id)}
@@ -227,6 +300,10 @@ export function HospitalScene({
 
         {arcs.map((a) => (
           <NetworkArc key={a.key} arc={a} />
+        ))}
+
+        {anchorsShown.map(([id, pos]) => (
+          <ServiceAnchor key={id} position={pos} name={index.service.get(id)?.name ?? id} down={!!index.serviceState.get(id)?.down} />
         ))}
 
         <SpreadFx

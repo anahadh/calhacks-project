@@ -14,6 +14,7 @@ import { AgentRoom } from "@/features/agents/agent-room";
 import { defendBlocker } from "@/features/agents/defend-button";
 import { QuestionBanner } from "@/features/agents/question-card";
 import { JoinModal } from "@/features/review/join-modal";
+import { useRoleView } from "@/lib/role-views";
 import { useSession, useSessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
@@ -34,6 +35,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       ? { ...session, devices: [], services: [], patients: [], attempts: [], events: [], snapshots: [], activeRun: undefined, activeRunId: "" }
       : session;
   const index = useSessionIndex(shown);
+  const roleView = useRoleView(shown);
   const canPick = picking && session.isPresenter && session.source === "live";
   const pick = async (id: string) => {
     if (!canPick || !session.entryPoints.includes(id)) return;
@@ -130,11 +132,12 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                     floorId={floor === "all" ? undefined : floor}
                     onPick={canPick ? pick : undefined}
                     pickable={picking ? (id) => session.entryPoints.includes(id) : undefined}
+                    view={roleView}
                   />
                 </SceneBoundary>
                 {hovered && (
                   <div className="pointer-events-none absolute right-4 top-4 z-10">
-                    <DeviceCard session={session} index={index} deviceId={hovered} />
+                    <DeviceCard session={session} index={index} deviceId={hovered} view={roleView} />
                   </div>
                 )}
                 <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">

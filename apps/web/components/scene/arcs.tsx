@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import { Line, QuadraticBezierLine } from "@react-three/drei";
+import { Html, Line, QuadraticBezierLine } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import type { Line2, LineMaterial } from "three-stdlib";
 import { C } from "@/lib/colors";
@@ -13,13 +13,18 @@ export type Arc = {
   key: string;
   from: Vec3;
   to: Vec3;
-  kind: "infection" | "flow" | "protected" | "kept" | "cut";
+  /** dependency: a device to a service that relies on it (Hospital Management's lens). */
+  kind: "infection" | "flow" | "protected" | "kept" | "cut" | "dependency";
   /**
    * For an infection path: performance.now() when this tab saw the target's
    * device_state row turn infected (spread-timing.ts). The arc draws itself in
    * from that moment. Unset for rows that were already there: drawn in full.
    */
   since?: number;
+  /** From the role view, or the infection path's age: faint arcs recede, strong ones stand out. */
+  emphasis?: "normal" | "strong" | "faint";
+  /** Shown at the arc's peak, e.g. "SMB 445" or "Scans to radiologists (DICOM)". */
+  label?: string;
 };
 
 /** The control point of an arc between two devices: it rises with distance, so the paths sweep high over the slab (the design). */
@@ -41,7 +46,11 @@ const STYLE: Record<Exclude<Arc["kind"], "infection">, { color: string; width: n
   kept: { color: C.healthy, width: 0.8, opacity: 0.45 },
   // A connection the plan removed: dashed gray (UX rule 3: cut connections are dashed).
   cut: { color: C.cut, width: 1.3, opacity: 0.9, dashed: true },
+  dependency: { color: C.ok, width: 1, opacity: 0.6 },
 };
+
+/** How a role view's emphasis scales a plain arc. */
+const EMPHASIS = { faint: { width: 0.8, opacity: 0.25 }, normal: { width: 1, opacity: 1 }, strong: { width: 1.5, opacity: 1.4 } } as const;
 
 /** Time an infection path takes to draw itself in, from the infecting device to the target. */
 export const ARC_DRAW_MS = 550;
@@ -51,7 +60,35 @@ export const ARC_DRAW_MS = 550;
 export function NetworkArc({ arc }: { arc: Arc }) {
   if (arc.kind === "infection") return <InfectionArc arc={arc} />;
   const s = STYLE[arc.kind];
-  return <PlainArc arc={arc} {...s} />;
+  const e = EMPHASIS[arc.emphasis ?? "normal"];
+  return (
+    <>
+      <PlainArc arc={arc} {...s} width={s.width * e.width} opacity={Math.min(1, s.opacity * e.opacity)} />
+      {arc.label && <ArcLabel arc={arc} text={arc.label} />}
+    </>
+  );
+}
+
+/** A label at the arc's peak (the Bézier's midpoint). */
+function ArcLabel({ arc, text }: { arc: Arc; text: string }) {
+  return (
+    <Html position={arcPoint(arc.from, arc.to, 0.5)} center zIndexRange={[25, 15]} style={{ pointerEvents: "none" }}>
+      <span className="num whitespace-nowrap rounded-[3px] border border-line2 bg-panel/95 px-1.5 py-px text-[10px] text-ink">{text}</span>
+    </Html>
+  );
+}
+
+/** Where a service's dependency lines meet, labeled with its name (Hospital Management's lens). */
+export function ServiceAnchor({ position, name, down }: { position: Vec3; name: string; down: boolean }) {
+  return (
+    <Html position={position} center zIndexRange={[24, 14]} style={{ pointerEvents: "none" }}>
+      <span className="num inline-flex items-center gap-1 whitespace-nowrap rounded-[3px] border border-line2 bg-panel/95 px-1.5 py-px text-[10px] text-ink">
+        <span aria-hidden>{down ? "✕" : "◇"}</span>
+        {name}
+        {down && <span className="text-ink-muted">· offline</span>}
+      </span>
+    </Html>
+  );
 }
 
 function PlainArc({ arc, color, width, opacity, dashed }: { arc: Arc; color: string; width: number; opacity: number; dashed?: boolean }) {
@@ -97,6 +134,8 @@ function InfectionArc({ arc }: { arc: Arc }) {
 
   const line = useRef<Line2>(null);
   const head = useRef<THREE.Mesh>(null);
+  // An older hop: a faint trail, so the spread happening now stands out.
+  const faint = arc.emphasis === "faint";
 
   useFrame((_, dt) => {
     const l = line.current;
@@ -118,17 +157,17 @@ function InfectionArc({ arc }: { arc: Arc }) {
         ref={line}
         points={geom.points}
         color={C.infected}
-        lineWidth={1.8}
+        lineWidth={faint ? 1 : 1.8}
         dashed
         dashSize={DOT}
         gapSize={GAP}
         transparent
-        opacity={0.95}
+        opacity={faint ? 0.3 : 0.95}
         depthWrite={false}
       />
       <mesh ref={head} position={geom.tip} quaternion={geom.quat} visible={arc.since === undefined}>
         <coneGeometry args={[0.22, 0.62, 10]} />
-        <meshBasicMaterial color={C.infected} transparent opacity={0.95} depthWrite={false} />
+        <meshBasicMaterial color={C.infected} transparent opacity={faint ? 0.3 : 0.95} depthWrite={false} />
       </mesh>
     </group>
   );

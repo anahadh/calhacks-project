@@ -12,6 +12,8 @@ describe("subscription queries", () => {
       "SELECT * FROM agent_status WHERE session_id = 'demo'",
       "SELECT * FROM question WHERE session_id = 'demo'",
       "SELECT * FROM recommendation WHERE session_id = 'demo'",
+      "SELECT * FROM my_device_card",
+      "SELECT * FROM my_arcs",
     ]);
   });
 

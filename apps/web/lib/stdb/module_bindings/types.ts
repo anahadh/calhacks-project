@@ -53,6 +53,18 @@ export const Annotation = __t.object("Annotation", {
 });
 export type Annotation = __Infer<typeof Annotation>;
 
+export const ArcRow = __t.object("ArcRow", {
+  id: __t.string(),
+  sessionId: __t.string(),
+  viewerRole: __t.string(),
+  kind: __t.string(),
+  fromDevice: __t.string(),
+  toId: __t.string(),
+  emphasis: __t.string(),
+  label: __t.string(),
+});
+export type ArcRow = __Infer<typeof ArcRow>;
+
 export const Config = __t.object("Config", {
   id: __t.u32(),
   serverIdentity: __t.identity(),
@@ -72,6 +84,24 @@ export const DefendRequestLog = __t.object("DefendRequestLog", {
 });
 export type DefendRequestLog = __Infer<typeof DefendRequestLog>;
 
+export const DeviceCardRow = __t.object("DeviceCardRow", {
+  deviceId: __t.string(),
+  sessionId: __t.string(),
+  viewerRole: __t.string(),
+  services: __t.string(),
+  os: __t.string(),
+  vulnerability: __t.string(),
+  vlan: __t.string(),
+  ports: __t.string(),
+  infectedBy: __t.string(),
+  criticality: __t.string(),
+  clinicalFlows: __t.string(),
+  clinicalServices: __t.string(),
+  patients: __t.string(),
+  serviceImpact: __t.string(),
+});
+export type DeviceCardRow = __Infer<typeof DeviceCardRow>;
+
 export const DeviceState = __t.object("DeviceState", {
   id: __t.string(),
   runId: __t.string(),
@@ -81,6 +111,12 @@ export const DeviceState = __t.object("DeviceState", {
   infectedBy: __t.string(),
 });
 export type DeviceState = __Infer<typeof DeviceState>;
+
+export const MyArcs = __t.object("MyArcs", {});
+export type MyArcs = __Infer<typeof MyArcs>;
+
+export const MyDeviceCard = __t.object("MyDeviceCard", {});
+export type MyDeviceCard = __Infer<typeof MyDeviceCard>;
 
 export const PatientState = __t.object("PatientState", {
   id: __t.string(),
