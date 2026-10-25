@@ -75,7 +75,7 @@ export function SegmentHalos({
           <group key={h.id} position={h.at}>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[h.infected ? DISC + 0.3 : DISC, 40]} />
-              <meshBasicMaterial color={h.infected ? C.infected : h.color} transparent opacity={h.infected ? 0.26 : lit ? 0.2 : h.zone ? 0.1 : 0.04} depthWrite={false} side={THREE.DoubleSide} />
+              <meshBasicMaterial color={h.infected ? C.infected : h.color} transparent opacity={h.infected ? 0.6 : lit ? 0.65 : h.zone ? 0.45 : 0.06} depthWrite={false} side={THREE.DoubleSide} />
             </mesh>
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
               <ringGeometry args={[RING_IN, RING_OUT, 40]} />
