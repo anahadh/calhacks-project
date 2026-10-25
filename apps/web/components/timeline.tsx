@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { AddNoteButton, TimelineNotes } from "@/features/review/timeline-notes";
 import { initials, ROLE_LABEL, tickClock } from "@/lib/format";
+import { ROLE_SHORT } from "@/lib/role-views";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
 
@@ -294,6 +295,12 @@ function Presence({ session }: { session: SessionSnapshot }) {
             }}
           >
             {initials(p.name)}
+            <span
+              aria-hidden
+              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-[3px] border border-line2 bg-panel px-0.5 text-[7.5px] uppercase leading-[10px] tracking-[0.04em] text-ink-muted"
+            >
+              {ROLE_SHORT[p.role]}
+            </span>
           </span>
         );
       })}

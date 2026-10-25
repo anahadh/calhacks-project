@@ -82,4 +82,42 @@ describe.skipIf(!URI)("live SpacetimeDB", () => {
     a.disconnect();
     b.disconnect();
   }, 60000);
+
+  it("gives three people in three roles different cards and arcs from the role views", async () => {
+    const sessionId = `iv_${Date.now().toString(36)}`;
+    const [ciso, clin, mgmt] = await Promise.all([connect(), connect(), connect()]);
+    const views = ["SELECT * FROM my_device_card", "SELECT * FROM my_arcs"];
+    await Promise.all([ciso, clin, mgmt].map((c) => subscribe(c, views)));
+
+    await ciso.reducers.sessionCreate({ sessionId, hospitalJson: JSON.stringify(demo) });
+    await ciso.reducers.presenceJoin({ sessionId, name: "Ana", role: "security" });
+    await clin.reducers.presenceJoin({ sessionId, name: "Dev", role: "clinical_engineering" });
+    await mgmt.reducers.presenceJoin({ sessionId, name: "Mo", role: "operations" });
+
+    const card = (c: DbConnection) => [...c.db.myDeviceCard.iter()].find((x) => x.sessionId === sessionId && x.deviceId === "mri_2");
+    await until(() => !!card(ciso) && !!card(clin) && !!card(mgmt));
+
+    // Same device, three lenses.
+    expect(card(ciso)).toMatchObject({ viewerRole: "security", criticality: "", patients: "" });
+    expect(card(ciso)!.ports).toMatch(/DICOM 104/);
+    expect(card(clin)).toMatchObject({ viewerRole: "clinical_engineering", os: "", ports: "" });
+    expect(card(clin)!.clinicalFlows).toMatch(/Scans to radiologists/);
+    expect(card(mgmt)).toMatchObject({ viewerRole: "operations", os: "", vlan: "", ports: "" });
+    expect(card(mgmt)!.serviceImpact).toContain("Scheduled MRI scans can't run");
+    for (const c of [ciso, clin, mgmt]) expect(card(c)!.services).toContain("MRI imaging");
+
+    const arcs = (c: DbConnection) => [...c.db.myArcs.iter()].filter((x) => x.sessionId === sessionId);
+    expect(arcs(ciso).every((x) => x.kind === "flow")).toBe(true);
+    expect(arcs(clin).some((x) => x.emphasis === "faint")).toBe(true);
+    expect(arcs(mgmt).every((x) => x.kind === "dependency")).toBe(true);
+
+    // Rejoining with another role switches the lens live.
+    await mgmt.reducers.presenceJoin({ sessionId, name: "Mo", role: "security" });
+    await until(() => card(mgmt)?.viewerRole === "security");
+    expect(card(mgmt)!.vlan).not.toBe("");
+
+    ciso.disconnect();
+    clin.disconnect();
+    mgmt.disconnect();
+  }, 60000);
 });

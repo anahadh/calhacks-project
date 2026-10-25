@@ -12,12 +12,14 @@ import { AgentRoom } from "@/features/agents/agent-room";
 import { defendBlocker } from "@/features/agents/defend-button";
 import { QuestionBanner } from "@/features/agents/question-card";
 import { JoinModal } from "@/features/review/join-modal";
+import { useRoleView } from "@/lib/role-views";
 import { useSession, useSessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
 export function SessionView({ sessionId }: { sessionId: string }) {
   const session = useSession(sessionId);
   const index = useSessionIndex(session);
+  const roleView = useRoleView(session);
   const [view, setView] = useState<ViewId>("simulation");
   const [hovered, setHovered] = useState<string | null>(null);
   const [floor, setFloor] = useState("all");
@@ -100,10 +102,11 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                   hovered={hovered}
                   onHover={setHovered}
                   floorId={floor === "all" ? undefined : floor}
+                  view={roleView}
                 />
                 {hovered && (
                   <div className="pointer-events-none absolute right-4 top-4 z-10">
-                    <DeviceCard session={session} index={index} deviceId={hovered} />
+                    <DeviceCard session={session} index={index} deviceId={hovered} view={roleView} />
                   </div>
                 )}
                 <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">

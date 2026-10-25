@@ -24,6 +24,7 @@ export default spacetimedb;
 export * from "./agents";
 export * from "./question";
 export * from "./recommendation";
+export * from "./views";
 
 type RunRow = ReturnType<typeof readRun>;
 

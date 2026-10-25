@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Identity } from "spacetimedb";
 import demo from "../../../../data/hospitals/demo.json";
+import { viewRole, type ArcData, type DeviceCardData } from "../../../../spacetime/src/role_views";
 import { messagesOf, questionsOf, recommendationsOf, roundStateOf, statusOf } from "./agent-rows";
 import { getConnection } from "./connection";
 import type { DbConnection } from "./module_bindings";
@@ -24,6 +25,24 @@ const EMPTY_HOSPITAL: Hospital = { id: "", name: "", floors: [], rooms: [], devi
 
 
 type Live = { conn: DbConnection; identity: Identity };
+
+/** This browser's my_device_card and my_arcs rows, back in role_views.ts's shapes. */
+function roleViewOf(db: DbConnection["db"], sessionId: string, role: string): NonNullable<SessionSnapshot["roleView"]> {
+  const cards = [...db.myDeviceCard.iter()].filter((c) => c.sessionId === sessionId).map(
+    (c): DeviceCardData => ({
+      device_id: c.deviceId, services: c.services, os: c.os, vulnerability: c.vulnerability, vlan: c.vlan, ports: c.ports,
+      infected_by: c.infectedBy, criticality: c.criticality, clinical_flows: c.clinicalFlows,
+      clinical_services: c.clinicalServices, patients: c.patients, service_impact: c.serviceImpact,
+    }),
+  );
+  const arcs = [...db.myArcs.iter()].filter((a) => a.sessionId === sessionId).map(
+    (a): ArcData => ({
+      id: a.id, kind: a.kind === "dependency" ? "dependency" : "flow", from: a.fromDevice, to: a.toId,
+      emphasis: a.emphasis === "strong" || a.emphasis === "faint" ? a.emphasis : "normal", label: a.label,
+    }),
+  );
+  return { role: viewRole(role), cards, arcs };
+}
 
 function presenceOf(p: { name: string; role: string; following: boolean }): PresenceRow {
   return { name: p.name, role: (ROLES.has(p.role) ? p.role : "observer") as PresenceRow["role"], following: p.following };
@@ -63,6 +82,7 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
           conn.db.session, conn.db.run, conn.db.presence, conn.db.annotation, conn.db.deviceState,
           conn.db.serviceState, conn.db.patientState, conn.db.spreadAttempt, conn.db.simEvent, conn.db.tickSnapshot,
           conn.db.agentMessage, conn.db.agentStatus, conn.db.question, conn.db.recommendation,
+          conn.db.myDeviceCard, conn.db.myArcs,
         ] as any[]) {
           table.onInsert(bump);
           table.onDelete(bump);
@@ -97,6 +117,9 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
             `SELECT * FROM agent_status WHERE session_id = '${sessionId}'`,
             `SELECT * FROM question WHERE session_id = '${sessionId}'`,
             `SELECT * FROM recommendation WHERE session_id = '${sessionId}'`,
+            // Role views: per caller, filtered by the role on this browser's presence row.
+            "SELECT * FROM my_device_card",
+            "SELECT * FROM my_arcs",
           ]);
       })
       .catch((e: Error) => {
@@ -198,6 +221,7 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
     delayedProcedures: activeRow?.delayedProcedures ?? 0,
     presence: presenceRows.map(presenceOf),
     me: mine ? presenceOf(mine) : undefined,
+    roleView: db && mine ? roleViewOf(db, sessionId, mine.role) : undefined,
     annotations: db
       ? [...db.annotation.iter()]
           .filter((a) => a.sessionId === sessionId && a.active)

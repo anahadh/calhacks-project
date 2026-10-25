@@ -1,5 +1,6 @@
 "use client";
 
+import { RoleBadge } from "@/features/review/role-badge";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { AgentMessageRow, AgentStatusRow, SessionSnapshot } from "@/lib/stdb/types";
 import { RecommendationCard } from "@/features/policy/card-body";
@@ -76,6 +77,7 @@ function AgentList({ session }: { session: SessionSnapshot }) {
                 {p.name[0]}
               </span>
               <span>{p.name}</span>
+              <RoleBadge role={p.role} />
             </li>
           ))}
         </ul>
