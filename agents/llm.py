@@ -314,8 +314,23 @@ def with_text(msg: Strict, text: str, source: Source) -> Strict:
     return new
 
 
+def template_text(kind: Kind, facts: dict) -> str:
+    """Plain words from the facts alone, when no model text passed: the round goes on, labeled
+    (reasonSource stays unset, which the Agent Room shows as template text)."""
+    parts = [f"{k}: {v}" for k, v in facts.items() if isinstance(v, (str, int, float)) and k not in ("agent", "round")]
+    head = {"recommendation": "Recommended for human review", "verdict_accept": "Accepted", "verdict_reject": "Rejected",
+            "proposal": "Proposed", "revision": "Revised", "question": "Question"}.get(kind, kind)
+    return (f"{head}. " + "; ".join(parts))[:400]
+
+
 async def worded(msg: Strict, kind: Kind, facts: dict) -> Strict:
-    text, source = await explain(kind, facts)
+    """The message with its text worded by the model, or by a template when the model fails:
+    a dropped sentence must never end a round."""
+    try:
+        text, source = await explain(kind, facts)
+    except LlmError as e:
+        logging.getLogger("llm").warning(f"template text for {kind}: {e}")
+        return with_text(msg, template_text(kind, facts), None)
     return with_text(msg, text, source)
 
 

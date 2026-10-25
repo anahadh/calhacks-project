@@ -252,10 +252,11 @@ def allow_list(h: HospitalIndex, cut: set[str], limit: int | None = None) -> lis
 
 
 def candidate(h: HospitalIndex, id: str, strategy: str, name: str, cut: set[str], keep: set[str],
-              rationale: str, tradeoff: str, limit: int | None = None) -> Candidate | None:
+              rationale: str, tradeoff: str, limit: int | None = None, any_link: bool = False) -> Candidate | None:
     """None when the cut set is empty after keeping `keep`, or needs more than MAX_RULES rules.
-    `limit` (a max_rules constraint) folds the rules department to department."""
-    cut = {fid for fid in cut - keep if fid in h.flows and boundary(h, h.flows[fid])}
+    `limit` (a max_rules constraint) folds the rules department to department. `any_link` lets
+    the naive plan cut links that are not segment walls (a department wall cuts scans too)."""
+    cut = {fid for fid in cut - keep if fid in h.flows and (any_link or boundary(h, h.flows[fid]))}
     if not cut:
         return None
     rules = allow_list(h, cut, limit)
@@ -298,10 +299,10 @@ def naive(h: HospitalIndex, patient_zero: str, keep: set[str]) -> Candidate | No
     rest of the hospital, every link, clinical ones included. It holds this attack and nothing
     else, and the reviewers say why: scans stop reaching PACS, and the other 15 starts still run."""
     zone = h.zone(patient_zero)
-    cut = {f["id"] for f in active_flows(h) if cross_segment(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"]))}
+    cut = {f["id"] for f in active_flows(h) if cross_zone(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"]))}
     return candidate(h, "naive_quarantine", "max_containment", f"Wall off {zone_name(zone)}", cut, keep,
                      f"Cut every connection between {zone_name(zone)}, where the attack started, and the rest of the hospital.",
-                     "Fast to write and nothing else is touched; it protects only against an attack that starts here.")
+                     "Fast to write and nothing else is touched; it protects only against an attack that starts here.", any_link=True)
 
 
 def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constraints: list[Constraint],
