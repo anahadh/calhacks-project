@@ -15,6 +15,14 @@ export function newSessionId(): string {
 export async function createSession(hospitalJson: string): Promise<string> {
   const { conn } = await getConnection();
   const sessionId = newSessionId();
-  await conn.reducers.sessionCreate({ sessionId, hospitalJson });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("SpacetimeDB didn't answer the new session request. Reload the page and try again.")), 10_000);
+  });
+  try {
+    await Promise.race([conn.reducers.sessionCreate({ sessionId, hospitalJson }), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
   return sessionId;
 }

@@ -1444,6 +1444,69 @@
         "port": 445,
         "protected": false,
         "active": false
+      },
+      {
+        "id": "fl_57",
+        "from": "ns_er",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shared drive (policies, shift handoff notes)"
+      },
+      {
+        "id": "fl_58",
+        "from": "ns_icu",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shared drive (policies, shift handoff notes)"
+      },
+      {
+        "id": "fl_59",
+        "from": "ns_ward",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shared drive (policies, shift handoff notes)"
+      },
+      {
+        "id": "fl_60",
+        "from": "ws_or",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shared drive (policies, shift handoff notes)"
+      },
+      {
+        "id": "fl_61",
+        "from": "ws_rad_1",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shared drive (policies, shift handoff notes)"
+      },
+      {
+        "id": "fl_62",
+        "from": "ws_rad_2",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shared drive (policies, shift handoff notes)"
+      },
+      {
+        "id": "fl_63",
+        "from": "ws_rad_3",
+        "to": "srv_file",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shared drive (policies, shift handoff notes)"
       }
     ],
     "services": [

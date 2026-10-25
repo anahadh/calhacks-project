@@ -1,6 +1,6 @@
 {
-  "ticks": 14,
-  "infectedCount": 14,
+  "ticks": 21,
+  "infectedCount": 21,
   "infectedDevices": [
     {
       "id": "mri_2",
@@ -55,34 +55,67 @@
       "tick": 12
     },
     {
-      "id": "ws_admin_1",
+      "id": "ns_er",
       "tick": 13
+    },
+    {
+      "id": "ns_icu",
+      "tick": 14
+    },
+    {
+      "id": "ns_ward",
+      "tick": 15
+    },
+    {
+      "id": "ws_or",
+      "tick": 16
+    },
+    {
+      "id": "ws_rad_1",
+      "tick": 17
+    },
+    {
+      "id": "ws_rad_2",
+      "tick": 18
+    },
+    {
+      "id": "ws_rad_3",
+      "tick": 19
+    },
+    {
+      "id": "ws_admin_1",
+      "tick": 20
     }
   ],
   "servicesDown": [
     {
       "id": "svc_ehr",
-      "downSinceTick": 14,
+      "downSinceTick": 21,
       "ticksDown": 1
     },
     {
       "id": "svc_er",
-      "downSinceTick": 14,
+      "downSinceTick": 21,
+      "ticksDown": 1
+    },
+    {
+      "id": "svc_icu",
+      "downSinceTick": 21,
       "ticksDown": 1
     },
     {
       "id": "svc_lab",
-      "downSinceTick": 14,
+      "downSinceTick": 21,
       "ticksDown": 1
     },
     {
       "id": "svc_mri",
-      "downSinceTick": 14,
+      "downSinceTick": 21,
       "ticksDown": 1
     },
     {
       "id": "svc_pharm",
-      "downSinceTick": 14,
+      "downSinceTick": 21,
       "ticksDown": 1
     }
   ],

@@ -13,6 +13,7 @@ const TOKEN_KEY = `hippo.stdb.token.${STDB_MODULE}`;
 export type Connected = { conn: DbConnection; identity: Identity };
 
 let pending: Promise<Connected> | null = null;
+const CONNECT_TIMEOUT_MS = 8000;
 
 /** Told when this tab's connection drops, with a line to show as-is (rule 14). */
 type LostListener = (reason: string) => void;
@@ -56,15 +57,22 @@ export function getConnection(): Promise<Connected> {
   if (!STDB_URI) return Promise.reject(new Error("NEXT_PUBLIC_STDB_URI is not set."));
   if (!pending) {
     pending = new Promise<Connected>((resolve, reject) => {
+      // Never hang silently (rule 14): a connect that doesn't answer is an error the page shows.
+      const timer = setTimeout(() => {
+        pending = null;
+        reject(new Error(`Can't reach SpacetimeDB at ${STDB_URI} (no answer after ${CONNECT_TIMEOUT_MS / 1000} s). Is it running? Reload to retry.`));
+      }, CONNECT_TIMEOUT_MS);
       DbConnection.builder()
         .withUri(STDB_URI)
         .withDatabaseName(STDB_MODULE)
         .withToken(readToken())
         .onConnect((conn, identity, token) => {
+          clearTimeout(timer);
           saveToken(token);
           resolve({ conn, identity });
         })
         .onConnectError((_ctx, err) => {
+          clearTimeout(timer);
           pending = null;
           reject(err);
         })

@@ -169,16 +169,21 @@ def run(hospital: dict, patient_zero: str, plan: Plan | None = None) -> tuple[Re
 def entry_points(hospital: dict) -> list[str]:
     """Device ids the engine accepts as patient zero, in hospital file order.
 
-    Exactly the check ``to_campaign`` makes: an executing Windows host that is not a
-    vendor medical appliance (so an IT host or a Windows medical console). The UI
-    dims everything else, so a judge can only start an attack the engine will run.
+    The check ``to_campaign`` makes (an executing Windows host that is not a vendor
+    medical appliance), plus the engine's own condition for an attack to move at
+    all: an admin session to harvest there and an admin-class (SMB/RDP) link out.
+    A start that can only ever infect itself is left out. The UI dims everything
+    else, so a judge can only start an attack the engine will run and spread.
     """
     bridge = to_scenario(hospital)
     by_id = {n.id: n for n in bridge.scenario.nodes}
+    sessions = {h for acct in bridge.scenario.accounts for h in acct.sessions_on}
+    lateral = {end for link in bridge.scenario.links if "admin" in link.port_classes for end in (link.a, link.b)}
     out: list[str] = []
     for device in hospital["devices"]:
         node = by_id.get(device["id"])
-        if node is not None and node.host.os_family == "windows" and not node.medical_device:
+        if (node is not None and node.host.os_family == "windows" and not node.medical_device
+                and device["id"] in sessions and device["id"] in lateral):
             out.append(device["id"])
     return out
 
