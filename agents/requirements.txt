@@ -4,3 +4,4 @@ pydantic
 httpx
 python-dotenv
 pytest
+mcp>=1.8,<2
