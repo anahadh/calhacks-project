@@ -1,27 +1,32 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { SystemsDown } from "@/components/panel/spread";
+import { useMemo, useState } from "react";
+import { DeviceCard } from "@/components/panel/device-card";
+import { HospitalScene } from "@/components/scene/hospital-scene";
 import { SceneBoundary } from "@/components/scene/scene-boundary";
+import { PatientBadge } from "@/components/shell/badges";
 import { Brand } from "@/components/shell/brand";
+import { MESSAGE_SHAPE, SPEAKER_COLOR, SPEAKER_LABEL } from "@/features/agents/agents";
 import { initials, ROLE_LABEL, tickClock } from "@/lib/format";
+import { useRoleView } from "@/lib/role-views";
 import { pairOf, roundRefusal, SPEEDS, type PlaybackControl } from "@/lib/stdb/run-status";
 import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
-import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
+import type { AgentMessageRow, RecommendationRow, RunRow, SessionSnapshot } from "@/lib/stdb/types";
+import type { SessionIndex } from "@/lib/stdb/use-session";
 import {
-  beforeAfter, cutStops, pairClock, planSegmentsOf, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending,
-  withoutSegmentation, type Delta, type Segment,
+  beforeAfter, cutStops, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending, withoutSegmentation,
+  type Delta, type Segment,
 } from "./pair";
-import { PlanScene, sharedCamera } from "./plan-scene";
+import { SegmentOutlines } from "./segment-outlines";
 
-// The segmentation plan screen (UX.md "Solution view", the design's screen 4):
-// the same attack replayed on two buildings side by side, "No segmentation" on
-// the left and the plan on the right, in lockstep under one transport and
-// clock. Both are live runs the watcher feeds through the engine, moved as one
-// pair; every tab opens this view while session.solution_pair_id is set. Each
-// scene reads its own run's rows; the side column reads both run rows. The two
-// cameras are shared, so dragging one building turns the other. Nothing here
-// computes spread.
+// The segmentation plan screen (UX.md "Solution view"): the same attack
+// replayed on the clinic with the plan in place, drawn exactly as the
+// simulation screen draws it (walls, furniture, people, device chips, the
+// infection path, a ✕ where the attack met a cut connection), under one
+// transport and clock. Under the map, the conclusion: what the agents proposed,
+// what was rejected and why, the compromises that came out of it, and how the
+// plan held the attack. Both runs are live rows the watcher feeds through the
+// engine; nothing here computes spread.
 
 const MIN_SPAN = 16; // 4 simulated hours, until the run settles
 
@@ -32,46 +37,34 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const planRun = rows.run ?? plan;
   const planScene = sceneOf(session, { ...rows, run: planRun });
   const index = useSessionIndex(planScene);
-  const [hoveredZone, setHoveredZone] = useState<string | null>(null);
+  const roleView = useRoleView(planScene);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [listZone, setListZone] = useState<string | null>(null);
   const [floor, setFloor] = useState("all");
-  const [camera] = useState(sharedCamera);
   const [err, setErr] = useState<string>();
   const [closing, setClosing] = useState(false);
 
   const { hospital } = session;
-  // Click a ringed device on either side to rerun both sides from that entry point (the plan is for any of them).
-  const pickable = useMemo(() => new Set(session.isPresenter ? session.entryPoints : []), [session.isPresenter, session.entryPoints]);
   const rec = session.recommendations.find((r) => r.id === plan?.recommendationId);
-  const pick = (deviceId: string) => {
-    if (!rec) return;
-    setErr(undefined);
-    session.actions.showSolution(rec.id, undefined, deviceId).catch((x: Error) => setErr(x.message));
-  };
   const sides = [none, planRun];
   const clock = pairClock(sides);
-  // One clock for both sides: the longer run sets it, so playback shows the whole spread without segmentation.
   const tick = clock.tick;
-  const longer = (none?.finalTick ?? 0) >= (planRun?.finalTick ?? 0)
-    ? { run: base.run ?? none, snapshots: base.snapshots }
-    : { run: planRun, snapshots: rows.snapshots };
-  // The plan's own segments (what its cuts leave connected), so each plan draws different walls.
-  const segments = useMemo(
-    () => (planRun ? planSegmentsOf(hospital, rows.devices, planRun.removedFlows ?? []) : segmentsOf(hospital, rows.devices)),
-    [hospital, rows.devices, planRun],
-  );
   const flows = useMemo(() => planFlows(hospital, planRun), [hospital, planRun]);
+  // The plan's segments (the zones the walls go around), with the run's infected counts.
+  const segments = useMemo(() => segmentsOf(hospital, planScene.devices), [hospital, planScene.devices]);
+  const hoveredZone = hovered ? index.room.get(index.device.get(hovered)?.roomId ?? "")?.zone ?? null : null;
   const stops = useMemo(() => cutStops(flows.cut, rows.devices), [flows.cut, rows.devices]);
-  const deltas = beforeAfter(hospital, none, planRun, rec?.rules.length);
-  const pending = stripPending(none, planRun);
-  const ghost = withoutSegmentation(base.run ?? none, base.devices, tick);
-  // A pair run's subscription failing is shown as written (rule 14), never as an empty scene.
   const rowsError = base.error ?? rows.error;
-  const notes = [...new Set([...(none?.assumptions ?? []), ...(planRun?.assumptions ?? [])])];
+  // The side column: this step's count on both sides, and the final numbers once each side is done.
+  const infectedNow = planScene.devices.filter((d) => d.infected).length;
+  const ghost = withoutSegmentation(base.run ?? none, base.devices, tick);
+  const deltas = beforeAfter(hospital, base.run ?? none, planRun, rec?.rules.length);
+  const pending = stripPending(base.run ?? none, planRun);
 
   const baselineRuns = session.runs.filter((r) => !r.pairId);
   const runNo = baselineRuns.findIndex((r) => r.id === session.activeRunId) + 1;
   const pz = index.device.get(planRun?.patientZero ?? none?.patientZero ?? "")?.name;
-  const subtitle = [`Same attack and seed as ${runNo ? `Run ${runNo}` : "the baseline"}`, pz ? `patient zero ${pz}` : ""]
+  const subtitle = [`Same attack as ${runNo ? `Run ${runNo}` : "the baseline"}`, pz ? `patient zero ${pz}` : ""]
     .filter(Boolean)
     .join(" · ");
 
@@ -108,11 +101,11 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
         </div>
       </header>
 
-      <main className="flex flex-grow flex-wrap items-stretch gap-6 p-4 md:p-6">
-        <section aria-label="Segmentation plan" className="panel flex min-w-0 flex-[999_1_760px] flex-col overflow-hidden">
+      <main className="flex flex-grow flex-col gap-6 p-4 md:p-6">
+        <section aria-label="The plan holding the attack" className="panel flex min-w-0 flex-col overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-line p-4">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="eyebrow">Same attack, twice</span>
+              <span className="eyebrow">With the plan in place</span>
               <span className="readout text-[19px] leading-6 text-ink">{rec?.name ?? planRun?.label ?? "Computing the plan…"}</span>
               <span className="num text-xs text-ink-muted">{subtitle}</span>
             </div>
@@ -121,7 +114,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
             {(err || rowsError) && (
               <p role="alert" className="num m-0 text-xs text-ink-muted">{err ?? rowsError}</p>
             )}
-            <Scrubber run={longer.run} snapshots={longer.snapshots} />
+            <Scrubber run={planRun} snapshots={rows.snapshots} />
           </div>
 
           <div className="flex flex-grow flex-col bg-scene-ground">
@@ -131,7 +124,10 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                 <select
                   id="plan-floor"
                   value={floor}
-                  onChange={(e) => setFloor(e.target.value)}
+                  onChange={(e) => {
+                    setFloor(e.target.value);
+                    setHovered(null);
+                  }}
                   className="num h-11 cursor-pointer appearance-none rounded-ctl border border-line2 bg-panel2 pl-3 pr-9 text-xs text-ink"
                 >
                   <option value="all">All floors · {hospital.devices.length} devices</option>
@@ -146,86 +142,44 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
               <Legend />
             </div>
 
-            <div className="grid flex-grow grid-cols-1 gap-px border-t border-line bg-line lg:grid-cols-2">
-              <Side
-                title="No segmentation"
-                tone="infected"
-                infected={ghost}
-                total={hospital.devices.length}
-                note="Every device can reach every other"
-              >
-                <SceneBoundary session={sceneOf(session, { ...base, run: base.run ?? none })}>
-                  <PlanScene
-                    id="none"
-                    shared={camera}
-                    hospital={hospital}
-                    devices={base.devices}
-                    segments={[]}
-                    kept={[]}
-                    cut={[]}
-                    stops={[]}
-                    patientZero={none?.patientZero ?? planRun?.patientZero}
-                    hoveredZone={hoveredZone}
-                    onHoverZone={setHoveredZone}
-                    floorId={floor === "all" ? undefined : floor}
-                    pickable={pickable}
-                    onPick={pick}
-                  />
-                </SceneBoundary>
-              </Side>
-              <Side
-                title={rec?.name ? `With the plan: ${rec.name}` : "With the plan"}
-                tone="healthy"
-                infected={rows.totals.devicesCompromised}
-                total={hospital.devices.length}
-                note={`${segments.length} segments · ${flows.cut.length} connections cut · ${stops.length} stopped at a wall`}
-              >
+            <div className="grid flex-grow lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="relative min-h-[620px] flex-1">
+              {/* Pinned to the box: this panel stands alone in a column, so the canvas's own
+                  height:100% has nothing definite to resolve against and would fall to 150px. */}
+              <div className="absolute inset-0">
                 <SceneBoundary session={planScene}>
-                  <PlanScene
-                    id="plan"
-                    shared={camera}
-                    hospital={hospital}
-                    devices={rows.devices}
-                    segments={segments}
-                    kept={flows.kept}
-                    cut={flows.cut}
-                    stops={stops}
-                    patientZero={planRun?.patientZero}
-                    hoveredZone={hoveredZone}
-                    onHoverZone={setHoveredZone}
+                  <HospitalScene
+                    session={planScene}
+                    index={index}
+                    hovered={hovered}
+                    onHover={setHovered}
                     floorId={floor === "all" ? undefined : floor}
-                    pickable={pickable}
-                    onPick={pick}
-                  />
+                    view={roleView}
+                  >
+                    <SegmentOutlines hospital={hospital} segments={segments} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
+                  </HospitalScene>
                 </SceneBoundary>
-              </Side>
-            </div>
-            {pickable.size > 0 && rec && (
-                <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-ctl border border-ink bg-bg/90 px-4 py-2 text-[14px] text-ink">
-                  Click any ringed device to start the attack there: both sides rerun from it
+              </div>
+              {hovered && (
+                <div className="pointer-events-none absolute right-4 top-4 z-10">
+                  <DeviceCard session={planScene} index={index} deviceId={hovered} view={roleView} />
                 </div>
               )}
-              <span className="num px-4 py-2 text-[11px] text-ink-faint">
-              Drag either building to turn both · scroll to zoom · hover a device
-            </span>
+              <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
+                Drag to turn the building · scroll to zoom · hover a device
+              </span>
+            </div>
+
+            <aside aria-label="Before and after" className="flex min-w-0 flex-col gap-5 border-t border-line bg-bg p-4 lg:border-l lg:border-t-0">
+              <Headline before={ghost} after={infectedNow} total={hospital.devices.length} />
+              <Saved deltas={deltas} pending={pending} />
+              <Segments segments={segments} hovered={hoveredZone ?? listZone} onHover={setListZone} />
+            </aside>
+            </div>
           </div>
         </section>
 
-        <aside aria-label="What segmentation saved" className="flex min-w-0 flex-[1_1_320px] flex-col gap-5">
-          <Headline before={ghost} after={rows.totals.devicesCompromised} total={hospital.devices.length} />
-          <Saved deltas={deltas} pending={pending} />
-          <Segments segments={segments} hovered={hoveredZone} onHover={setHoveredZone} />
-          <details className="group">
-            <summary className="eyebrow cursor-pointer list-none">Systems · with the plan <span className="text-ink-faint group-open:hidden">▸</span><span className="hidden text-ink-faint group-open:inline">▾</span></summary>
-            <div className="mt-3"><SystemsDown session={planScene} index={index} /></div>
-          </details>
-          {notes.length > 0 && (
-            <details className="num text-[11px] text-ink-faint">
-              <summary className="cursor-pointer">What the engine assumed ({notes.length})</summary>
-              <ul className="mt-1 list-disc pl-5">{notes.map((n, i) => (<li key={i}>{n}</li>))}</ul>
-            </details>
-          )}
-        </aside>
+        <Conclusion session={session} index={index} rec={rec} none={base.run ?? none} plan={planRun} stops={stops} />
       </main>
 
       <footer className="num mt-auto border-t border-line px-4 py-3 text-[11px] text-ink-faint md:px-6">
@@ -236,10 +190,195 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
 }
 
 /**
- * The transport row, as on the simulation screen: back to start, play/pause,
- * forward 15 minutes, the clock, speed and presence. Each control is sent to
- * the side of the pair it can act on (pairTarget); the module moves both.
+ * The conclusion under the map: the agents' negotiation for this plan, read
+ * from the round's agent_message rows (every message they sent, in order), the
+ * compromises those messages added as constraints, the plan's rules, and how
+ * the plan held this attack (the two run rows and the cut connections the
+ * infection reached). Nothing here is computed: it is the rows, written out.
  */
+function Conclusion({
+  session,
+  index,
+  rec,
+  none,
+  plan,
+  stops,
+}: {
+  session: SessionSnapshot;
+  index: SessionIndex;
+  rec?: RecommendationRow;
+  none?: RunRow;
+  plan?: RunRow;
+  stops: readonly { id: string; from: string; to: string; purpose?: string }[];
+}) {
+  const round = rec?.round;
+  const messages = useMemo(
+    () =>
+      session.messages
+        .filter((m) => (round === undefined || m.round === round) && m.type !== "chat" && m.type !== "request")
+        .sort((a, b) => a.round - b.round || a.seq - b.seq),
+    [session.messages, round],
+  );
+  const name = (id: string) => index.device.get(id)?.name ?? index.service.get(id)?.name ?? index.flow.get(id)?.purpose ?? id;
+  const compromises = messages.filter((m) => m.type === "reject" && m.constraint);
+  const questions = messages.filter((m) => m.type === "question");
+  const answers = messages.filter((m) => m.type === "answer");
+  const settled = none?.status === "done" && plan?.status === "done";
+  const before = none?.devicesCompromised;
+  const after = plan?.devicesCompromised;
+  const patientsBefore = none?.patientsAffected;
+  const patientsAfter = plan?.patientsAffected;
+
+  return (
+    <section aria-labelledby="conclusion" className="panel flex flex-col gap-6 p-5 md:p-6">
+      <div className="flex flex-col gap-2">
+        <h2 id="conclusion" className="m-0 text-[22px] leading-7 text-ink">How the agents got to this plan, and what it held back</h2>
+        {settled && before !== undefined && after !== undefined ? (
+          <p className="m-0 max-w-[70ch] text-[15px] leading-6 text-ink-muted">
+            The same attack, started from the same device. Without segmentation it reached {before} devices and
+            disrupted care for {patientsBefore ?? 0} patients. With {rec?.name ? `“${rec.name}”` : "the plan"} in place it reached {after}
+            {after === 1 ? " device" : " devices"} and {patientsAfter ? `${patientsAfter} patients` : "no patients"}
+            {rec && rec.verified.protectedBroken.length === 0 ? ", and every protected clinical connection kept working." : "."}
+          </p>
+        ) : (
+          <p className="m-0 text-[15px] leading-6 text-ink-muted">The final comparison fills in once both replays settle.</p>
+        )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+        <div className="flex flex-col gap-3">
+          <h3 className="m-0 text-[15px] font-medium text-ink">What the agents negotiated</h3>
+          {messages.length === 0 ? (
+            <p className="num m-0 text-xs text-ink-faint">No agent round is recorded for this plan yet.</p>
+          ) : (
+            <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
+              {messages.map((m) => (
+                <Step key={`${m.round}:${m.seq}`} m={m} name={name} />
+              ))}
+            </ol>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <h3 className="m-0 text-[15px] font-medium text-ink">The compromises</h3>
+            {compromises.length === 0 && questions.length === 0 ? (
+              <p className="num m-0 text-xs text-ink-faint">The first proposal was accepted as it was: nothing had to be given up.</p>
+            ) : (
+              <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                {compromises.map((m) => (
+                  <li key={`${m.round}:${m.seq}`} className="rounded-panel border border-line bg-panel2 px-3.5 py-3 text-[13px] leading-5 text-ink">
+                    <span className="font-medium" style={{ color: SPEAKER_COLOR[m.from] }}>{SPEAKER_LABEL[m.from]}</span>{" "}
+                    {constraintLine(m.constraint!, name)}
+                    <span className="text-ink-muted"> Flow redrew the plan around it.</span>
+                  </li>
+                ))}
+                {questions.map((q, i) => {
+                  const a = answers[i];
+                  return (
+                    <li key={`q${q.round}:${q.seq}`} className="rounded-panel border border-line bg-panel2 px-3.5 py-3 text-[13px] leading-5 text-ink">
+                      <span className="font-medium" style={{ color: SPEAKER_COLOR[q.from] }}>{SPEAKER_LABEL[q.from]}</span> stopped to ask a person
+                      {q.constraint?.targetIds.length ? ` about ${q.constraint.targetIds.map(name).join(", ")}` : ""}.
+                      {a ? <span className="text-ink-muted"> A human answered: “{a.reason}”</span> : <span className="text-ink-muted"> Waiting for an answer.</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {rec && (
+            <div className="flex flex-col gap-3">
+              <h3 className="m-0 text-[15px] font-medium text-ink">What the plan does</h3>
+              {rec.explanation && <p className="m-0 text-[13px] leading-5 text-ink-muted">{rec.explanation}</p>}
+              <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] leading-5 text-ink">
+                {rec.rules.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+              {rec.tradeoff && <p className="m-0 text-[13px] leading-5 text-ink-muted">{rec.tradeoff}</p>}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3">
+            <h3 className="m-0 text-[15px] font-medium text-ink">How it stopped the attack</h3>
+            {stops.length === 0 ? (
+              <p className="num m-0 text-xs text-ink-faint">
+                {plan?.status === "done" ? "The attack never reached a cut connection: it stayed inside its own segment." : "Watching the replay…"}
+              </p>
+            ) : (
+              <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                {stops.map((f) => (
+                  <li key={f.id} className="flex items-start gap-2.5 text-[13px] leading-5 text-ink">
+                    <span aria-hidden className="font-disp mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full border border-state-infected text-[12px] font-bold text-state-infected">✕</span>
+                    <span>
+                      The infection reached <span className="font-medium">{name(f.from)}</span> and tried to cross to{" "}
+                      <span className="font-medium">{name(f.to)}</span>. The plan had cut that connection, so it stopped there.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {rec && (
+              <p className="m-0 text-[13px] leading-5 text-ink-muted">
+                {rec.verified.protectedBroken.length === 0
+                  ? "No protected clinical connection was cut: scans still reach radiologists, vitals still reach charts."
+                  : `Protected connections this plan cuts: ${rec.verified.protectedBroken.map(name).join(", ")}.`}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** One message of the round as a line in the story: who, what kind, and their reason in their words. */
+function Step({ m, name }: { m: AgentMessageRow; name: (id: string) => string }) {
+  const shape = MESSAGE_SHAPE[m.type];
+  const what =
+    m.type === "proposal"
+      ? `proposed ${m.name ? `“${m.name}”` : "a plan"}${m.rules?.length ? ` with ${m.rules.length} rules` : ""}`
+      : m.type === "revision"
+        ? `revised the plan${m.name ? ` into “${m.name}”` : ""}`
+        : m.type === "reject"
+          ? "rejected it"
+          : m.type === "accept"
+            ? "accepted it"
+            : m.type === "question"
+              ? "asked a person"
+              : m.type === "answer"
+                ? "answered"
+                : "recommended it to the reviewers";
+  return (
+    <li className="flex items-start gap-3 rounded-panel border border-line px-3.5 py-3">
+      <span aria-hidden className="num mt-px w-4 text-center text-[13px]" style={{ color: SPEAKER_COLOR[m.from] }}>{shape.glyph}</span>
+      <div className="flex min-w-0 flex-col gap-1 text-[13px] leading-5">
+        <span className="text-ink">
+          <span className="font-medium" style={{ color: SPEAKER_COLOR[m.from] }}>{SPEAKER_LABEL[m.from]}</span> {what}
+          {m.tested ? <span className="text-ink-muted"> · tested: {m.tested.patientsAffected} patients affected</span> : null}
+        </span>
+        {m.reason && <span className="text-ink-muted">“{m.reason}”</span>}
+        {m.constraint && <span className="text-ink-muted">{constraintLine(m.constraint, name)}</span>}
+      </div>
+    </li>
+  );
+}
+
+function constraintLine(c: NonNullable<AgentMessageRow["constraint"]>, name: (id: string) => string): string {
+  const targets = c.targetIds.map(name).join(", ");
+  switch (c.kind) {
+    case "keep_flow":
+      return `insisted the plan keep ${targets || "a protected clinical connection"}.`;
+    case "keep_service":
+      return `insisted ${targets || "a clinical service"} stay online.`;
+    case "confirm_device":
+      return `would not touch ${targets || "an unidentified device"} until a person confirmed what it is.`;
+    case "max_rules":
+      return "asked for fewer rules so the plan stays something people can run.";
+  }
+}
+
 function Transport({
   session,
   sides,
@@ -406,90 +545,13 @@ function Presence({ session }: { session: SessionSnapshot }) {
   );
 }
 
-function Legend() {
-  return (
-    <ul className="num m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-xs leading-4 text-ink-muted">
-      <li className="inline-flex items-center gap-2">
-        <span className="h-2.5 w-4 rounded-full border-[1.5px] border-state-zone bg-state-zone/15" />
-        Segment wall (plan side)
-      </li>
-      <li className="inline-flex items-center gap-2">
-        <span className="h-px w-5 bg-state-healthy" />
-        Hole in a wall (hover a segment for its links)
-      </li>
-      <li className="inline-flex items-center gap-2">
-        <span className="inline-flex items-center gap-1">
-          <span className="h-px w-5 border-t border-dashed border-state-cut" />
-          <span className="text-[10px] text-state-cut">×</span>
-        </span>
-        Cut clinical flow
-      </li>
-      <li className="inline-flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-state-healthy" />
-        Healthy
-      </li>
-      <li className="inline-flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-state-zero shadow-[0_0_0_2px_#111315,0_0_0_3px_#E9ECEE]" />
-        Patient zero
-      </li>
-      <li className="inline-flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-state-infected" />
-        Infected
-      </li>
-      <li className="inline-flex items-center gap-2">
-        <svg width="22" height="8" viewBox="0 0 22 8" aria-hidden>
-          <path d="M1 7Q11 -1 19 5" fill="none" stroke="#FF6A2E" strokeWidth="1.5" strokeDasharray="2 2" />
-          <path d="M21 6.5 17 6.8 18.6 3.3z" fill="#FF6A2E" />
-        </svg>
-        Infection path
-      </li>
-    </ul>
-  );
-}
 
-/**
- * One side of the split screen: its scene with a caption over it, the side's
- * name and its devices-infected count at this step. `infected` is a run row's
- * column (plan side) or withoutSegmentation() (baseline side).
- */
-function Side({
-  title,
-  tone,
-  infected,
-  total,
-  note,
-  children,
-}: {
-  title: string;
-  tone: "infected" | "healthy";
-  infected?: number;
-  total: number;
-  note: string;
-  children: ReactNode;
-}) {
-  const color = tone === "infected" ? "text-state-infected" : "text-state-healthy";
-  return (
-    <div className="relative min-h-[440px] min-w-0 bg-scene-ground lg:min-h-[520px]">
-      {children}
-      <div className="pointer-events-none absolute left-3 top-3 flex max-w-[calc(100%-24px)] flex-col gap-0.5 rounded-ctl border border-line bg-bg/85 px-3 py-2 backdrop-blur-sm">
-        <span className="eyebrow truncate">{title}</span>
-        <div className="flex items-baseline gap-2 tabular-nums">
-          <span className={`readout text-readout-l ${infected === undefined ? "text-ink-faint" : color}`}>{infected ?? "—"}</span>
-          <span className="readout text-readout-m text-ink-muted">/ {total}</span>
-          <span className="num text-xs text-ink-muted">devices infected</span>
-        </div>
-        <span className="num text-[11px] text-ink-faint">{note}</span>
-      </div>
-    </div>
-  );
-}
-
-/** The one number: devices infected without segmentation, struck through, against the plan's, at this step. */
+/** This step, live on both sides: how many devices the attack has reached without the plan and with it. */
 function Headline({ before, after, total }: { before?: number; after: number; total: number }) {
   const blocked = before === undefined ? undefined : Math.max(0, before - after);
   const pct = (n: number) => (total ? Math.min(100, (n / total) * 100) : 0);
   return (
-    <div className="panel flex flex-col gap-3 p-4">
+    <section aria-label="Devices infected at this step" className="flex flex-col gap-3">
       <span className="eyebrow">Devices infected · at this step</span>
       <div className="flex items-baseline gap-3 tabular-nums">
         <span className="readout text-readout-l text-state-infected line-through decoration-2 opacity-70">{before ?? "—"}</span>
@@ -505,25 +567,22 @@ function Headline({ before, after, total }: { before?: number; after: number; to
           <span className="block h-full bg-state-healthy transition-[width] duration-fade ease-breath" style={{ width: `${pct(after)}%` }} />
         </div>
       </div>
-      {before === undefined && <span className="num text-xs text-ink-muted">The no-segmentation rerun is still computing</span>}
-    </div>
+      <span className="num text-xs text-ink-muted">
+        {before === undefined ? "The no-segmentation rerun is still computing" : "Struck through: the same attack without segmentation"}
+      </span>
+    </section>
   );
 }
 
-/** The 2×2 grid: each number from the two run rows, the old one struck through ("16 → 2"). */
+/** The final numbers, each from the two run rows, the old one struck through ("16 → 2"). */
 function Saved({ deltas, pending }: { deltas: Delta[]; pending: string | null }) {
   return (
     <section aria-labelledby="saved" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <h2 id="saved" className="eyebrow m-0">What segmentation saved</h2>
-        <span className="eyebrow">· versus no segmentation</span>
-      </div>
-      {pending && (
-        <p role="status" className="num m-0 text-[11px] text-ink-faint">Final numbers fill in as each side finishes · {pending}</p>
-      )}
+      <h2 id="saved" className="eyebrow m-0">Before → after · when both settle</h2>
+      {pending && <p role="status" className="num m-0 text-[11px] text-ink-faint">Final numbers fill in as each side finishes · {pending}</p>}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line">
         {deltas.map((d) => (
-          <div key={d.label} className="flex min-w-0 flex-col gap-2 bg-panel px-4 py-3">
+          <div key={d.label} className="flex min-w-0 flex-col gap-1.5 bg-panel px-3.5 py-3">
             <span className="eyebrow !tracking-[0.1em]">{d.label}</span>
             <div className="flex items-baseline gap-2 tabular-nums">
               <span className="num text-xs text-ink-faint line-through">{d.before ?? "—"}</span>
@@ -538,14 +597,11 @@ function Saved({ deltas, pending }: { deltas: Delta[]; pending: string | null })
   );
 }
 
-/** The hospital's segments: swatch, name, floors, and how many of its devices the plan run shows infected. */
+/** The plan's segments: swatch, name, floors, and how many of its devices this run shows infected. Hover one to light its fence. */
 function Segments({ segments, hovered, onHover }: { segments: Segment[]; hovered: string | null; onHover: (zone: string | null) => void }) {
   return (
     <section aria-labelledby="segments" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <h2 id="segments" className="eyebrow m-0">Segments · {segments.length}</h2>
-        <span className="eyebrow">· the walls on the right</span>
-      </div>
+      <h2 id="segments" className="eyebrow m-0">Segments · {segments.length} · the fences on the map</h2>
       <ul className="m-0 flex list-none flex-col overflow-hidden rounded-panel border border-line p-0" onMouseLeave={() => onHover(null)}>
         {segments.map((s) => {
           const lit = s.infected > 0 || hovered === s.zone;
@@ -570,5 +626,45 @@ function Segments({ segments, hovered, onHover }: { segments: Segment[]; hovered
         })}
       </ul>
     </section>
+  );
+}
+
+function Legend() {
+  return (
+    <ul className="num m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-xs leading-4 text-ink-muted">
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-state-healthy" />
+        Healthy
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-state-zero shadow-[0_0_0_2px_#111315,0_0_0_3px_#E9ECEE]" />
+        Patient zero
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-state-infected" />
+        Infected
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <svg width="22" height="8" viewBox="0 0 22 8" aria-hidden>
+          <path d="M1 7Q11 -1 19 5" fill="none" stroke="#FF6A2E" strokeWidth="1.5" />
+          <path d="M21 6.5 17 6.8 18.6 3.3z" fill="#FF6A2E" />
+        </svg>
+        Infection path
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span className="font-disp grid h-4 w-4 place-items-center rounded-full border border-state-infected text-[10px] font-bold text-state-infected">✕</span>
+        Stopped at a cut connection
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full" style={{ background: "#6FCF97" }} />
+        Patients
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <PatientBadge state="delayed" /> Delayed
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <PatientBadge state="disrupted" /> Disrupted
+      </li>
+    </ul>
   );
 }

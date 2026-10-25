@@ -117,6 +117,7 @@ export function DeviceBox({
       {/* the device marker: an icon chip that always faces the camera */}
       <Html position={[0, CHIP_LIFT, 0]} center distanceFactor={distanceFactor} zIndexRange={[30, 20]} pointerEvents="auto">
         <div
+          data-device-id={device.id}
           onClick={onPick && pickable !== false ? () => onPick(device.id) : undefined}
           style={{
             position: "relative",

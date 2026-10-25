@@ -121,6 +121,7 @@ export function beforeAfter(
   const total = hospital.flows.length;
   return [
     { label: "Devices infected", before: b?.devicesCompromised, after: a?.devicesCompromised },
+    { label: "Patients affected", before: b?.patientsAffected, after: a?.patientsAffected },
     { label: "Services offline", before: b?.servicesDown, after: a?.servicesDown },
     {
       label: "Protected flows cut",

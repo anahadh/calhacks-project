@@ -6,6 +6,7 @@
 
 import { ConfigError, loadConfig } from "./config";
 import { watchAnswers } from "./answer";
+import { cachedRoundConfig } from "./cached";
 import { callEngine, callEntryPoints } from "./engine";
 import { watchEntryPoints } from "./entry";
 import { createRelayServer } from "./relay";
@@ -18,8 +19,9 @@ async function main(): Promise<void> {
   const { conn, identity } = await connect(config);
   console.log(`[watcher] connected to ${config.stdbUri}/${config.stdbModule} as ${identity.toHexString().slice(0, 16)}…`);
   await subscribe(conn);
-  watchRounds(conn, config.coordinatorUrl);
-  watchAnswers(conn, config.coordinatorUrl);
+  const cached = cachedRoundConfig();
+  watchRounds(conn, config.coordinatorUrl, cached);
+  watchAnswers(conn, config.coordinatorUrl, !!cached);
   const hospital = (id: string) => hospitalOf(conn, id);
   watchRuns(conn, {
     reducers: conn.reducers, engine: (body) => callEngine(config.engineUrl, body),
@@ -34,7 +36,8 @@ async function main(): Promise<void> {
   const relay = createRelayServer({ reducers: conn.reducers, session: (id) => sessionInfo(conn, id), token: config.relayToken });
   relay.listen(config.relayPort, "127.0.0.1", () => {
     console.log(`[relay] listening on http://127.0.0.1:${config.relayPort} (agents: WATCHER_RELAY_URL)`);
-    console.log(`[round] waking the Sign-off Coordinator at ${config.coordinatorUrl} on Create aggregate fix`);
+    if (cached) console.log(`[round] CACHED_ROUND is set: Create aggregate fix replays agents/cache/demo_round.json at ${cached.speed}x, labeled "Cached run"`);
+    else console.log(`[round] waking the Sign-off Coordinator at ${config.coordinatorUrl} on Create aggregate fix`);
   });
 }
 

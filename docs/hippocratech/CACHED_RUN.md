@@ -47,6 +47,14 @@ What the cache holds:
 
 The rows are already in the relay's shape: no `table` or `seq` fields.
 
+## 1b. Record from the session on screen (the shortcut)
+
+A real round that already ran through the relay is in SpacetimeDB's `agent_message` table. The rows can be exported through the SQL HTTP endpoint (`POST /v1/database/<module>/sql`) into the log shape (`table`, `from`, `to`, `payload`, `reason`, `reasonSource`, `createdAt`, `direction`, `fixture`) and passed to `cached_run.record()`; the same refusals apply. `agent_status` history is not kept in that table, so such a cache has no status rows. The committed `agents/cache/demo_round.json` was recorded this way from a live session (patient zero `ws_img_2`, 17 messages, 26 s, model `asi1`).
+
+## 2a. Automatic replay (the fast demo)
+
+With `CACHED_ROUND=4` in `.env.local` (any number is the speed; `1` means the recorded pace), the watcher's round watcher answers **Create aggregate fix** by running `scripts/replay_cached.py --session <id> --speed 4` itself (`apps/watcher/src/cached.ts`) instead of calling the Coordinator. The agents need not be running. Every row still enters through the relay, every message is labeled, the Agent Room shows a **Cached run** badge next to the round chip, and the answer watcher resumes nothing. Unset `CACHED_ROUND` and restart the watcher to go back to the live agents.
+
 ## 2. Replay during judging, if the live round fails
 
 1. **The session on screen must exist and its run must be done.** Rule 5: no agent traffic while a run is `requested` or `running`. Note its session id from the URL (`/s/<sessionId>`).
@@ -69,6 +77,10 @@ What the replay changes, and nothing else:
   - `agent_status` rows are strict and have no free field, so they can't carry the label.
 
 The first row the relay rejects stops the replay, with the relay's error and the row number. Nothing is skipped. A missing cache, URL or token stops it before anything is posted.
+
+### The Agent Room's label
+
+`agent-room.tsx` computes `cached` from the round detail (`Cached run (recorded …)`) or any message reason starting `Cached run · ` and shows a **Cached run** badge beside the round chip. (Earlier text of this section, kept for the record:)
 
 ### Gap: the recommendation card isn't labeled yet
 

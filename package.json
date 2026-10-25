@@ -8,6 +8,10 @@
   ],
   "scripts": {
     "dev": "npm run dev -w web",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:restart": "scripts/dev.sh restart",
+    "dev:stop": "scripts/dev.sh stop",
+    "dev:status": "scripts/dev.sh status",
+    "dev:logs": "scripts/dev.sh logs"
   }
 }

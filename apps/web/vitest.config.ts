@@ -6,5 +6,5 @@ import { defineConfig } from "vitest/config";
 // no other package's internals.
 export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
-  test: { include: ["lib/*.test.ts", "lib/stdb/**/*.test.ts", "features/**/*.test.ts"], environment: "node" },
+  test: { include: ["lib/*.test.ts", "lib/stdb/**/*.test.ts", "features/**/*.test.ts", "components/**/*.test.ts"], environment: "node" },
 });

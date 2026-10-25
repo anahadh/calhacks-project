@@ -189,13 +189,16 @@ function PlanButton({ session, onAgents }: { session: SessionSnapshot; onAgents:
   const negotiating = round === "running" || round === "waiting_for_human";
 
   const press = async () => {
+    console.log(`[plan] press: round=${round} blocker=${blocker ?? "none"} activeRun=${session.activeRunId} source=${session.source}`);
     if (negotiating) return onAgents();
     setError(undefined);
     setBusy(true);
     try {
       await session.actions.defend();
+      console.log("[plan] defend_request accepted by SpacetimeDB");
       onAgents();
     } catch (e) {
+      console.error("[plan] defend_request refused:", (e as Error).message);
       setError((e as Error).message);
     } finally {
       setBusy(false);
@@ -241,6 +244,10 @@ function Legend() {
           <path d="M21 6.5 17 6.8 18.6 3.3z" fill="#FF6A2E" />
         </svg>
         Infection path
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full" style={{ background: "#6FCF97" }} />
+        Patients
       </li>
       <li className="inline-flex items-center gap-2">
         <PatientBadge state="delayed" /> Delayed

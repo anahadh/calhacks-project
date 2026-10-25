@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { ARC_MODE } from "../../../../spacetime/src/role_views";
@@ -13,17 +13,19 @@ import { SpreadTracker, stoppedAt, type Toast } from "@/features/scene/spread-ti
 import { NetworkArc, ServiceAnchor, type Arc, type Vec3 } from "./arcs";
 import { FloorSlab, RoomShell } from "./building";
 import { CHIP_LIFT, DeviceBox } from "./devices";
+import { Furniture } from "./furniture";
 import { RoomChip } from "./labels";
 import { PatientFigures } from "./patients";
-import { centroid, FLOOR_GAP, roomsBounds, to3 } from "./space";
+import { floorPlan } from "./plan";
+import { centroid, FLOOR_GAP, roomsBounds, to3, WALL_H } from "./space";
 
-// The isometric view of the design: the camera sits front-right and above the
-// building, so the slab's long edge runs upper-left to lower-right.
-const CAM_OFFSET: Vec3 = [36, 48, 58];
+// The camera looks at the clinic from the front and above, a little to the
+// right, so the corridor runs across the screen and every room's doorway faces
+// the viewer. Its distance scales with the floor so the whole plan fits.
+const CAM_DIR: Vec3 = [0.3, 0.86, 0.72];
 const CAM_FOV = 30;
-/** drei Html scale so a 30px chip is 30px at the default camera distance: tan(fov/2) × distance. */
-const CAM_DIST = Math.hypot(...CAM_OFFSET);
-const HTML_FACTOR = Math.tan((CAM_FOV / 2) * (Math.PI / 180)) * CAM_DIST;
+/** Camera distance per meter of the floor's longest side, at the default view. */
+const CAM_DIST_PER_M = 1.32;
 /** Infection hops this recent (in ticks) are drawn bright: the spread happening now. Older hops fade to a trail. */
 const RECENT_TICKS = 2;
 
@@ -36,6 +38,7 @@ export function HospitalScene({
   onPick,
   pickable,
   view,
+  children,
 }: {
   session: SessionSnapshot;
   index: SessionIndex;
@@ -49,6 +52,8 @@ export function HospitalScene({
   pickable?: (id: string) => boolean;
   /** The caller's role view: how the hovered device's connections look (spacetime/src/role_views.ts). */
   view: RoleView;
+  /** Extra layers drawn in the building's frame (the solution view's segment walls). */
+  children?: ReactNode;
 }) {
   const { hospital } = session;
   const run = session.activeRun ?? session.runs.find((r) => r.id === session.activeRunId);
@@ -229,46 +234,77 @@ export function HospitalScene({
   const b = roomsBounds(shownRooms);
   const topLevel = floorId ? 0 : Math.max(0, ...hospital.floors.map((f) => f.level));
   const [cx, , cz] = to3([(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2], 0);
-  const target: Vec3 = [cx, (topLevel * FLOOR_GAP) / 2 + 1, cz];
-  // Back the camera off for a bigger floor, so the whole building fits at the start.
-  const k = Math.max(1, Math.max(b.maxX - b.minX, b.maxY - b.minY) / 40);
-  const camera: Vec3 = [target[0] + CAM_OFFSET[0] * k, target[1] + CAM_OFFSET[1] * k, target[2] + CAM_OFFSET[2] * k];
+  const target: Vec3 = [cx, (topLevel * FLOOR_GAP) / 2 + 0.5, cz];
+  const camDist = Math.max(40, Math.max(b.maxX - b.minX, (b.maxY - b.minY) * 1.5) * CAM_DIST_PER_M);
+  const camera: Vec3 = [target[0] + CAM_DIR[0] * camDist, target[1] + CAM_DIR[1] * camDist, target[2] + CAM_DIR[2] * camDist];
+  /** drei Html scale so a 30px chip is 30px at the default camera distance: tan(fov/2) × distance. */
+  const htmlFactor = Math.tan((CAM_FOV / 2) * (Math.PI / 180)) * camDist;
+
+  // Each floor's doorways (plan.ts), for the people who walk out of them.
+  const plans = useMemo(
+    () => new Map(hospital.floors.map((f) => [f.id, floorPlan(hospital.rooms.filter((r) => r.floorId === f.id))])),
+    [hospital.floors, hospital.rooms],
+  );
+  const devicesByRoom = useMemo(() => {
+    const m = new Map<string, typeof hospital.devices>();
+    for (const d of hospital.devices) m.set(d.roomId, [...(m.get(d.roomId) ?? []), d]);
+    return m;
+  }, [hospital.devices]);
 
   return (
     <Canvas
       dpr={[1, 2]}
-      camera={{ position: camera, fov: CAM_FOV, near: 0.5, far: 500 }}
+      shadows
+      camera={{ position: camera, fov: CAM_FOV, near: 0.5, far: 600 }}
       onPointerMissed={() => onHover(null)}
       gl={{ antialias: true }}
     >
       <color attach="background" args={[C.bg]} />
-      <fog attach="fog" args={[C.bg, CAM_DIST + 40, CAM_DIST + 140]} />
-      <ambientLight intensity={1} />
+      <fog attach="fog" args={[C.bg, camDist * 1.6, camDist * 3.2]} />
+      {/* soft daylight from the upper left, so walls and beds have a lit face and a shaded one */}
+      <hemisphereLight args={["#AEB8C2", "#0D0F10", 0.55]} />
+      <directionalLight
+        position={[target[0] - 30, 60, target[2] + 25]}
+        intensity={1.15}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-camera-left={-45}
+        shadow-camera-right={45}
+        shadow-camera-top={45}
+        shadow-camera-bottom={-45}
+        shadow-camera-near={10}
+        shadow-camera-far={160}
+      />
       <OrbitControls
         target={target}
         enableDamping
         maxPolarAngle={Math.PI / 2.05}
-        minDistance={30}
-        maxDistance={150}
+        minDistance={20}
+        maxDistance={200}
       />
 
       <group position={[0, -drop, 0]}>
-        {hospital.floors.filter((f) => onFloor(f.id)).map((f) => {
-          const rooms = hospital.rooms.filter((r) => r.floorId === f.id);
-          return <FloorSlab key={f.id} floor={f} rooms={rooms} subtitle={rooms.map((r) => r.name.toLowerCase()).join(", ")} />;
-        })}
+        {hospital.floors.filter((f) => onFloor(f.id)).map((f) => (
+          <FloorSlab key={f.id} floor={f} rooms={hospital.rooms.filter((r) => r.floorId === f.id)} />
+        ))}
 
         {shownRooms.map((room) => {
           const level = floorLevel.get(room.floorId) ?? 0;
           const c = roomCounts.get(room.id) ?? { infected: 0, total: 0 };
           const group = hospital.patients.find((g) => g.roomId === room.id);
           const groupState = group ? index.patientState.get(group.id) ?? "ok" : undefined;
+          const plan = plans.get(room.floorId);
+          const door = plan?.doors.get(room.id);
           return (
             <group key={room.id}>
               <RoomShell room={room} level={level} infectedShare={c.total ? c.infected / c.total : 0} />
-              {group && groupState && <PatientFigures room={room} level={level} count={group.count} state={groupState} />}
+              {plan && <Furniture room={room} devices={devicesByRoom.get(room.id) ?? []} level={level} floorCenter={plan.center} />}
+              {group && groupState && door && (
+                <PatientFigures room={room} door={door} level={level} count={group.count} state={groupState} />
+              )}
               <RoomChip
-                position={to3(centroid(room.polygon), level, 0.35)}
+                position={to3(centroid(room.polygon), level, WALL_H + 1.2)}
                 name={room.name}
                 infected={c.infected}
                 total={c.total}
@@ -293,7 +329,7 @@ export function HospitalScene({
               zero={d.id === patientZero && !!st?.infected}
               onHover={onHover}
               flashAt={timing.flashAt.get(d.id)}
-              distanceFactor={HTML_FACTOR}
+              distanceFactor={htmlFactor}
               onPick={onPick}
               pickable={pickable ? pickable(d.id) : undefined}
             />
@@ -315,6 +351,7 @@ export function HospitalScene({
           point={(id) => devicePoint(id)}
           anchor={anchor}
         />
+        {children}
       </group>
     </Canvas>
   );

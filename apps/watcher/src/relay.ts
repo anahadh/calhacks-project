@@ -180,6 +180,7 @@ export function createRelayServer(deps: RelayDeps): Server {
       }
       if (!authorized(req, deps.token)) throw new HttpError(401, "Missing or wrong RELAY_TOKEN.");
       const body = await readBody(req);
+      console.log(`[relay] ${req.url} ${JSON.stringify(body).slice(0, 160)}`);
       if (req.url === "/agent_message") await relayMessage(deps, body);
       else await relayStatus(deps, body);
       send(res, 200, { ok: true });

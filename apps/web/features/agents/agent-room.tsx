@@ -76,6 +76,8 @@ export function AgentRoomFrame(props: {
   const { variant, messages, roundState, names, onClose } = props;
   const shown = useRevealed(messages);
   const newest = shown[shown.length - 1];
+  // A replayed recording (rule 14's one exception) says so on every message and in the round detail.
+  const cached = !!roundState.detail?.startsWith("Cached run") || messages.some((m) => m.reason?.startsWith("Cached run · "));
   const speaking = new Set<Speaker>(props.agentStatus.filter((s) => s.status === "speaking" || s.status === "thinking").map((s) => s.agent));
   if (newest) speaking.add(newest.from);
   const thinking = new Set(props.agentStatus.filter((s) => s.status === "thinking").map((s) => s.agent));
@@ -104,6 +106,11 @@ export function AgentRoomFrame(props: {
         </div>
         <div className="flex items-center gap-3">
           <RoundChip round={roundState} />
+          {cached && (
+            <span className="num inline-flex h-9 items-center rounded-ctl border border-state-delayed/60 px-3 text-[13px] text-state-delayed" title="A real round recorded earlier, replayed through the relay">
+              Cached run
+            </span>
+          )}
           {onClose && (
             <button type="button" onClick={onClose} aria-label="Close the Agent Room" className="ctl h-12 min-w-[48px] text-ink">
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>

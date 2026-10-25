@@ -30,8 +30,8 @@ const DOT_LIFT = 0.6;
  */
 export type SharedCamera = { position: THREE.Vector3; target: THREE.Vector3; owner: string | null; stamp: number };
 export function sharedCamera(): SharedCamera {
-  // One cross-shaped floor centred on the origin: high and back enough that each half shows the whole building.
-  return { position: new THREE.Vector3(6, 78, 92), target: new THREE.Vector3(0, 0, 2), owner: null, stamp: 0 };
+  // One floor centred on the origin: from the front and above, far enough back that each half shows the whole clinic.
+  return { position: new THREE.Vector3(22, 74, 66), target: new THREE.Vector3(0, 0, 0), owner: null, stamp: 0 };
 }
 
 function FollowCamera({ id, shared, controls }: { id: string; shared: SharedCamera; controls: RefObject<OrbitControlsImpl | null> }) {
@@ -143,8 +143,8 @@ export function PlanScene({
     >
       <color attach="background" args={[C.bg]} />
       <fog attach="fog" args={[C.bg, 80, 150]} />
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[20, 40, 25]} intensity={0.9} />
+      <hemisphereLight args={["#AEB8C2", "#0D0F10", 0.55]} />
+      <directionalLight position={[-30, 60, 25]} intensity={1.15} />
       <OrbitControls
         ref={controls}
         target={shared.target.toArray()}
@@ -160,11 +160,7 @@ export function PlanScene({
 
       <group position={[0, -drop, 0]}>
         {hospital.floors.filter((f) => onFloor(f.id)).map((f) => (
-          <FloorSlab key={f.id} floor={f} subtitle="" />
-        ))}
-
-        {hospital.rooms.filter((r) => onFloor(r.floorId)).map((r) => (
-          <RoomOutline key={r.id} polygon={r.polygon} level={floorLevel.get(r.floorId) ?? 0} />
+          <FloorSlab key={f.id} floor={f} rooms={hospital.rooms.filter((r) => r.floorId === f.id)} />
         ))}
 
         {outlines.filter((o) => onFloor(o.floorId)).map((o) => (
@@ -217,16 +213,6 @@ export function PlanScene({
       </group>
     </Canvas>
   );
-}
-
-/** A room's edge on the slab: a thin line, the way the design draws floor divisions. */
-function RoomOutline({ polygon, level }: { polygon: Point[]; level: number }) {
-  const points = useMemo(
-    () => (polygon.length ? [...polygon, polygon[0]].map((p) => to3(p, level, 0.03)) : []),
-    [polygon, level],
-  );
-  if (points.length < 2) return null;
-  return <Line points={points} color={C.slabEdge} lineWidth={1} transparent opacity={0.9} />;
 }
 
 /**

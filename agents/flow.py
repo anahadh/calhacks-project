@@ -82,8 +82,14 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
             # The agent's own strategies for this hospital and attack (the model designs them; code checks
             # and turns them into rules; the engine tests them), plus the optimizer's plan.
             keep = candidates_mod.kept_by_constraints(req.constraints)
-            plans = await llm.propose(candidates_mod.proposal_facts(H, req.baseline, req.patientZero, req.constraints),
-                                      {fid for fid in H.flows})
+            try:
+                plans = await llm.propose(candidates_mod.proposal_facts(H, req.baseline, req.patientZero, req.constraints),
+                                          {fid for fid in H.flows})
+            except llm.LlmError as e:
+                # The model's plans were unusable (bad JSON, unknown ids, forbidden words). The round goes on
+                # with the agent's own code-built candidates below; nothing from the model is kept.
+                ctx.logger.warning(f"model plans dropped: {e}")
+                plans = []
             candidates = [c for i, p in enumerate(plans, start=1)
                           if (c := candidates_mod.from_proposal(H, i, p.name, p.strategy, p.rationale, p.tradeoff, p.cut, keep))]
             candidates += candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints, starts=STARTS)

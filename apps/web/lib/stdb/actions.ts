@@ -54,7 +54,7 @@ export function sessionActions(
     join: async (name, role) => need().presenceJoin({ sessionId, name, role }),
     addFocus: async (deviceId, note = "") => need().annotationAdd({ sessionId, targetId: deviceId, note }),
     clearFocus: async (id) => need().annotationClear({ annotationId: BigInt(id) }),
-    defend: async () => need().defendRequest({ sessionId }),
+    defend: async () => { console.log(`[plan] calling defend_request for ${sessionId}`); return need().defendRequest({ sessionId }); },
     answerQuestion: async (questionId, choice) => need().questionAnswer({ sessionId, questionId, choice }),
     showSolution: async (recommendationId, speed?: Speed, patientZero = "") =>
       need().solutionStart({ sessionId, recommendationId, speed: speed ?? activeRun?.speed ?? 1, patientZero }),

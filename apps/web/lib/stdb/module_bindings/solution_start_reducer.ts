@@ -14,5 +14,5 @@ export default {
   sessionId: __t.string(),
   recommendationId: __t.string(),
   speed: __t.f64(),
-  patientZero: __t.string().name("patient_zero"),
+  patientZero: __t.string(),
 };

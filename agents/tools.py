@@ -210,6 +210,7 @@ class Relay:
 
     async def _write(self, table: str, row: dict) -> dict:
         s = settings()
+        print(f"[relay] {table} -> {s.relay_url or 'file ' + str(s.log_dir)}: {row.get('type') or row.get('status')}", flush=True)
         if s.relay_url:
             if table == "agent_message":
                 row.pop("seq")  # the reducer assigns it
@@ -217,6 +218,7 @@ class Relay:
                 resp = await client.post(f"{s.relay_url.rstrip('/')}/{table}", json=row,
                                          headers={"Authorization": f"Bearer {s.relay_token}"})
             if resp.status_code >= 300:
+                print(f"[relay] REJECTED {table}: HTTP {resp.status_code} {resp.text[:200]}", flush=True)
                 raise ToolError(f"relay rejected {table} row: HTTP {resp.status_code} {resp.text[:200]}")
             return row
         _append(s.log_dir / f"{row['sessionId']}.jsonl", table, row)

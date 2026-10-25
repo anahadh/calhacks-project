@@ -13,3 +13,4 @@ __pycache__/
 .gstack/
 agents/logs/
 .hippo_cache/
+.dev-logs/

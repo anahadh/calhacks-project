@@ -23,6 +23,22 @@ export const C = {
   stem: "#2F363B", // a device chip's stem and base ellipse
   chipBg: "rgba(17,19,21,0.94)", // dark chip fill behind the glyph
   pill: "rgba(21,24,27,0.95)", // room-name slab pills on the floor
+  // The clinic itself (building.tsx, furniture.tsx): a cutaway floor plan in graphite clay.
+  corridor: "#22272B", // the ground slab, which shows as the corridor between rooms
+  corridorLine: "#2E343A", // the faint tile grid on the corridor
+  roomFloor: "#1B1F22", // a room's floor plate
+  roomFloorEdge: "#2A3036", // the skirting line where a room floor meets its walls
+  wallFace: "#30363C", // wall sides
+  wallCap: "#596169", // the lighter top of each wall, so the plan reads from above
+  entranceMat: "#2C3238", // the mat outside the main entrance
+  furniture: "#2B3137", // desks, counters, cabinets, housings
+  furnitureLight: "#3A4148", // tops, mattresses, screens
+  linen: "#8A949C", // pillows and sheets, the lightest clay in the room
+  metal: "#4F5860", // poles, lamp arms, rack frames
+  // People (patients.tsx): one figure per patient counted, colored by the group's patient_state row.
+  personOk: "#6FCF97",
+  personDelayed: "#FFC53D",
+  personDisrupted: "#FF4778",
 } as const;
 
 // Motion (ms), from the design system's duration tokens. Timing only: never add an animation.

@@ -12,6 +12,7 @@ export type Resume = { sessionId: string; questionId: string; choice: string; au
 
 export async function callCoordinator(baseUrl: string, path: "/start_round" | "/resume" | "/reassess", body: object): Promise<RestAck> {
   let resp: Response;
+  console.log(`[coordinator] POST ${baseUrl}${path}`, JSON.stringify(body).slice(0, 200));
   try {
     resp = await fetch(`${baseUrl}${path}`, {
       method: "POST",
@@ -23,6 +24,7 @@ export async function callCoordinator(baseUrl: string, path: "/start_round" | "/
     return { ok: false, detail: `Can't reach the Sign-off Coordinator at ${baseUrl}: ${(e as Error).message}` };
   }
   const text = await resp.text();
+  console.log(`[coordinator] ${path} -> HTTP ${resp.status}: ${text.slice(0, 300)}`);
   if (!resp.ok) return { ok: false, detail: `Sign-off Coordinator ${path} answered HTTP ${resp.status}: ${text.slice(0, 300)}` };
   const parsed = RestAck.safeParse(safeJson(text));
   if (!parsed.success) return { ok: false, detail: `Sign-off Coordinator ${path} sent an unexpected reply: ${text.slice(0, 300)}` };

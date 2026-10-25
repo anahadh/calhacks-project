@@ -13,6 +13,7 @@ It is the orchestrator, and the only agent that speaks the chat protocol (ASI:On
 chat.py reads the text (and card button clicks); cards.py builds the replies; all code.
 """
 
+import time
 import asyncio
 import json
 import uuid
@@ -44,6 +45,9 @@ CHAT_SESSION = "asi1-chat"  # relay session for chat that doesn't belong to a ro
 agent, protocol = make_agent(NAME)
 H = hospital_mod.load(settings().hospital_path)
 rounds: dict[str, Round] = {}
+# When each session's round began (monotonic seconds); a running round older than this with no end is abandoned.
+started: dict[str, float] = {}
+STALE_ROUND_S = 90.0
 events: dict[str, list[tuple[str, object]]] = {}  # session → (type, message) seen, for chat summaries
 lock = asyncio.Lock()  # one event at a time, REST, messages and chat alike
 
@@ -80,16 +84,24 @@ async def execute(ctx: Context, rnd: Round, actions: list[Action]):
 
 async def begin(ctx: Context, req: StartRound) -> RestAck:
     """Start a round. The one code path for /start_round and for chat."""
+    ctx.logger.info(f"[begin] start_round session={req.sessionId} run={req.runId} pz={req.patientZero} challenges={req.challenges}")
     async with lock:
         existing = rounds.get(req.sessionId)
-        if existing is not None and existing.state != "done":
+        # A round still "running" long after it began with no specialist answer is one that died in an
+        # agent (a crash, a restart): a new request replaces it instead of being refused forever.
+        stale = existing is not None and existing.state == "running" and time.monotonic() - started.get(req.sessionId, 0) > STALE_ROUND_S
+        if existing is not None and existing.state != "done" and not stale:
+            ctx.logger.warning(f"[begin] refused: a round is already {existing.state} for {req.sessionId}")
             return RestAck(ok=False, detail=f"a round is already {existing.state} for session {req.sessionId}")
         try:
+            ctx.logger.info(f"[begin] relay={settings().relay_url or 'FILE LOG (WATCHER_RELAY_URL unset)'}; running baseline")
             await relay.status(req.sessionId, NAME, "thinking")
             baseline = run_sim(None, req.patientZero, req.seed, req.challenges)
             rnd = Round(req.sessionId, H)
+            ctx.logger.info(f"[begin] baseline done: {baseline.infectedCount} infected over {baseline.ticks} ticks")
             actions = rnd.start(req.runId, req.patientZero, baseline, req.seed, req.challenges)
             rounds[req.sessionId] = rnd
+            started[req.sessionId] = time.monotonic()
             events[req.sessionId] = []
             last_session[:] = [req.sessionId]
             await execute(ctx, rnd, actions)

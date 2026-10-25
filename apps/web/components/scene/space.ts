@@ -3,14 +3,18 @@ import type { Point, Room } from "@/lib/stdb/types";
 // Floor plan meters → scene units. Floors stack along y with a gap wide enough
 // that, from the isometric camera, the ground floor is not hidden by the one above.
 export const FLOOR_GAP = 15;
-// Centres the demo hospital (a cross-shaped floor, 2..64 on both axes) on the scene origin.
+// Centres the demo hospital (one floor, x 2..64 by y 2..38, a corridor across the middle) on the scene origin.
 const OFFSET_X = -33;
-const OFFSET_Z = -33;
+const OFFSET_Z = -20;
 
 /** How far the slab extends past the outermost room wall. */
 export const SLAB_MARGIN = 1.6;
 /** The slab's thickness. */
 export const SLAB_H = 0.5;
+/** Cutaway wall height: tall enough to read as walls from the isometric camera, low enough to see every bed. */
+export const WALL_H = 1.7;
+/** Wall thickness. */
+export const WALL_T = 0.24;
 
 export function to3([x, y]: Point, level: number, lift = 0): [number, number, number] {
   return [x + OFFSET_X, level * FLOOR_GAP + lift, y + OFFSET_Z];
