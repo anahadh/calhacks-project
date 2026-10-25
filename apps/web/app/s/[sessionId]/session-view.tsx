@@ -84,7 +84,9 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   const floors = [...hospital.floors].sort((a, b) => b.level - a.level);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // On a laptop-or-larger screen the Simulation tab fits the window: the scene takes the space
+    // left and the statistics column scrolls on its own.
+    <div className={`flex min-h-screen flex-col ${view === "simulation" ? "lg:h-screen lg:overflow-hidden" : ""}`}>
       <SessionHeader sessionId={sessionId} session={session} view={view} onView={setView} />
       <JoinModal session={session} sessionId={sessionId} />
 
@@ -93,11 +95,11 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       </div>
 
       {view === "simulation" ? (
-        <main className="flex flex-grow flex-wrap items-stretch gap-6 p-4 md:p-6">
-          <section aria-label="Simulation" className="panel flex min-w-0 flex-[999_1_760px] flex-col overflow-hidden">
+        <main className="flex flex-grow flex-col gap-6 p-4 md:p-6 lg:min-h-0 lg:flex-row">
+          <section aria-label="Simulation" className="panel flex min-w-0 flex-col overflow-hidden lg:min-h-0 lg:flex-1">
             <Timeline session={session} />
 
-            <div className="flex flex-grow flex-col bg-scene-ground">
+            <div className="flex min-h-0 flex-grow flex-col bg-scene-ground">
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4">
                 <div className="relative inline-flex">
                   <label htmlFor="floor" className="sr-only">Floor</label>
@@ -124,19 +126,21 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                 <Legend />
               </div>
 
-              <div className="relative min-h-[620px] flex-1">
-                <SceneBoundary session={shown}>
-                  <HospitalScene
-                    session={shown}
-                    index={index}
-                    hovered={hovered}
-                    onHover={setHovered}
-                    floorId={floor === "all" ? undefined : floor}
-                    onPick={canPick ? pick : undefined}
-                    pickable={picking ? (id) => session.entryPoints.includes(id) : undefined}
-                    view={roleView}
-                  />
-                </SceneBoundary>
+              <div className="relative min-h-[420px] flex-1 lg:min-h-0">
+                <div className="absolute inset-0">
+                  <SceneBoundary session={shown}>
+                    <HospitalScene
+                      session={shown}
+                      index={index}
+                      hovered={hovered}
+                      onHover={setHovered}
+                      floorId={floor === "all" ? undefined : floor}
+                      onPick={canPick ? pick : undefined}
+                      pickable={picking ? (id) => session.entryPoints.includes(id) : undefined}
+                      view={roleView}
+                    />
+                  </SceneBoundary>
+                </div>
                 {hovered && (
                   <div className="pointer-events-none absolute right-4 top-4 z-10">
                     <DeviceCard session={session} index={index} deviceId={hovered} view={roleView} />
@@ -157,10 +161,14 @@ export function SessionView({ sessionId }: { sessionId: string }) {
             </div>
           </section>
 
-          <aside aria-label="Infection statistics" className="flex min-w-0 flex-[1_1_380px] flex-col gap-4">
-            <SpreadStats session={session} index={index} />
-            <SystemsDown session={session} index={index} />
-            <PlanButton session={session} onAgents={() => setView("agents")} />
+          <aside aria-label="Infection statistics" className="flex min-w-0 flex-col gap-4 lg:min-h-0 lg:w-[400px] lg:flex-none">
+            <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
+              <SpreadStats session={session} index={index} />
+              <SystemsDown session={session} index={index} />
+            </div>
+            <div className="shrink-0">
+              <PlanButton session={session} onAgents={() => setView("agents")} />
+            </div>
           </aside>
         </main>
       ) : (
