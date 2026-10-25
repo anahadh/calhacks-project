@@ -39,7 +39,7 @@ export function HoleLines({
       return to3(d.position, level.get(r.floorId) ?? 0, 0.12);
     };
     const name = (id: string) => device.get(id)?.name ?? id;
-    const out: { key: string; a: [number, number, number]; b: [number, number, number]; color: string; label: string; detail: string; lit: boolean }[] = [];
+    const out: { key: string; a: [number, number, number]; b: [number, number, number]; color: string; label: string; detail: string; lit: boolean; main: boolean }[] = [];
     for (const f of kept) {
       const sa = segmentOf.get(f.from);
       const sb = segmentOf.get(f.to);
@@ -53,6 +53,8 @@ export function HoleLines({
         key: f.id, a, b, color: COLOR[f.protocol] ?? "#A1A8AE", label: proto,
         detail: `${name(f.from)} → ${name(f.to)} · ${proto} ${f.port}${f.purpose ? ` · ${f.purpose}` : ""}${f.protected ? " · protected" : ""}`,
         lit: !!litZone && (sa === litZone || sb === litZone),
+        // The feeds the reviewers argued over (HL7 vitals, ADT, lab results) show at full strength; clock and vendor feeds stay faint.
+        main: f.protocol === "hl7" || f.protocol === "dicom",
       });
     }
     return out;
@@ -68,9 +70,9 @@ export function HoleLines({
             <Line
               points={[l.a, l.b]}
               color={l.color}
-              lineWidth={on ? 2.2 : l.lit ? 1.4 : 1}
+              lineWidth={on ? 2.2 : l.lit || l.main ? 1.5 : 1}
               transparent
-              opacity={on ? 1 : l.lit ? 0.8 : 0.3}
+              opacity={on ? 1 : l.lit ? 0.95 : l.main ? 0.85 : 0.25}
               dashed
               dashSize={0.6}
               gapSize={0.3}
