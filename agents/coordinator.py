@@ -13,6 +13,7 @@ It is the orchestrator, and the only agent that speaks the chat protocol (ASI:On
 chat.py reads the text (and card button clicks); cards.py builds the replies; all code.
 """
 
+import os
 import time
 import asyncio
 import copy
@@ -371,7 +372,9 @@ def local_tools(ctx: Context, sender: str) -> list[brain.Tool]:
         if device is None:
             return {"error": chat.unknown_device(H, query or "?")}
         name = H.devices[device]["name"]
-        session_id = f"chat-{uuid.uuid4().hex[:8]}"
+        # CHAT_LIVE_SESSION (demo): every chat round reuses one session, so a second screen left on
+        # /room/<that session> follows each new round without being touched.
+        session_id = os.environ.get("CHAT_LIVE_SESSION", "").strip() or f"chat-{uuid.uuid4().hex[:8]}"
         chats[session_id] = ChatRound(sender=sender, device_name=name, session=getattr(ctx, "session", None))
         req = StartRound(sessionId=session_id, runId=f"run_{session_id.replace('-', '_')}", patientZero=device,
                          seed=chat.DEMO_SEED, challenges=[])

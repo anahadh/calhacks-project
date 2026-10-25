@@ -331,3 +331,20 @@ def test_view_hospital_sends_the_map_card_without_the_model(coord, monkeypatch):
     s = json.dumps(card)
     assert card and "data:image" not in s and '"action": "simulate"' in s and "rooms" in s
     assert "devices" in text
+
+
+def test_live_session_env_makes_every_chat_round_use_one_session(coord, monkeypatch):
+    c, _ = coord
+    monkeypatch.setenv("CHAT_LIVE_SESSION", "asi1-live")
+    begun = []
+
+    async def fake_begin(ctx, req):
+        begun.append(req.sessionId)
+        c.rounds[req.sessionId] = type("R", (), {"state": "done", "round": 1})()
+        return c.RestAck(ok=True, detail="")
+
+    monkeypatch.setattr(c, "begin", fake_begin)
+    tool = {t.name: t for t in c.local_tools(c.ctx_stub(), "agent1qs")}["start_round"]
+    run(tool.call({"device_query": "MRI 2"}))
+    run(tool.call({"device_query": "CT 1"}))
+    assert begun == ["asi1-live", "asi1-live"]
