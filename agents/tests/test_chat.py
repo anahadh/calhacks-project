@@ -76,7 +76,11 @@ def test_wants_round_ignores_questions(text):
     assert chat.wants_round(text) is None
 
 
-def test_open_selection_carries_its_url():
-    assert chat.selection('{"action": "open", "source": "hippocratech", "url": "http://x/room/s"}').url == "http://x/room/s"
-    assert chat.selection("The user picked action open with url http://x/room/s2").url == "http://x/room/s2"
+def test_ask_selection_carries_the_agent_and_the_line():
+    import json
+    raw = json.dumps({"action": "ask", "source": "hippocratech", "agent": "flow", "about": '[ @hippocratech-flow · round 1 ] proposed "x".'})
+    c = chat.selection(raw)
+    assert (c.kind, c.agent, c.about) == ("ask", "flow", '[ @hippocratech-flow · round 1 ] proposed "x".')
+    c = chat.selection("The user picked action ask for agent clinical_workflow")
+    assert (c.kind, c.agent, c.about) == ("ask", "clinical_workflow", None)
     assert chat.selection("what is PACS?") is None

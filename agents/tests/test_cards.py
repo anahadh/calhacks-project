@@ -55,7 +55,7 @@ def test_recommendation_card_has_four_numbers_roles_and_room_link():
     s = json.dumps(root)
     for n in (base.infectedCount, res.infectedCount, cards.affected(base), cards.affected(res)):
         assert str(n) in s
-    assert "Security" in s and "Clinical engineering" in s and "http://x/room/chat-1" in s
+    assert "Security" in s and "Clinical engineering" in s and "http://x/room/chat-1" not in s
     assert "approved" not in s.lower() and not FORBIDDEN.search(s)
     assert meta["requires_card_interaction"] == "true" and meta["is_terminal"] == "true"
     assert len(meta["card_payload"]) < 64 * 1024 and cards.depth(root) <= 8
@@ -86,7 +86,7 @@ def test_trace_card_shows_each_agent_state_and_the_lines():
         assert handle in s
     badges = [n for n in walk(root) if n["type"] == "badge"]
     assert {b["label"] for b in badges} >= {"accepted", "rejected", "proposed"}
-    assert "Isolate imaging" in s and "http://x/room/chat-1" in s
+    assert "Isolate imaging" in s and "http://x/room/chat-1" not in s
     assert meta["requires_card_interaction"] == "true" and meta["preferred_drawer_width_px"]
     assert cards.depth(root) <= 8 and all(n["type"] in ALLOWED for n in walk(root))
     assert m.text() == "\n\n".join(lines)
@@ -123,8 +123,26 @@ def test_every_card_passes_the_documented_schema():
         cards.validate({"type": "table"})
 
 
-def test_cards_print_the_live_room_link_as_text_too():
-    for m in (cards.recommendation_card(H, "s", rec, base, "http://x/room/s", "Done."),
-              cards.trace_card(H, "s", "MRI 2", ["[ @hippocratech-flow · round 1 ] accepted."], 1, "running", "http://x/room/s")):
-        _, root = payload(m)
-        assert any(n["type"] == "text" and "http://x/room/s" in n["value"] for n in walk(root))
+def test_agents_are_tappable_on_both_cards():
+    """Tapping an agent lane or a trace row asks that agent to explain itself (an `ask`
+    selection the Coordinator answers through ask_agent); the recommendation card offers
+    the same three asks as buttons. No card links out of ASI:One."""
+    lines = ['[ @hippocratech-flow · round 1 ] proposed "x": 3 devices infected with it, 9 without.',
+             "[ @hippocratech-coordinator ] asked @hippocratech-flow for a plan (round 1).",
+             "[ @hippocratech-clinical-workflow · round 1 ] rejected: no. Needs: keep a flow."]
+    _, root = payload(cards.trace_card(H, "s", "MRI 2", lines, 1, "running", "http://x/room/s"))
+    asks = [n["action"]["selection"] for n in walk_items(root) if n.get("action")]
+    assert {"action": "ask", "source": "hippocratech", "agent": "flow", "about": ""} in asks
+    row = next(a for a in asks if a["agent"] == "clinical_workflow" and a["about"])
+    assert row["about"].startswith("[ @hippocratech-clinical-workflow · round 1 ] rejected")
+    assert not any(a["agent"] == "coordinator" for a in asks)  # the Coordinator's own handoffs are not tappable
+    _, root = payload(cards.recommendation_card(H, "s", rec, base, "http://x/room/s", "Done."))
+    buttons = [n for n in walk(root) if n["type"] == "button"]
+    assert [b["action"]["selection"]["agent"] for b in buttons] == ["flow", "inventory", "clinical_workflow"]
+    assert not any("url" in b["action"]["selection"] for b in buttons)
+
+
+def walk_items(node):
+    for n in walk(node):
+        for i in n.get("items", []):
+            yield i

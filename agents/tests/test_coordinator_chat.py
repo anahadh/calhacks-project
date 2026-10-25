@@ -286,13 +286,33 @@ def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, mo
     assert card is not None and "Recommendation" in json.dumps(card)
 
 
-def test_open_button_replies_with_the_link_without_the_model(coord, monkeypatch):
+def test_ask_selection_asks_that_agent_in_code(coord, monkeypatch):
     c, sent = coord
+    asked = []
+
+    async def fake_ask(ctx, sender, handle, question):
+        asked.append((handle, question))
+        return {"agent": handle, "said": "I cut the imaging VLAN because the attack crossed it."}
+
+    monkeypatch.setattr(c, "ask_agent", fake_ask)
 
     async def never(*a, **k):
         raise AssertionError("the model must not be asked")
 
     monkeypatch.setattr(c.brain, "respond", never)
-    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "open", "source": "hippocratech", "url": "http://x/room/chat-1"}'))
-    run(c.chat_turn(c.ctx_stub(), "agent1qs", "The user picked action open with url http://x/room/chat-2 from source hippocratech"))
-    assert "http://x/room/chat-1" in sent[-2][3] and "http://x/room/chat-2" in sent[-1][3]
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "ask", "source": "hippocratech", "agent": "flow", "about": ""}'))
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "ask", "source": "hippocratech", "agent": "clinical_workflow", "about": "[ @hippocratech-clinical-workflow · round 1 ] rejected: no."}'))
+    assert asked[0][0] == "hippocratech-flow" and "round" in asked[0][1]
+    assert asked[1][0] == "hippocratech-clinical-workflow" and "rejected: no." in asked[1][1]
+    assert sent[-1][3] == '@hippocratech-clinical-workflow said: "I cut the imaging VLAN because the attack crossed it."'
+
+
+def test_ask_selection_reports_a_refusal(coord, monkeypatch):
+    c, sent = coord
+
+    async def refuse(ctx, sender, handle, question):
+        return {"error": "a round is running"}
+
+    monkeypatch.setattr(c, "ask_agent", refuse)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "ask", "source": "hippocratech", "agent": "flow", "about": ""}'))
+    assert "a round is running" in sent[-1][3]

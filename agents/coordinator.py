@@ -475,8 +475,12 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
     relay the reply out, send it with a card when a tool asked for one."""
     sel = chat.selection(text)
     sid = session_id or _session_for(sender, None) or CHAT_SESSION
-    if sel is not None and sel.kind == "open":  # a card's link button: ASI:One sends the selection back; answer with the link
-        await reply(ctx, sender, f"Live room for this round: {sel.url or room_url(sid)}", sid)
+    if sel is not None and sel.kind == "ask" and sel.agent in PROFILES and sel.agent != NAME:
+        # A tap on an agent (a lane, a trace row, a button): ask that specialist, in code.
+        question = (f"Explain this line from the round in a sentence or two: {sel.about}" if sel.about
+                    else "What did you do in this round, and why? Two sentences.")
+        out = await ask_agent(ctx, sender, PROFILES[sel.agent].handle, question)
+        await reply(ctx, sender, f'@{out["agent"]} said: "{out["said"]}"' if "said" in out else f"I couldn't ask: {out['error']}", sid)
         return
     text = _selection_text(text)
     if relay_in:

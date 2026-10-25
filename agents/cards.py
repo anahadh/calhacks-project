@@ -208,17 +208,24 @@ def agent_state(lines: list[str], handle: str) -> tuple[str, str]:
     return "idle", "info"
 
 
+AGENT_OF_HANDLE = {"hippocratech-flow": "flow", "hippocratech-inventory": "inventory",
+                   "hippocratech-clinical-workflow": "clinical_workflow"}
+
+
 def trace_row(line: str) -> Node:
-    """One trace line as a list row: who (badge) and what (text); the Coordinator's handoffs muted."""
+    """One trace line as a list row: who (badge) and what (text). A specialist's row is
+    tappable: the tap asks that agent to explain the line. The Coordinator's handoffs are
+    muted and not tappable."""
     m = TAG.match(line)
     if not m:
         return item([text(line, "emphasis")])
     who = SHORT.get(m.group("handle"), m.group("handle"))
     rest = ROUND_IN_TEXT.sub("", m.group("rest")).strip()
-    if m.group("handle") == "hippocratech-coordinator":
+    agent = AGENT_OF_HANDLE.get(m.group("handle"))
+    if agent is None:
         return item([text(f"{who}: {rest}", "muted")])
     label, variant = agent_state([line], "@" + m.group("handle"))
-    return item([group([badge(who, variant), text(rest, "body")], direction="row", gap=8)])
+    return item([group([badge(who, variant), text(rest, "body")], direction="row", gap=8)], "ask", agent=agent, about=line)
 
 
 def round_of(line: str, current: int) -> int:
@@ -236,9 +243,10 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
     trace as text, so the one message ASI:One shows per turn carries everything so far."""
     from runtime import PROFILES
     import narrate
-    lanes = group([group([badge(agent_state(lines, "@" + PROFILES[a].handle)[0], agent_state(lines, "@" + PROFILES[a].handle)[1]),
-                          text("@" + PROFILES[a].handle, "muted")], gap=2)
-                   for a in ("flow", "inventory", "clinical_workflow")], direction="row", gap=16)
+    lanes = {"type": "list", "items": [
+        item([group([badge(*agent_state(lines, "@" + PROFILES[a].handle)), text("@" + PROFILES[a].handle, "muted"),
+                     text("tap to ask", "muted")], direction="row", gap=8)], "ask", agent=a, about="")
+        for a in ("flow", "inventory", "clinical_workflow")]}
     children: list[Node] = [lanes, DIVIDER]
     current, open_round = 0, None
     for line in lines[-TRACE_LINES:]:
@@ -249,14 +257,15 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
             open_round = {"type": "list", "items": []}
             children += [heading(f"Round {current}" if current else "Start", 3), open_round]
         open_round["items"].append(trace_row(line))
-    children += [text(f"Live room: {room_url}", "muted"), button("Open the live room", "open", False, url=room_url)]
     root = section(f"Negotiation · round {round} · {state.replace('_', ' ')}", children,
                    subtitle=f"Attack from {device_label} · session {session_id}")
     return message(narrate.render(lines), root, False)
 
 
 def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_url: str, bubble: str) -> ChatMessage:
-    """The round's result: the plan, before and after, who must sign off, the live room."""
+    """The round's result: the plan, before and after, who must sign off, and a button per
+    agent to ask it why (the link out to the web app is gone: judges stay in ASI:One)."""
+    from runtime import PROFILES
     before = baseline
     after = rec.testResult
     pair = lambda label, b, a: group([text(label, "muted"), text(f"{b} → {a}" if b is not None else str(a))], gap=2)
@@ -266,7 +275,9 @@ def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_u
     ], direction="row", gap=16)
     roles = group([badge(ROLE_NAMES[r], "warning") for r in rec.requiredRoles], direction="row", gap=6)
     children = [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
-                text("Must sign off in the Hippocra.tech app (agents agreeing is not approval):", "muted"), roles,
-                text(f"Live room: {room_url}", "muted"), button("Open the live room", "open", True, url=room_url)]
+                text("Must sign off in the Hippocra.tech app (agents agreeing is not approval):", "muted"), roles, DIVIDER,
+                text("Ask an agent why:", "muted"),
+                group([button(f"Ask {SHORT[PROFILES[a].handle]}", "ask", False, agent=a, about="")
+                       for a in ("flow", "inventory", "clinical_workflow")], direction="row", gap=8)]
     root = section("Recommendation", children, subtitle=f"Session {session_id}")
     return message(bubble, root, False)
