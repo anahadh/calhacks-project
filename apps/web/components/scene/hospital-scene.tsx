@@ -43,8 +43,6 @@ export function HospitalScene({
 }: {
   session: SessionSnapshot;
   index: SessionIndex;
-  /** The caller's role view: which connections to draw (spacetime/src/role_views.ts). */
-  view: RoleView;
   hovered: string | null;
   onHover: (id: string | null) => void;
   /** Show one floor, brought down to ground height; all floors when unset. */
