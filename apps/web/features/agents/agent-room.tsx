@@ -76,13 +76,21 @@ export function AgentRoomFrame(props: {
   const { variant, messages, roundState, names, onClose } = props;
   const shown = useRevealed(messages);
   const newest = shown[shown.length - 1];
+  // The rows may already say "done" while this tab is still revealing the thread one message at a
+  // time (UX rule 5). Until the last row is on screen, the room reads as still negotiating: no
+  // recommendation, no "done" chip, and the round chip follows the newest revealed message.
+  const revealing = shown.length < messages.length;
+  const liveRound: RoundState = revealing
+    ? { ...roundState, state: "running", round: Math.max(roundState.round, newest?.round ?? 1), detail: undefined }
+    : roundState;
+  const status = revealing ? "Agents are negotiating…" : props.status;
   // A replayed recording (rule 14's one exception) says so on every message and in the round detail.
   const cached = !!roundState.detail?.startsWith("Cached run") || messages.some((m) => m.reason?.startsWith("Cached run · "));
   const speaking = new Set<Speaker>(props.agentStatus.filter((s) => s.status === "speaking" || s.status === "thinking").map((s) => s.agent));
   if (newest) speaking.add(newest.from);
   const thinking = new Set(props.agentStatus.filter((s) => s.status === "thinking").map((s) => s.agent));
   const { plans, constraints } = useMemo(() => negotiationOf(shown, names), [shown, names]);
-  const lanes = useMemo(() => lanesOf(shown, props.agentStatus, roundState), [shown, props.agentStatus, roundState]);
+  const lanes = useMemo(() => lanesOf(shown, props.agentStatus, liveRound), [shown, props.agentStatus, liveRound]);
   // Which plan each published recommendation is: option number by (round, plan name).
   const options = new Map(shown.filter((m) => m.type === "recommendation").map((m) => [`${m.round}:${m.name}`, m.option ?? 1]));
   const optionOf = (p: PlanColumn) => options.get(`${p.round}:${p.name}`);
@@ -106,7 +114,7 @@ export function AgentRoomFrame(props: {
           {props.subtitle && <div className="num mt-1 text-[13px] text-ink-faint">{props.subtitle}</div>}
         </div>
         <div className="flex items-center gap-3">
-          <RoundChip round={roundState} />
+          <RoundChip round={liveRound} />
           {cached && (
             <span className="num inline-flex h-9 items-center rounded-ctl border border-state-delayed/60 px-3 text-[13px] text-state-delayed" title="A real round recorded earlier, replayed through the relay">
               Cached run
@@ -151,18 +159,18 @@ export function AgentRoomFrame(props: {
             </Tab>
           </div>
           {tab === "table" ? (
-            <NegotiationTable plans={plans} messages={shown} optionOf={optionOf} thinking={thinking} newestSeq={newest?.seq} running={roundState.state === "running"} />
+            <NegotiationTable plans={plans} messages={shown} optionOf={optionOf} thinking={thinking} newestSeq={newest?.seq} running={liveRound.state === "running"} />
           ) : (
             <Transcript messages={shown} names={names} />
           )}
         </section>
       </div>
 
-      {props.options && <div className="border-t border-line px-6 py-4">{props.options}</div>}
+      {props.options && !revealing && <div className="border-t border-line px-6 py-4">{props.options}</div>}
 
       <footer className="flex min-h-[80px] flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-4">
         <p role="status" className="m-0 text-[16px] text-ink-muted">
-          {props.status}
+          {status}
           {messages.some((m) => m.fixture) && <span className="num ml-3 text-[11px] text-ink-faint">Test numbers come from fixture files, not hippo-sim.</span>}
         </p>
         {props.footer}
