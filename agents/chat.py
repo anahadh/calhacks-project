@@ -25,6 +25,14 @@ ATTACK_DEVICE = [
 QUESTION_WORDS = re.compile(r"^(?:why|how|which|who|where|when|can|could|should|is|are|do|does|what (?:is|was|are|were|did|does|do)\b)", re.I)
 
 
+HOSPITAL = re.compile(r"\b(?:view|see|show|look at|open|tour|explore)\b.*\bhospital\b|\bwhat does (?:my|the) hospital look like\b|^\s*(?:my |the )?hospital\s*\??$", re.I)
+
+
+def wants_hospital(text: str) -> bool:
+    """A request to see the hospital itself ("let me view my hospital"); decided in code."""
+    return bool(HOSPITAL.search(text)) and not ATTACK.search(text)
+
+
 def wants_round(text: str) -> str | None:
     """The device named by a request to simulate an attack ("what happens if ransomware
     starts at MRI 2", "simulate from PACS", "infect CT 1"), or None for anything else.

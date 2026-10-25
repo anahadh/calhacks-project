@@ -172,6 +172,23 @@ def affected(result) -> int:
 # --- cards ---
 
 
+def hospital_card(h: HospitalIndex, on_network: list[str], image: str, bubble: str) -> ChatMessage:
+    """The hospital at a glance: the floor-plan image, the counts, and six devices to start an attack from."""
+    picks = [d for d in PICK_DEVICES if d in on_network][:6]
+    protected = sum(1 for f in h.flows.values() if f.get("protected") and f.get("active", True))
+    stats = group([group([heading(str(n), 2), text(label, "muted")], gap=2) for n, label in
+                   ((len(h.rooms), "rooms"), (len(h.devices), "devices"), (protected, "protected clinical flows"))],
+                  direction="row", gap=24)
+    rows = {"type": "list", "items": [
+        item([group([badge(h.zone(d).replace("_", " "), "info"), text(device_name(h, d), "body")], direction="row", gap=8)],
+             "simulate", device=d) for d in picks]}
+    root = section(f"{h.name}" if hasattr(h, "name") else "Your hospital",
+                   [{"type": "image", "src": image, "alt": "Floor plan of the hospital", "aspect_ratio": "3:2"}, stats, DIVIDER,
+                    text("Tap a device to simulate a ransomware attack starting there:", "muted"), rows],
+                   subtitle="Synthetic hospital · simulation only")
+    return message(bubble, root, True)
+
+
 def picker_card(h: HospitalIndex, on_network: list[str], bubble: str) -> ChatMessage:
     """Six devices an attack can start from, one tap each. The only card a question gets."""
     picks = [d for d in PICK_DEVICES if d in on_network] or on_network
@@ -237,7 +254,7 @@ def round_of(line: str, current: int) -> int:
 
 
 def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list[str], round: int, state: str,
-               room_url: str) -> ChatMessage:
+               room_url: str, image: str | None = None) -> ChatMessage:
     """The live negotiation as a card: each agent's state as a badge, then the trace grouped
     by round (who did what, in order), then the live-room button. The bubble is the whole
     trace as text, so the one message ASI:One shows per turn carries everything so far."""
@@ -247,7 +264,8 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
         item([group([badge(*agent_state(lines, "@" + PROFILES[a].handle)), text("@" + PROFILES[a].handle, "muted"),
                      text("tap to ask", "muted")], direction="row", gap=8)], "ask", agent=a, about="")
         for a in ("flow", "inventory", "clinical_workflow")]}
-    children: list[Node] = [lanes, DIVIDER]
+    children: list[Node] = ([{"type": "image", "src": image, "alt": "Where the attack spreads with no plan", "aspect_ratio": "3:2"}]
+                            if image else []) + [lanes, DIVIDER]
     current, open_round = 0, None
     shown = [l for l in lines if not (l.startswith("[ @hippocratech-coordinator ]") and " MCP " not in l and "agree on" not in l)]
     for line in shown[-TRACE_LINES:]:
@@ -264,7 +282,7 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
 
 
 def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_url: str, bubble: str,
-                        chart: str | None = None) -> ChatMessage:
+                        chart: str | None = None, floor: str | None = None) -> ChatMessage:
     """The round's result: the plan, before and after, who must sign off, and a button per
     agent to ask it why (the link out to the web app is gone: judges stay in ASI:One)."""
     from runtime import PROFILES
@@ -276,7 +294,8 @@ def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_u
         pair("Patients affected", affected(before) if before else None, affected(after)),
     ], direction="row", gap=16)
     roles = group([badge(ROLE_NAMES[r], "warning") for r in rec.requiredRoles], direction="row", gap=6)
-    children = ([{"type": "image", "src": chart, "alt": "Devices infected per plan the agents negotiated", "aspect_ratio": "16:9"}]
+    children = ([{"type": "image", "src": floor, "alt": "The attack without and with the plan", "aspect_ratio": "8:3"}] if floor else []) + \
+               ([{"type": "image", "src": chart, "alt": "Devices infected per plan the agents negotiated", "aspect_ratio": "16:9"}]
                 if chart else []) + [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
                 text("Must sign off in the Hippocra.tech app (agents agreeing is not approval):", "muted"), roles, DIVIDER,
                 text("Ask an agent why:", "muted"),

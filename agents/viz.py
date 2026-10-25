@@ -95,3 +95,72 @@ def rows_from_events(events: list[tuple[str, object]]) -> list[Row]:
             if row is not None:
                 row.verdicts[GUARDIANS[m.agent]] = m.decision
     return rows
+
+
+# --- the hospital floor ---
+
+ZONE_FILL = {"critical_care": (58, 44, 52), "imaging": (40, 52, 70), "it_core": (52, 48, 34), "clinical_support": (40, 58, 52),
+             "inpatient": (46, 52, 60), "business": (50, 50, 50), "public": (44, 46, 46)}
+DEV, HIT, ZERO, ROOM_EDGE = (150, 164, 156), (232, 84, 70), (255, 196, 64), (88, 98, 94)
+
+
+def _floor(h, w: int, hgt: int, infected=frozenset(), patient_zero=None, label_rooms=True) -> Image.Image:
+    xs = [p[0] for r in h.rooms.values() for p in r["polygon"]]
+    ys = [p[1] for r in h.rooms.values() for p in r["polygon"]]
+    x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+    s = min((w - 24) / (x1 - x0), (hgt - 24) / (y1 - y0))
+    ox, oy = 12 + (w - 24 - s * (x1 - x0)) / 2, 12 + (hgt - 24 - s * (y1 - y0)) / 2
+    at = lambda x, y: (ox + (x - x0) * s, oy + (y - y0) * s)
+    img = Image.new("RGB", (w, hgt), BG)
+    d = ImageDraw.Draw(img)
+    small = _font(max(10, int(s * 0.9)))
+    hit_rooms = {h.devices[i]["roomId"] for i in infected if i in h.devices}
+    for r in h.rooms.values():
+        pts = [at(*p) for p in r["polygon"]]
+        fill = ZONE_FILL.get(r["zone"], (44, 46, 46))
+        if r["id"] in hit_rooms:
+            fill = tuple(min(255, int(c * 0.55 + t * 0.45)) for c, t in zip(fill, (120, 40, 36)))
+        d.polygon(pts, fill=fill, outline=ROOM_EDGE)
+        if label_rooms:
+            cx, cy = sum(p[0] for p in pts) / len(pts), min(p[1] for p in pts) + 4
+            d.text((cx, cy), r["name"], font=small, fill=MUTED, anchor="ma")
+    rad = max(3, int(s * 0.45))
+    for i, dv in h.devices.items():
+        if "position" not in dv:
+            continue
+        x, y = at(*dv["position"])
+        if i == patient_zero or i in infected:
+            color, rr = (ZERO, rad + 4) if i == patient_zero else (HIT, rad + 2)
+            d.ellipse((x - rr - 3, y - rr - 3, x + rr + 3, y + rr + 3), outline=color, width=2)
+        else:
+            color, rr = DEV, rad
+        d.ellipse((x - rr, y - rr, x + rr, y + rr), fill=color)
+    return img
+
+
+def _png(img: Image.Image) -> bytes:
+    out = io.BytesIO()
+    img.convert("P", palette=Image.ADAPTIVE, colors=48, dither=Image.Dither.NONE).save(out, format="PNG", optimize=True)
+    return out.getvalue()
+
+
+def hospital_map(h, title: str, infected=frozenset(), patient_zero=None, subtitle: str | None = None) -> bytes:
+    """The floor plan: rooms by zone, every device as a dot; infected devices red, patient zero gold."""
+    w, fh = 900, 540
+    img = Image.new("RGB", (w, fh + 80), BG)
+    d = ImageDraw.Draw(img)
+    d.text((PAD, 20), title, font=_font(28), fill=INK)
+    d.text((PAD, 56), subtitle or f"{len(h.rooms)} rooms · {len(h.devices)} devices (synthetic)", font=_font(15), fill=MUTED)
+    img.paste(_floor(h, w, fh, set(infected), patient_zero), (0, 80))
+    return _png(img)
+
+
+def before_after(h, patient_zero: str, before: set, after: set) -> bytes:
+    """Two floors side by side: the attack with no plan, and with the agents' plan."""
+    w, fh = 600, 380
+    img = Image.new("RGB", (w * 2, fh + 70), BG)
+    d = ImageDraw.Draw(img)
+    for k, (label, infected) in enumerate((("No segmentation", before), ("With the agents' plan", after))):
+        d.text((k * w + PAD, 16), f"{label}: {len(infected)} infected", font=_font(22), fill=INK)
+        img.paste(_floor(h, w, fh, set(infected), patient_zero, label_rooms=False), (k * w, 60))
+    return _png(img)

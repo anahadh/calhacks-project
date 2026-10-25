@@ -84,3 +84,14 @@ def test_ask_selection_carries_the_agent_and_the_line():
     c = chat.selection("The user picked action ask for agent clinical_workflow")
     assert (c.kind, c.agent, c.about) == ("ask", "clinical_workflow", None)
     assert chat.selection("what is PACS?") is None
+
+
+@pytest.mark.parametrize("text", ["let me view my hospital", "show me the hospital", "view hospital",
+                                  "@hippocratech-coordinator support bot, let me view my hospital", "what does my hospital look like?"])
+def test_wants_hospital(text):
+    assert chat.wants_hospital(text)
+
+
+@pytest.mark.parametrize("text", ["simulate ransomware from MRI 2", "what is PACS?", "why did clinical reject?"])
+def test_not_wants_hospital(text):
+    assert not chat.wants_hospital(text)

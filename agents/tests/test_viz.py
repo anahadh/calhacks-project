@@ -34,3 +34,20 @@ def test_rows_from_round_events():
     rows = viz.rows_from_events(events)
     assert rows == [viz.Row(round=1, plan=p["name"], infected=res.infectedCount,
                             verdicts={"Inventory": "accept", "Clinical": "reject"})]
+
+
+def test_hospital_map_is_a_small_png_and_marks_infection():
+    from logic import hospital as hospital_mod
+    h = hospital_mod.load()
+    plain = viz.hospital_map(h, "Bayview General")
+    hit = viz.hospital_map(h, "Attack from MRI 2", infected={"mri_2", "srv_pacs"}, patient_zero="mri_2")
+    assert plain[:4] == b"\x89PNG" and hit[:4] == b"\x89PNG" and plain != hit
+    assert len(plain) < 30_000 and len(hit) < 30_000
+
+
+def test_before_after_fits_in_a_card_with_the_chart():
+    from logic import hospital as hospital_mod
+    h = hospital_mod.load()
+    pair = viz.before_after(h, "mri_2", {"mri_2", "srv_pacs", "srv_file", "ws_lab_1"}, {"mri_2"})
+    chart = viz.negotiation_chart("MRI 2", 9, ROWS)
+    assert len(viz.data_uri(pair)) + len(viz.data_uri(chart)) < 60_000

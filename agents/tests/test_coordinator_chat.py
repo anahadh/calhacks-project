@@ -316,3 +316,18 @@ def test_ask_selection_reports_a_refusal(coord, monkeypatch):
     monkeypatch.setattr(c, "ask_agent", refuse)
     run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "ask", "source": "hippocratech", "agent": "flow", "about": ""}'))
     assert "a round is running" in sent[-1][3]
+
+
+def test_view_hospital_sends_the_map_card_without_the_model(coord, monkeypatch):
+    import json
+    c, sent = coord
+
+    async def never(*a, **k):
+        raise AssertionError("the model must not be asked")
+
+    monkeypatch.setattr(c.brain, "respond", never)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "let me view my hospital"))
+    to, message, session_id, text, card = sent[-1]
+    s = json.dumps(card)
+    assert card and '"type": "image"' in s and "data:image/png;base64," in s and '"action": "simulate"' in s
+    assert "devices" in text

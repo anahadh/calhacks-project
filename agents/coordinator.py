@@ -70,6 +70,7 @@ class ChatRound:
     last_sent: float = 0.0  # monotonic time of the last trace message
     flush: asyncio.Task | None = None  # the pending coalesced send, if any
     summary_sent: bool = False
+    map_image: str | None = None  # the baseline spread on the floor plan, once known
 
 
 NARRATE_INTERVAL_S = 10.0  # ASI:One rate-limits bursts (429): at most one trace message per interval
@@ -152,6 +153,14 @@ async def begin(ctx: Context, req: StartRound) -> RestAck:
             if "error" in got:
                 raise RuntimeError(got["error"])
             baseline = RunResult.parse_obj(got)
+            if req.sessionId in chats:
+                try:
+                    pz = H.devices[req.patientZero]["name"]
+                    chats[req.sessionId].map_image = viz.data_uri(viz.hospital_map(
+                        H, f"Ransomware from {pz}, no segmentation", {d.id for d in baseline.infectedDevices}, req.patientZero,
+                        f"{baseline.infectedCount} devices infected in {baseline.ticks} ticks · red = infected, gold = patient zero"))
+                except Exception as e:
+                    ctx.logger.error(f"map failed: {e!r}")
             await narrate_chat(ctx, req.sessionId, narrate.mcp("test_run", req.patientZero,
                                f"{baseline.infectedCount} devices infected over {baseline.ticks} ticks"))
             rnd = Round(req.sessionId, H)
@@ -290,7 +299,7 @@ async def _flush_trace(ctx: Context, session_id: str, wait: float) -> None:
     c.last_sent = time.monotonic()
     rnd = rounds.get(session_id)
     msg = cards.trace_card(H, session_id, c.device_name, list(c.trace), rnd.round if rnd else 1,
-                           rnd.state if rnd else "starting", room_url(session_id))
+                           rnd.state if rnd else "starting", room_url(session_id), image=c.map_image)
     await reply_card(ctx, c.sender, msg, session_id)
 
 
@@ -494,6 +503,14 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         await relay.post(sid, rounds[sid].round if sid in rounds else 0, "humans", NAME, "chat",
                          {"text": text, "via": "asi1"}, direction="received")
     picked.pop(sender, None)
+    if chat.wants_hospital(text):  # "let me view my hospital": the floor plan and where an attack could start, in code
+        listed = await mcp_server.call("list_devices", {})
+        n = len(listed) if isinstance(listed, list) else len(H.devices)
+        image = viz.data_uri(viz.hospital_map(H, "Your hospital"))
+        await reply_card(ctx, sender, cards.hospital_card(H, chat.devices_on_network(H), image,
+                         f"Here's your hospital: {len(H.rooms)} rooms and {n} devices on the network. "
+                         f"Tap a device to see what a ransomware attack starting there would do."), sid)
+        return
     # An attack request starts a round at once, decided in code: the reply is instant and the
     # round narrates itself. Only an unresolvable device falls through to the model.
     wanted = chat.wants_round(text)
@@ -526,15 +543,17 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         rsid = want.split(":", 1)[1]
         rnd = rounds.get(rsid)
         if rnd is not None and rnd.recommendation is not None:
-            chart = None
+            chart = floor = None
             try:
                 rows = viz.rows_from_events(events.get(rsid, []))
                 if rows and rnd.baseline is not None:
                     device = chats[rsid].device_name if rsid in chats else rnd.patient_zero
                     chart = viz.data_uri(viz.negotiation_chart(device, rnd.baseline.infectedCount, rows))
+                    floor = viz.data_uri(viz.before_after(H, rnd.patient_zero, {d.id for d in rnd.baseline.infectedDevices},
+                                                          {d.id for d in rnd.recommendation.testResult.infectedDevices}))
             except Exception as e:  # the chart is a garnish: the card still goes without it
                 ctx.logger.error(f"chart failed: {e!r}")
-            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), out, chart=chart)
+            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), out, chart=chart, floor=floor)
     if card is not None:
         await reply_card(ctx, sender, card, sid)
     else:
