@@ -49,12 +49,9 @@ export function Conclusion({
 
   if (!rec) return null;
 
-  const method = <Method rec={rec} messages={messages} segments={segments} name={name} />;
-
   if (!approved) {
     return (
       <>
-        {method}
         <DecisionCard
           rec={rec}
           saved={saved}
