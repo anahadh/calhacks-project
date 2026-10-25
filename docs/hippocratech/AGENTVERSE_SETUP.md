@@ -45,7 +45,7 @@ AGENT_MAILBOX=1          # register with an Agentverse mailbox (listed, reachabl
 LOCAL_RESOLVE=1          # and keep the four agents talking to each other directly at 127.0.0.1
 HIPPO_SIM_FIXTURES=1     # until hippo-sim exists: results from agents/fixtures/results/, labeled "fixture"
 
-ASI1_API_KEY=...         # optional: ASI:One (asi1-mini) words the agents' messages, labeled "via ASI:One"
+ASI1_API_KEY=...         # ASI:One (`asi1`; ASI1_MODEL overrides) reasons in chat and words the agents' messages, labeled "via ASI:One"
 ANTHROPIC_API_KEY=...    # optional: Claude words them when ASI1_API_KEY is unset (neither = the agents stop with an error; there is no fallback text)
 AGENTVERSE_API_KEY=...   # optional: lets each agent connect its own mailbox (step 5, option B)
 ```
@@ -99,10 +99,12 @@ The `run_all` output should no longer show `Failed to connect to mailbox server`
 2. Find the Coordinator: search for **Hippocratech Coordinator** or `@hippocratech-coordinator`, or open it from its Agentverse page (its chat button).
 
    Button and menu names here are from memory, not checked from this environment. Fix this page if they differ.
-3. Send `simulate ransomware from MRI 2`. You should get, in order:
-   - "Started a round from MRI 2 (session chat-…)…", right away;
-   - a summary when the round ends: the Flow Agent's proposal, the Clinical Workflow Agent's rejection and what it needs, the revision, both acceptances, and the recommendation with "Security, Clinical engineering must sign off".
-4. Send `status`, then something unrelated (you should get the help text), then `simulate ransomware from Toaster 9` (you should get "I don't know a device called…").
+3. Send `what happens if ransomware starts at MRI 2?` (or just `simulate ransomware from MRI 2`). You should get, in order:
+   - one sentence that the round started, right away;
+   - the live narration, one line per event as it happens: `Baseline: … Asking @hippocratech-flow for a plan…`, `[ @hippocratech-flow · round 1 ] proposed "…"`, `[ @hippocratech-clinical-workflow · round 1 ] rejected: …`, the revision, the acceptances, `[ @hippocratech-coordinator ] the agents agree on "…"`;
+   - a prose summary naming each agent by handle, with the recommendation card (before/after numbers, who must sign off, the live-room button).
+4. Ask follow-ups in plain words: `why did clinical workflow reject the first plan?` (the Coordinator answers from the round's events), `ask the flow agent which plans it tested` (you see `Asking @hippocratech-flow: …` and then `@hippocratech-flow said: "…"`), `where can an attack start?` (the device picker), `what is PACS?`.
+5. @-mention a specialist directly, e.g. `@hippocratech-inventory which devices can't you identify?`: it answers from its own state.
 
 Meanwhile, `run_all` prints every agent message as usual. The chat round's rows are in `agents/logs/chat-<id>.jsonl`, and the chat lines in `agents/logs/asi1-chat.jsonl`.
 
@@ -135,4 +137,5 @@ Then set `HIPPO_WEB_URL=https://<random>.trycloudflare.com` in `agents/.env` and
 
 ## 8. Chatting with the specialists
 
-Inventory, Flow and Clinical Workflow also speak the chat protocol (`agents/agent_chat.py`). They answer any message with what they do and the last thing they said in a round, and point to the Coordinator to start one. They never start rounds themselves. Their READMEs carry the `innovationlab` and `hackathon` tags, and the Coordinator's README lists all four handles and addresses.
+Inventory, Flow and Clinical Workflow also speak the chat protocol (`agents/agent_chat.py`), on the same reasoning loop as the Coordinator (`agents/brain.py`) with their own tools over the state they keep per round (the plans Flow tested, the devices Inventory can't confirm and the questions it asked, the verdicts Clinical Workflow gave and the flows a plan broke) plus the hospital's MCP tools (`agents/mcp_server.py`). They never start rounds themselves; the Coordinator reaches them with `ask_agent`. Their READMEs carry the `innovationlab` and `hackathon` tags, and the Coordinator's README lists all four handles and addresses.
+
