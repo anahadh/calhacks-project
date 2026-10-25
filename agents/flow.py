@@ -165,6 +165,12 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
                           if (c := candidates_mod.from_proposal(H, i, p.name, p.strategy, p.rationale, p.tradeoff, p.cut, keep,
                                                                 candidates_mod.rule_limit(req.constraints)))]
             candidates += candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints, starts=STARTS)
+        # Round 1 is the naive plan on purpose: wall off the department the attack started in. The
+        # reviewers' objections (scans cut from PACS, other starts unprotected) are what the next rounds fix.
+        if req.revise is None and not req.constraints:
+            first = candidates_mod.naive(H, req.patientZero, keep)
+            if first is not None:
+                candidates = [first]
         tested = [(c, run_sim(c, req.patientZero, req.seed, req.challenges)) for c in candidates]
         if not tested:
             raise RuntimeError("no candidate plan: every connection the attack used is one the agents must keep")

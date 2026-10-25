@@ -293,6 +293,17 @@ def from_proposal(h: HospitalIndex, i: int, name: str, strategy: str, rationale:
     return candidate(h, f"proposed_{i}", strategy, name, set(cut), keep, rationale, tradeoff, limit)
 
 
+def naive(h: HospitalIndex, patient_zero: str, keep: set[str]) -> Candidate | None:
+    """The obvious first idea, on purpose: wall off the department the attack started in from the
+    rest of the hospital, every link, clinical ones included. It holds this attack and nothing
+    else, and the reviewers say why: scans stop reaching PACS, and the other 15 starts still run."""
+    zone = h.zone(patient_zero)
+    cut = {f["id"] for f in active_flows(h) if cross_segment(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"]))}
+    return candidate(h, "naive_quarantine", "max_containment", f"Wall off {zone_name(zone)}", cut, keep,
+                     f"Cut every connection between {zone_name(zone)}, where the attack started, and the rest of the hospital.",
+                     "Fast to write and nothing else is touched; it protects only against an attack that starts here.")
+
+
 def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constraints: list[Constraint],
              path: set[str] | None = None, starts: list[str] | None = None) -> list[Candidate]:
     """The algorithmic candidate: the optimizer over every start. (The other plans come from the model.)"""

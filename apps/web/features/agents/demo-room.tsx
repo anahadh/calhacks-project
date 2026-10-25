@@ -9,7 +9,7 @@ import { DemoScene } from "./demo-scene";
 import { demoScript, eventsFromRows, reopenedFromRows, type DemoEvent, type Verb } from "./demo-script";
 import type { Names } from "./negotiation";
 import { RevealClock } from "./reveal";
-import { Transcript } from "./agent-room";
+import { createdMs, elapsedLabel, entryOf } from "./transcript";
 import type { AgentMessageRow, RoundState } from "@/lib/stdb/types";
 
 // The scripted negotiation, top and center: a web of the four agents around the
@@ -173,9 +173,7 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
               </div>
             )}
             {chat && tab === "chat" ? (
-              <div className="flex min-h-0 flex-1 flex-col px-5 pb-5">
-                <Transcript messages={chat.rows} names={chat.names} />
-              </div>
+              <TerminalLog rows={chat.rows} names={chat.names} />
             ) : (
               <ol ref={feed} className="scroll-quiet m-0 flex min-h-0 flex-1 list-none flex-col gap-2 overflow-y-auto p-5">
                 {events.map((e, i) => (
@@ -321,6 +319,42 @@ function Bubble({ e, fresh }: { e: DemoEvent; fresh: boolean }) {
         )}
       </div>
     </li>
+  );
+}
+
+/** The full chat as a terminal: every row, full text, mono and phosphor on black. */
+function TerminalLog({ rows, names }: { rows: readonly AgentMessageRow[]; names: Names }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    box.current?.scrollTo({ top: box.current.scrollHeight });
+  }, [rows.length]);
+  const times = rows.map((m) => createdMs(m));
+  const start = Math.min(...times.filter((t): t is number => t !== undefined), Infinity);
+  return (
+    <div ref={box} className="scroll-quiet mx-5 mb-5 mt-3 min-h-0 flex-1 overflow-y-auto rounded-panel border border-[#1F3A2A] bg-[#060907] p-4 font-mono text-[12.5px] leading-[1.55] text-[#9FE6B0]">
+      <div className="text-[#4C8A5C]">hippocratech@agents:~$ tail -f agent_message.log</div>
+      {rows.map((m) => {
+        const e = entryOf(m, names);
+        const t = times[rows.indexOf(m)];
+        return (
+          <div key={m.seq} className="mt-2 whitespace-pre-wrap break-words">
+            <span className="text-[#4C8A5C]">[{elapsedLabel(t === undefined || start === Infinity ? undefined : t - start)}]</span>{" "}
+            <span className="text-[#E6F5EA]">#{m.seq}</span>{" "}
+            <span style={{ color: SPEAKER_COLOR[m.from] }}>{m.from}</span>
+            <span className="text-[#4C8A5C]"> → </span>
+            <span style={{ color: SPEAKER_COLOR[m.to] }}>{m.to}</span>{" "}
+            <span className="text-[#E6F5EA]">{m.type}</span>
+            {" · "}
+            {e.subject}
+            {e.detail && <div className="pl-6 text-[#6FB07F]">{e.detail}</div>}
+            {e.quote && <div className="pl-6 text-[#D7F3DF]">“{e.quote}”{e.asi1 ? "  [asi1]" : e.template ? "  [template]" : "  [claude]"}</div>}
+          </div>
+        );
+      })}
+      <div className="mt-2 text-[#4C8A5C]">
+        <span className="animate-pulse">▌</span>
+      </div>
+    </div>
   );
 }
 
