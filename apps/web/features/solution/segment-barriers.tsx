@@ -6,7 +6,7 @@ import { Html, Line } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { to3, WALL_H } from "@/components/scene/space";
 import type { Hospital, Point } from "@/lib/stdb/types";
-import { hullOf, type Segment } from "./pair";
+import { roundedHullOf, type Segment } from "./pair";
 
 // The plan's segmentation rising out of the floor (HospitalScene's children).
 // A segment is a functional network (segments.ts): the machines of one kind
@@ -53,7 +53,7 @@ export function SegmentBarriers({
           if (!d || !r || r.floorId !== fid) continue;
           byRoom.set(r.id, [...(byRoom.get(r.id) ?? []), d.position]);
         }
-        const hulls = [...byRoom.values()].map((pts) => hullOf(pts, PAD)).filter((h) => h.length >= 3);
+        const hulls = [...byRoom.values()].map((pts) => roundedHullOf(pts, PAD)).filter((h) => h.length >= 3);
         if (!hulls.length) continue;
         const biggest = [...byRoom.values()].sort((a, b) => b.length - a.length)[0];
         const anchor = biggest.reduce((a, p) => (p[1] < a[1] ? p : a), biggest[0]);

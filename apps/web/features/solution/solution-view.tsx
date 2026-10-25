@@ -17,6 +17,7 @@ import {
   type Delta, type Segment,
 } from "./pair";
 import { Conclusion } from "./conclusion";
+import { HoleLines } from "./hole-lines";
 import { SegmentBarriers } from "./segment-barriers";
 import { functionalSegmentsOf } from "./segments";
 import { SegmentHalos } from "./segment-halos";
@@ -179,6 +180,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     view={roleView}
                   >
                     <SegmentBarriers hospital={hospital} segments={segments} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
+                    <HoleLines hospital={hospital} kept={flows.kept} segmentOf={segmentOf} litZone={hoveredZone ?? listZone} floorId={floor === "all" ? undefined : floor} />
                     <SegmentHalos hospital={hospital} segments={segments} devices={rows.devices} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
                   </HospitalScene>
                 </SceneBoundary>

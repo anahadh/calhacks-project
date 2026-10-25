@@ -360,3 +360,37 @@ export function planSegmentsOf(hospital: Hospital, devices: readonly DeviceState
       };
     });
 }
+
+
+/**
+ * A rounded outline around points: the convex hull grown by `r` with round corners
+ * (one machine → a circle, two → a pill, more → a blob). For the plan's clusters on the map.
+ */
+export function roundedHullOf(points: readonly Point[], r = 1.6, arc = 6): Point[] {
+  const pts = [...new Map(points.map((p) => [`${p[0]},${p[1]}`, p])).values()];
+  if (!pts.length) return [];
+  const core = pts.length >= 3 ? hullOf(pts, 0) : pts;
+  const out: Point[] = [];
+  const n = core.length;
+  if (n === 1) {
+    for (let i = 0; i < 24; i++) out.push([core[0][0] + r * Math.cos((2 * Math.PI * i) / 24), core[0][1] + r * Math.sin((2 * Math.PI * i) / 24)]);
+    return out;
+  }
+  // Walk the hull counter-clockwise; at each vertex sweep the arc from the incoming edge's outward normal to the outgoing one's.
+  const ccw = n >= 3 && core.reduce((a, p, i) => a + (p[0] * core[(i + 1) % n][1] - core[(i + 1) % n][0] * p[1]), 0) < 0 ? [...core].reverse() : core;
+  const normal = (a: Point, b: Point): number => Math.atan2(-(b[0] - a[0]), b[1] - a[1]); // left of a→b … outward for a ccw hull
+  for (let i = 0; i < ccw.length; i++) {
+    const prev = ccw[(i - 1 + ccw.length) % ccw.length];
+    const cur = ccw[i];
+    const next = ccw[(i + 1) % ccw.length];
+    let a0 = normal(prev, cur);
+    let a1 = normal(cur, next);
+    if (ccw.length === 2) a1 = a0 + Math.PI; // a pill: half a circle at each end
+    while (a1 < a0) a1 += 2 * Math.PI;
+    for (let k = 0; k <= arc; k++) {
+      const t = a0 + ((a1 - a0) * k) / arc;
+      out.push([cur[0] + r * Math.cos(t), cur[1] + r * Math.sin(t)]);
+    }
+  }
+  return out;
+}
