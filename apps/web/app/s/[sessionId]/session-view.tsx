@@ -203,6 +203,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                 ) : (
                 <DemoRoom
                   onClose={() => setView("simulation")}
+                  chat={{ rows: session.messages, names: index }}
                   status={session.roundState.state === "running" ? "The agents are finalizing the plan behind the scenes…" : session.roundState.state === "idle" && !session.messages.length ? "Press Create segmentation plan to wake the agents." : undefined}
                   options={
                     session.recommendations.length ? (

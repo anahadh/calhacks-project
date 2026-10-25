@@ -38,7 +38,7 @@ const VERB: Record<Verb, { label: string; color: string; glyph: string }> = {
   recommends: { label: "sends for sign-off", color: "#3DD68C", glyph: "■" },
 };
 
-export function DemoRoom({ onClose, options, status }: { onClose?: () => void; options?: ReactNode; status?: string }) {
+export function DemoRoom({ onClose, options, status, chat }: { onClose?: () => void; options?: ReactNode; status?: string; /** The session's real agent rows, for the Full chat tab. */ chat?: { rows: readonly AgentMessageRow[]; names: Names } }) {
   const [script, setScript] = useState<DemoEvent[]>(() => demoScript());
   const [shown, setShown] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -63,6 +63,7 @@ export function DemoRoom({ onClose, options, status }: { onClose?: () => void; o
       onClose={onClose}
       options={options}
       status={status}
+      chat={chat && chat.rows.length ? chat : undefined}
     />
   );
 }
