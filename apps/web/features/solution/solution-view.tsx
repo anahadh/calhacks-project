@@ -52,7 +52,13 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const tick = clock.tick;
   const flows = useMemo(() => planFlows(hospital, planRun), [hospital, planRun]);
   // The plan's segments: machines still joined by lateral links after its cuts, with the run's infected counts.
-  const segments = useMemo(() => planSegmentsOf(hospital, planScene.devices, planRun?.removedFlows ?? []), [hospital, planScene.devices, planRun?.removedFlows]);
+  // The run row's removed flows arrive with the engine's first frame; until then the recommendation's
+  // test run (the same engine, same policy: parity) says what the plan cuts.
+  const removedFlows = planRun?.removedFlows.length ? planRun.removedFlows : rec?.verified.removedFlows ?? [];
+  const segments = useMemo(
+    () => (removedFlows.length ? planSegmentsOf(hospital, planScene.devices, removedFlows) : []),
+    [hospital, planScene.devices, removedFlows],
+  );
   const segmentOf = useMemo(() => new Map(segments.flatMap((s) => s.deviceIds.map((id) => [id, s.zone] as const))), [segments]);
   const hoveredZone = hovered ? segmentOf.get(hovered) ?? null : null;
   const rowsError = base.error ?? rows.error;
