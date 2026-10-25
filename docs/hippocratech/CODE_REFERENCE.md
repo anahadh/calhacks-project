@@ -179,6 +179,7 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | Path | Owner | Role |
 |---|---|---|
 | `apps/web/app/page.tsx` | Base | Load screen |
+| `apps/web/public/logo-mark.svg` | Base | The big binary caduceus mark (graphite), from the Hippocra.tech Logo canvas; beside the load screen's heading |
 | `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (rail, one row-driven stepper, scene, side column) and Agents tab |
 | `apps/web/app/s/[sessionId]/solution/[recommendationId]/page.tsx` | F4 | The solution rerun route: opens the solution view for a recommendation's pair |
 | `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence avatars (`Presence` from `timeline.tsx`), Invite |

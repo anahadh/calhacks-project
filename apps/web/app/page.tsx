@@ -37,7 +37,11 @@ export default function Home() {
       </header>
 
       <main className="mx-auto flex w-full max-w-[1100px] flex-col gap-16 px-4 pb-16 pt-20 md:px-6 md:pt-[104px]">
-        <h1 className="m-0 text-center text-[40px] font-light leading-[48px] tracking-[-0.02em]">Run a simulation</h1>
+        <div className="flex items-center justify-center gap-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.svg" alt="" aria-hidden width={96} height={120} />
+          <h1 className="m-0 text-[40px] font-light leading-[48px] tracking-[-0.02em]">Run a simulation</h1>
+        </div>
 
         <section aria-labelledby="mine" className="flex flex-col gap-4">
           <h2 id="mine" className="eyebrow m-0">My hospitals</h2>
