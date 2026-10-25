@@ -153,6 +153,7 @@ def to_campaign(patient_zero: str, scenario: Scenario, *, window: int = 200) -> 
     return Campaign(
         campaign_id=f"app-{patient_zero}",
         initial_footholds=[patient_zero],
+        opportunistic=True,  # ransomware takes every host it can administer, not only service hosts
         events=[
             Event(t="2026-01-01T00:00:00", order=0, rule="tick", budget=window),
             Event(t="2026-01-01T06:00:00", order=0, rule="R6"),
@@ -182,8 +183,10 @@ def entry_points(hospital: dict) -> list[str]:
     out: list[str] = []
     for device in hospital["devices"]:
         node = by_id.get(device["id"])
+        # Servers are never patient zero: an attack lands on a desk (phishing, a
+        # bad USB, a vendor console), not on the file server or the DC.
         if (node is not None and node.host.os_family == "windows" and not node.medical_device
-                and device["id"] in sessions and device["id"] in lateral):
+                and node.kind == "ws" and device["id"] in sessions and device["id"] in lateral):
             out.append(device["id"])
     return out
 

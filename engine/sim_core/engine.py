@@ -320,14 +320,15 @@ class Engine:
 
     def next_target(self) -> str | None:
         unmet = {h for h in self.goals() if self.states[h].level < Level.controlled}
-        if not unmet:
+        if not unmet and not self.campaign.opportunistic:
             return None
         distances = self.topology.goal_distances(unmet, self.privileges - self.invalidated, self.domains_held)
         sources = self.execution_sources()
         candidates = [n.id for n in self.scenario.nodes if n.encryptable and not self.states[n.id].evicted and self.states[n.id].level < Level.controlled and n.id not in self.offline_backups and any(self.topology.reach(u, n.id, "admin") for u in sources) and any(self.topology.authorized(self.accounts[a], n.id, self.domains_held) for a in self.privileges - self.invalidated) and not (self.scenario.mfa_remote_access and "remote_access" in n.host.service_classes)]
         # Infinite-distance detours cannot lead to an unmet goal: don't perform
         # gratuitous encryption/spread simply because a flat graph permits it.
-        candidates = [h for h in candidates if distances[h] < 10**9]
+        if not self.campaign.opportunistic:
+            candidates = [h for h in candidates if distances[h] < 10**9]
         return min(candidates, key=lambda h: (distances[h], self.nodes[h].domain or "", self.nodes[h].dept, h), default=None)
 
     def tick(self, t: str) -> bool:

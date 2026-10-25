@@ -82,7 +82,7 @@ def test_run_sim_fixtures_and_errors(monkeypatch):
     base = tools.run_sim(None, "mri_2", 1337)
     assert isinstance(base, RunResult) and base.removedFlows == []
     cand = Candidate.parse_file(tools.FIXTURES / "candidates" / "cand_keep_scans.json")
-    assert tools.run_sim(cand, "mri_2", 1337).removedFlows == ["fl_8", "fl_9", "fl_10", "fl_61", "fl_62", "fl_63"]
+    assert tools.run_sim(cand, "mri_2", 1337).removedFlows == ["fl_8", "fl_9", "fl_10", "fl_61", "fl_62", "fl_63", "fl_72"]
     with pytest.raises(tools.ToolError, match="no fixture"):
         tools.run_sim(cand, "mri_2", 1337, ["vendor_link_mri3"])
     monkeypatch.setenv("HIPPO_SIM_FIXTURES", "0")

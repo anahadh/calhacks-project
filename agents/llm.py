@@ -326,7 +326,10 @@ PROPOSE_SYSTEM = (
     "Ransomware spreads from machine to machine over file sharing (smb) and remote desktop (rdp) using stolen admin logins; "
     "clinical traffic (hl7, dicom, https) does not carry it. Design 2 or 3 genuinely different segmentation plans for this "
     "hospital and this attack: for example by department, by device class, around the servers, or around where the attack "
-    "started. Keep clinical work running: avoid cutting what departments clearly need. Each plan is a list of connection ids "
+    "started. Make the plans different kinds of plan, not variations of one idea, and don't default to locking down the "
+    "server room unless this attack calls for it. Keep clinical work running: avoid cutting what departments clearly need. "
+    "Don't claim results (what stays unaffected, what it prevents): the simulator decides that; describe what each plan "
+    "cuts and why, and its cost to staff. Each plan is a list of connection ids "
     "to cut, chosen only from the ids given. Any numbers you write are ignored: every plan is tested in a simulator, and "
     "humans decide. Never write approved, ready or safe to deploy. "
     'Reply with JSON only: {"plans": [{"name": "...", "strategy": "least_disruption|max_containment|protect_critical_care", '

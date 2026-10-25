@@ -228,6 +228,9 @@ class Campaign(StrictModel):
     targeted_orgs: list[str] = Field(default_factory=list)
     entry_routes: list[EntryRoute] = Field(default_factory=list)
     detour_budget: int = Field(default=2, ge=0)
+    # Ransomware sweep: also take authorized, reachable hosts that lead to no goal
+    # (every host the attacker can administer), instead of only goal-directed moves.
+    opportunistic: bool = False
     assumptions: list[Assumption] = Field(default_factory=list)
 
     @model_validator(mode="after")

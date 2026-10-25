@@ -1,6 +1,6 @@
 {
   "patientZero": "mri_2",
-  "finalTick": 5,
+  "finalTick": 10,
   "removedFlows": [],
   "protectedBroken": [],
   "frames": [
@@ -396,16 +396,16 @@
           },
           {
             "deviceId": "ws_img_1",
-            "share": 0.75
+            "share": 0.89
           },
           {
             "deviceId": "srv_file",
-            "share": 0.5
+            "share": 0.78
           }
         ]
       },
       "run": {
-        "finalTick": 5,
+        "finalTick": 10,
         "removedFlows": [],
         "protectedBroken": [],
         "assumptions": [
@@ -473,11 +473,11 @@
           },
           {
             "deviceId": "ws_img_1",
-            "share": 0.75
+            "share": 0.89
           },
           {
             "deviceId": "srv_file",
-            "share": 0.5
+            "share": 0.78
           }
         ]
       }
@@ -540,11 +540,11 @@
           },
           {
             "deviceId": "ws_img_1",
-            "share": 0.75
+            "share": 0.89
           },
           {
             "deviceId": "srv_file",
-            "share": 0.5
+            "share": 0.78
           }
         ]
       }
@@ -608,11 +608,11 @@
           },
           {
             "deviceId": "ws_img_1",
-            "share": 0.75
+            "share": 0.89
           },
           {
             "deviceId": "srv_file",
-            "share": 0.5
+            "share": 0.78
           }
         ]
       }
@@ -677,29 +677,399 @@
           },
           {
             "deviceId": "ws_img_1",
-            "share": 0.75
+            "share": 0.89
           },
           {
             "deviceId": "srv_file",
-            "share": 0.5
+            "share": 0.78
           }
         ]
       }
     },
     {
       "tick": 5,
+      "final": false,
+      "devices": [
+        {
+          "deviceId": "ws_lab",
+          "infected": true,
+          "infectedAtTick": 5,
+          "infectedBy": "srv_file"
+        }
+      ],
+      "services": [],
+      "patients": [],
+      "attempts": [
+        {
+          "from": "srv_file",
+          "to": "ws_lab",
+          "flowId": "fl_24",
+          "success": true
+        }
+      ],
+      "events": [
+        {
+          "kind": "device_infected",
+          "targetId": "ws_lab",
+          "text": "Lab WS compromised"
+        }
+      ],
+      "snapshot": {
+        "infectedCount": 6,
+        "patientsAffected": 0,
+        "infectedIds": [
+          "mri_2",
+          "srv_ehr",
+          "srv_file",
+          "ws_img_1",
+          "ws_img_2",
+          "ws_lab"
+        ],
+        "servicesDown": [],
+        "patients": {
+          "pg_er": "ok",
+          "pg_waiting": "ok",
+          "pg_scan": "ok",
+          "pg_icu": "ok",
+          "pg_or": "ok",
+          "pg_ward": "ok"
+        }
+      },
+      "summary": {
+        "patientsAffected": 0,
+        "devicesCompromised": 6,
+        "servicesDown": 0,
+        "delayedProcedures": 0,
+        "chokePoints": [
+          {
+            "deviceId": "mri_2",
+            "share": 1.0
+          },
+          {
+            "deviceId": "ws_img_1",
+            "share": 0.89
+          },
+          {
+            "deviceId": "srv_file",
+            "share": 0.78
+          }
+        ]
+      }
+    },
+    {
+      "tick": 6,
+      "final": false,
+      "devices": [
+        {
+          "deviceId": "ws_pharm",
+          "infected": true,
+          "infectedAtTick": 6,
+          "infectedBy": "srv_file"
+        }
+      ],
+      "services": [],
+      "patients": [],
+      "attempts": [
+        {
+          "from": "srv_file",
+          "to": "ws_pharm",
+          "flowId": "fl_25",
+          "success": true
+        }
+      ],
+      "events": [
+        {
+          "kind": "device_infected",
+          "targetId": "ws_pharm",
+          "text": "Pharmacy WS compromised"
+        }
+      ],
+      "snapshot": {
+        "infectedCount": 7,
+        "patientsAffected": 0,
+        "infectedIds": [
+          "mri_2",
+          "srv_ehr",
+          "srv_file",
+          "ws_img_1",
+          "ws_img_2",
+          "ws_lab",
+          "ws_pharm"
+        ],
+        "servicesDown": [],
+        "patients": {
+          "pg_er": "ok",
+          "pg_waiting": "ok",
+          "pg_scan": "ok",
+          "pg_icu": "ok",
+          "pg_or": "ok",
+          "pg_ward": "ok"
+        }
+      },
+      "summary": {
+        "patientsAffected": 0,
+        "devicesCompromised": 7,
+        "servicesDown": 0,
+        "delayedProcedures": 0,
+        "chokePoints": [
+          {
+            "deviceId": "mri_2",
+            "share": 1.0
+          },
+          {
+            "deviceId": "ws_img_1",
+            "share": 0.89
+          },
+          {
+            "deviceId": "srv_file",
+            "share": 0.78
+          }
+        ]
+      }
+    },
+    {
+      "tick": 7,
+      "final": false,
+      "devices": [
+        {
+          "deviceId": "ws_rad_1",
+          "infected": true,
+          "infectedAtTick": 7,
+          "infectedBy": "srv_file"
+        }
+      ],
+      "services": [],
+      "patients": [],
+      "attempts": [
+        {
+          "from": "srv_file",
+          "to": "ws_rad_1",
+          "flowId": "fl_61",
+          "success": true
+        }
+      ],
+      "events": [
+        {
+          "kind": "device_infected",
+          "targetId": "ws_rad_1",
+          "text": "Reading WS 1 compromised"
+        }
+      ],
+      "snapshot": {
+        "infectedCount": 8,
+        "patientsAffected": 0,
+        "infectedIds": [
+          "mri_2",
+          "srv_ehr",
+          "srv_file",
+          "ws_img_1",
+          "ws_img_2",
+          "ws_lab",
+          "ws_pharm",
+          "ws_rad_1"
+        ],
+        "servicesDown": [],
+        "patients": {
+          "pg_er": "ok",
+          "pg_waiting": "ok",
+          "pg_scan": "ok",
+          "pg_icu": "ok",
+          "pg_or": "ok",
+          "pg_ward": "ok"
+        }
+      },
+      "summary": {
+        "patientsAffected": 0,
+        "devicesCompromised": 8,
+        "servicesDown": 0,
+        "delayedProcedures": 0,
+        "chokePoints": [
+          {
+            "deviceId": "mri_2",
+            "share": 1.0
+          },
+          {
+            "deviceId": "ws_img_1",
+            "share": 0.89
+          },
+          {
+            "deviceId": "srv_file",
+            "share": 0.78
+          }
+        ]
+      }
+    },
+    {
+      "tick": 8,
+      "final": false,
+      "devices": [
+        {
+          "deviceId": "ws_rad_2",
+          "infected": true,
+          "infectedAtTick": 8,
+          "infectedBy": "srv_file"
+        }
+      ],
+      "services": [],
+      "patients": [],
+      "attempts": [
+        {
+          "from": "srv_file",
+          "to": "ws_rad_2",
+          "flowId": "fl_62",
+          "success": true
+        }
+      ],
+      "events": [
+        {
+          "kind": "device_infected",
+          "targetId": "ws_rad_2",
+          "text": "Reading WS 2 compromised"
+        }
+      ],
+      "snapshot": {
+        "infectedCount": 9,
+        "patientsAffected": 0,
+        "infectedIds": [
+          "mri_2",
+          "srv_ehr",
+          "srv_file",
+          "ws_img_1",
+          "ws_img_2",
+          "ws_lab",
+          "ws_pharm",
+          "ws_rad_1",
+          "ws_rad_2"
+        ],
+        "servicesDown": [],
+        "patients": {
+          "pg_er": "ok",
+          "pg_waiting": "ok",
+          "pg_scan": "ok",
+          "pg_icu": "ok",
+          "pg_or": "ok",
+          "pg_ward": "ok"
+        }
+      },
+      "summary": {
+        "patientsAffected": 0,
+        "devicesCompromised": 9,
+        "servicesDown": 0,
+        "delayedProcedures": 0,
+        "chokePoints": [
+          {
+            "deviceId": "mri_2",
+            "share": 1.0
+          },
+          {
+            "deviceId": "ws_img_1",
+            "share": 0.89
+          },
+          {
+            "deviceId": "srv_file",
+            "share": 0.78
+          }
+        ]
+      }
+    },
+    {
+      "tick": 9,
+      "final": false,
+      "devices": [
+        {
+          "deviceId": "ws_rad_3",
+          "infected": true,
+          "infectedAtTick": 9,
+          "infectedBy": "srv_file"
+        }
+      ],
+      "services": [],
+      "patients": [],
+      "attempts": [
+        {
+          "from": "srv_file",
+          "to": "ws_rad_3",
+          "flowId": "fl_63",
+          "success": true
+        }
+      ],
+      "events": [
+        {
+          "kind": "device_infected",
+          "targetId": "ws_rad_3",
+          "text": "Reading WS 3 compromised"
+        }
+      ],
+      "snapshot": {
+        "infectedCount": 10,
+        "patientsAffected": 0,
+        "infectedIds": [
+          "mri_2",
+          "srv_ehr",
+          "srv_file",
+          "ws_img_1",
+          "ws_img_2",
+          "ws_lab",
+          "ws_pharm",
+          "ws_rad_1",
+          "ws_rad_2",
+          "ws_rad_3"
+        ],
+        "servicesDown": [],
+        "patients": {
+          "pg_er": "ok",
+          "pg_waiting": "ok",
+          "pg_scan": "ok",
+          "pg_icu": "ok",
+          "pg_or": "ok",
+          "pg_ward": "ok"
+        }
+      },
+      "summary": {
+        "patientsAffected": 0,
+        "devicesCompromised": 10,
+        "servicesDown": 0,
+        "delayedProcedures": 0,
+        "chokePoints": [
+          {
+            "deviceId": "mri_2",
+            "share": 1.0
+          },
+          {
+            "deviceId": "ws_img_1",
+            "share": 0.89
+          },
+          {
+            "deviceId": "srv_file",
+            "share": 0.78
+          }
+        ]
+      }
+    },
+    {
+      "tick": 10,
       "final": true,
       "devices": [],
       "services": [
         {
           "serviceId": "svc_mri",
           "down": true,
-          "downSinceTick": 5
+          "downSinceTick": 10
         },
         {
           "serviceId": "svc_ehr",
           "down": true,
-          "downSinceTick": 5
+          "downSinceTick": 10
+        },
+        {
+          "serviceId": "svc_pharm",
+          "down": true,
+          "downSinceTick": 10
+        },
+        {
+          "serviceId": "svc_lab",
+          "down": true,
+          "downSinceTick": 10
         }
       ],
       "patients": [
@@ -737,24 +1107,41 @@
           "text": "Health records offline"
         },
         {
+          "kind": "service_down",
+          "targetId": "svc_pharm",
+          "text": "Pharmacy dispensing offline"
+        },
+        {
+          "kind": "service_down",
+          "targetId": "svc_lab",
+          "text": "Lab results offline"
+        },
+        {
           "kind": "diversion",
           "targetId": "rm_er",
           "text": "Ambulances diverted from Emergency"
         }
       ],
       "snapshot": {
-        "infectedCount": 5,
+        "infectedCount": 10,
         "patientsAffected": 90,
         "infectedIds": [
           "mri_2",
           "srv_ehr",
           "srv_file",
           "ws_img_1",
-          "ws_img_2"
+          "ws_img_2",
+          "ws_lab",
+          "ws_pharm",
+          "ws_rad_1",
+          "ws_rad_2",
+          "ws_rad_3"
         ],
         "servicesDown": [
           "svc_ehr",
-          "svc_mri"
+          "svc_lab",
+          "svc_mri",
+          "svc_pharm"
         ],
         "patients": {
           "pg_er": "diverted",
@@ -767,8 +1154,8 @@
       },
       "summary": {
         "patientsAffected": 90,
-        "devicesCompromised": 5,
-        "servicesDown": 2,
+        "devicesCompromised": 10,
+        "servicesDown": 4,
         "delayedProcedures": 64,
         "chokePoints": [
           {
@@ -777,11 +1164,11 @@
           },
           {
             "deviceId": "ws_img_1",
-            "share": 0.75
+            "share": 0.89
           },
           {
             "deviceId": "srv_file",
-            "share": 0.5
+            "share": 0.78
           }
         ]
       }
@@ -860,7 +1247,9 @@
     },
     {
       "deviceId": "ws_lab",
-      "infected": false
+      "infected": true,
+      "infectedAtTick": 5,
+      "infectedBy": "srv_file"
     },
     {
       "deviceId": "pc_1",
@@ -868,7 +1257,9 @@
     },
     {
       "deviceId": "ws_pharm",
-      "infected": false
+      "infected": true,
+      "infectedAtTick": 6,
+      "infectedBy": "srv_file"
     },
     {
       "deviceId": "ws_admin_1",
@@ -980,22 +1371,28 @@
     },
     {
       "deviceId": "ws_rad_1",
-      "infected": false
+      "infected": true,
+      "infectedAtTick": 7,
+      "infectedBy": "srv_file"
     },
     {
       "deviceId": "ws_rad_2",
-      "infected": false
+      "infected": true,
+      "infectedAtTick": 8,
+      "infectedBy": "srv_file"
     },
     {
       "deviceId": "ws_rad_3",
-      "infected": false
+      "infected": true,
+      "infectedAtTick": 9,
+      "infectedBy": "srv_file"
     }
   ],
   "services": [
     {
       "serviceId": "svc_mri",
       "down": true,
-      "downSinceTick": 5
+      "downSinceTick": 10
     },
     {
       "serviceId": "svc_reading",
@@ -1004,7 +1401,7 @@
     {
       "serviceId": "svc_ehr",
       "down": true,
-      "downSinceTick": 5
+      "downSinceTick": 10
     },
     {
       "serviceId": "svc_er",
@@ -1016,11 +1413,13 @@
     },
     {
       "serviceId": "svc_pharm",
-      "down": false
+      "down": true,
+      "downSinceTick": 10
     },
     {
       "serviceId": "svc_lab",
-      "down": false
+      "down": true,
+      "downSinceTick": 10
     }
   ],
   "patients": [
@@ -1073,6 +1472,36 @@
       "to": "srv_ehr",
       "flowId": "fl_12",
       "success": true
+    },
+    {
+      "from": "srv_file",
+      "to": "ws_lab",
+      "flowId": "fl_24",
+      "success": true
+    },
+    {
+      "from": "srv_file",
+      "to": "ws_pharm",
+      "flowId": "fl_25",
+      "success": true
+    },
+    {
+      "from": "srv_file",
+      "to": "ws_rad_1",
+      "flowId": "fl_61",
+      "success": true
+    },
+    {
+      "from": "srv_file",
+      "to": "ws_rad_2",
+      "flowId": "fl_62",
+      "success": true
+    },
+    {
+      "from": "srv_file",
+      "to": "ws_rad_3",
+      "flowId": "fl_63",
+      "success": true
     }
   ],
   "events": [
@@ -1102,6 +1531,31 @@
       "text": "EHR engine compromised"
     },
     {
+      "kind": "device_infected",
+      "targetId": "ws_lab",
+      "text": "Lab WS compromised"
+    },
+    {
+      "kind": "device_infected",
+      "targetId": "ws_pharm",
+      "text": "Pharmacy WS compromised"
+    },
+    {
+      "kind": "device_infected",
+      "targetId": "ws_rad_1",
+      "text": "Reading WS 1 compromised"
+    },
+    {
+      "kind": "device_infected",
+      "targetId": "ws_rad_2",
+      "text": "Reading WS 2 compromised"
+    },
+    {
+      "kind": "device_infected",
+      "targetId": "ws_rad_3",
+      "text": "Reading WS 3 compromised"
+    },
+    {
       "kind": "service_down",
       "targetId": "svc_mri",
       "text": "MRI imaging offline"
@@ -1110,6 +1564,16 @@
       "kind": "service_down",
       "targetId": "svc_ehr",
       "text": "Health records offline"
+    },
+    {
+      "kind": "service_down",
+      "targetId": "svc_pharm",
+      "text": "Pharmacy dispensing offline"
+    },
+    {
+      "kind": "service_down",
+      "targetId": "svc_lab",
+      "text": "Lab results offline"
     },
     {
       "kind": "diversion",
@@ -1140,7 +1604,27 @@
     },
     {
       "tick": 5,
-      "infectedCount": 5
+      "infectedCount": 6
+    },
+    {
+      "tick": 6,
+      "infectedCount": 7
+    },
+    {
+      "tick": 7,
+      "infectedCount": 8
+    },
+    {
+      "tick": 8,
+      "infectedCount": 9
+    },
+    {
+      "tick": 9,
+      "infectedCount": 10
+    },
+    {
+      "tick": 10,
+      "infectedCount": 10
     }
   ],
   "chokePoints": [
@@ -1150,11 +1634,11 @@
     },
     {
       "deviceId": "ws_img_1",
-      "share": 0.75
+      "share": 0.89
     },
     {
       "deviceId": "srv_file",
-      "share": 0.5
+      "share": 0.78
     }
   ],
   "delayedProcedures": 64,
@@ -1164,6 +1648,6 @@
     "[S] Windows medical consoles are modeled as attackable IT nodes; the vendor scanners never encrypt.",
     "[S] Each spread step is drawn along a real SMB/RDP connection between the device taken and the one it was taken from; the exact order inside a tick is a reconstruction."
   ],
-  "encryptedHosts": 5,
+  "encryptedHosts": 10,
   "medicalDevicesEncrypted": 0
 }

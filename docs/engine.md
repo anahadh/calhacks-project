@@ -214,8 +214,13 @@ notes in the response `assumptions`):
 - **Lateral movement:** `smb`/`rdp` links carry admin-class reach; `https`/`dicom`/
   `hl7` stay application-layer.
 - **Identity layer:** `domains`/`accounts`/`trusts` are used when the hospital
-  supplies them; otherwise a single domain, its DC, and a domain-admin are
-  **synthesized** (invented inputs, labeled `[S]`).
+  supplies them (the demo does: see `HOSPITAL_SCHEMA.md`, "Identity layer");
+  otherwise a single domain, its DC, and a domain-admin are **synthesized**
+  (invented inputs, labeled `[S]`).
+- **Opportunistic campaign:** `to_campaign` sets `Campaign.opportunistic=True`, so
+  the attack takes every reachable host a possessed account administers, goal
+  hosts first, instead of stopping at the hosts services need. Backtest campaigns
+  leave it `False` and keep the goal-directed rule.
 
 `app_policy.apply_policy(hospital, policy=None, challenges=())` returns an
 `AppliedPolicy(hospital, removed_flows, protected_broken)`: the hospital carrying

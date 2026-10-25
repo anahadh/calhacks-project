@@ -139,7 +139,7 @@ def test_model_comes_from_env(client, monkeypatch):
 
 def test_invented_number_is_retried_then_breaks(client):
     _, f = reject_verdict()
-    fake = client(answer("I can't accept this: 17 devices would fall."), answer("I can't accept this: 9 flows break."))
+    fake = client(answer("I can't accept this: 17 devices would fall."), answer("I can't accept this: 37 flows break."))
     with pytest.raises(llm.LlmError, match="rejected twice"):
         run(llm.explain("verdict_reject", f))
     assert len(fake.calls) == 2

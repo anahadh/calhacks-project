@@ -191,7 +191,7 @@ def test_app_session_executes_a_hospital_live(tmp_path):
     resp = client.post("/app/session", json={"hospital": _demo_hospital(), "patient_zero": "mri_2"})
     assert resp.status_code == 200
     sim = resp.json()
-    assert sum(d["infected"] for d in sim["devices"]) > 5
+    assert sum(d["infected"] for d in sim["devices"]) > 1  # spreads past patient zero; the demo identity layer bounds how far
     assert sim["medicalDevicesEncrypted"] == 0
     assert len(sim["snapshots"]) == sim["finalTick"] + 1
     # the per-tick frames the run watcher drips into SpacetimeDB

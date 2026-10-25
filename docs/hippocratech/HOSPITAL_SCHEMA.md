@@ -81,7 +81,10 @@ One JSON object, at most 2 MB.
     "devices":  [ /* Device */ ],
     "flows":    [ /* Flow */ ],
     "services": [ /* Service */ ],
-    "patients": [ /* PatientGroup */ ]
+    "patients": [ /* PatientGroup */ ],
+    "domains":  [ /* Domain, optional */ ],
+    "trusts":   [ /* Trust, optional */ ],
+    "accounts": [ /* Account, optional */ ]
   }
 }
 ```
@@ -134,6 +137,38 @@ One JSON object, at most 2 MB.
 | `observed` | boolean, optional | default `true`. `true` = seen in traffic; `false` = documented only. The Flow Agent weighs unobserved flows as safer to cut |
 | `purpose` | string, optional | one line, shown when the flow is broken ("Scans to radiologists") |
 | `active` | boolean, optional | default `true`. `false` = exists only for a challenge (e.g. `vendor_link_mri3`), off until that challenge is applied |
+
+### Identity layer (`domains`, `trusts`, `accounts`), optional
+
+Who can administer what, and where their credentials are cached. The engine uses it
+verbatim (`sim_core.app_bridge.to_scenario`). Without it the bridge invents one domain
+admin with a session on every workstation, so every patient zero ends in the same
+place; with it, how far an attack gets depends on whose credentials are cached where it
+lands. The demo hospital carries one: a clinical help desk whose account is cached on
+every nurse station and clinical PC, a diagnostics help desk cached on the lab, pharmacy,
+imaging and reading PCs, an EHR interface service account cached on the EHR server and
+three clinical PCs, a PACS admin cached in Imaging, Reading and one IT desk, a backup
+service account on the file server, an IT help desk cached only on Admin WS 2 and 3, and
+one domain admin whose sessions sit only on the domain controller and Admin WS 1. So a
+ward start takes the clinical floor and the EHR, a lab start takes diagnostics and the
+servers, an IT desk takes everything but the DC, and only Admin WS 1 or the DC gives the
+domain admin. The app's campaign is opportunistic (`Campaign.opportunistic`): like
+ransomware it takes every host it can administer, not only the ones a service needs.
+
+| Field | Type | Rule |
+|---|---|---|
+| `domains[].id` | string | the Windows domain; the demo has one, `H` |
+| `domains[].dcs` | string[] | device ids of its domain controllers |
+| `accounts[].id` | string | unique, e.g. `H\\helpdesk_er` |
+| `accounts[].domain` | string | a `domains[].id` |
+| `accounts[].tier` | enum | `user`, `service`, `service_desk_admin`, `administrator`, `domain_admin`, … (`sim_core.schema.Account`) |
+| `accounts[].admin_to` | string[] | device ids this account can administer; `"*"` = every joined host in its domain |
+| `accounts[].sessions_on` | string[] | device ids where its credentials are cached; taking one of them hands the attacker the account |
+| `trusts` | `{ source, target }[]` | directed domain trusts; empty in the demo |
+
+A device is a legal patient zero only if it is a workstation, nurse station or Windows
+medical console (never a server or the DC), some account has a session on it, and it has
+an SMB/RDP link out (`POST /app/entry_points`).
 
 ### Service
 | Field | Type | Rule |
