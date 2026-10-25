@@ -77,6 +77,9 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `spacetime/src/solution.ts` (planned) | F4 | `solution_start`: two runs with a shared `pair_id`, advanced in lockstep |
 | `spacetime/src/agents.ts` | F1 | `defend_request` (any joined human; refused while the active run is `running` or a round is open; writes `defend_request_log`), `agent_message_add`, `agent_status_set`, `round_state_set` (server identity) |
 | `spacetime/src/question.ts` | F1 | `question_add` (server identity), `question_answer` (allowed roles only, from the caller's presence; never the server) |
+| `spacetime/src/role_views.ts` | F3 | Role views: which device-card fields (`CARD_FIELDS`) and connections (`ARC_MODE`) each role sees, as pure functions over the hospital file (`deviceCards`, `roleArcs`). Tune roles here only. Also imported by the web app for the offline demo |
+| `spacetime/src/views.ts` | F3 | Per-caller views `my_device_card` and `my_arcs`: read the caller's presence row (`ctx.sender`) and apply `role_views.ts` for their role; empty before joining |
+| `spacetime/test/views.test.ts` | F3 | Role views: each role gets only its fields and arcs, infected-by from the active run, follows a role change, nothing before joining |
 | `spacetime/src/recommendation.ts` | F2 | `recommendation_upsert` (server identity): keyed by session and round; inserts as `draft` and never changes `status` |
 | `spacetime/src/review.ts` (planned) | F3 | `review_submit`, the only writer of `recommendation.status` |
 | `spacetime/src/memo.ts` (planned) | F3 | `memo_save_draft` (server identity), `memo_approve` |
@@ -158,7 +161,7 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/components/shell/header.tsx` | Base | Logo, hospital name, Simulation / Agents tabs, **Invite** (copies the session link) |
 | `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
 | `apps/web/components/panel/spread.tsx` | Base | Simulation side column: devices infected and services offline (`SpreadStats`), relevant systems down with dependent patients (`SystemsDown`) |
-| `apps/web/components/panel/device-card.tsx` | Base | Hovered device's record, shown over the scene |
+| `apps/web/components/panel/device-card.tsx` | Base | Hovered device's record, shown over the scene: everyone's fields plus the caller's role fields from the role view, and focus pins with their author's role |
 | `apps/web/components/panel/counters.tsx` | Base | Counter strip on the Agents tab |
 | `apps/web/components/scene/*` | Base | Floors, rooms, device boxes, patients, arcs, subscribed to live state |
 | `apps/web/components/timeline.tsx` | Base | Top of the simulation panel: runs strip with **+ New run**, transport (back to start, play/pause, forward 15 minutes, **Add note**), `T+h:mm` clock, speed, presence, scrubber with note markers, heat strip, "Settles T+…" (reads `tick_snapshot`) |
@@ -176,7 +179,9 @@ Every export from `spacetime/src/index.ts` must be a table, reducer or lifecycle
 | `apps/web/features/agents/question-card.tsx` | F1 | Question banner and answer choices |
 | `apps/web/features/agents/defend-button.tsx` | F1 | **Create segmentation plan** — calls `defend_request`; disabled while a visible run is `running` |
 | `apps/web/features/policy/card-body.tsx` | F2 | Recommendation card: rules, explanation, numbers, verdicts, required roles (basic version, Show the solution still disabled) |
-| `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name only (everyone joins as `security`, so anyone can answer questions), who is here, and for the session's creator the invite link; `presence_join`. Remembers the name per session in localStorage and rejoins after a reload |
+| `apps/web/features/review/join-modal.tsx` | F3 | Join modal: name and a required role (Chief Information Security Officer → `security`, Clinical IT Team → `clinical_engineering`, Hospital Management → `operations`), who is here with roles, and for the session's creator the invite link; `presence_join`. Remembers name and role per session in localStorage and rejoins after a reload |
+| `apps/web/features/review/role-badge.tsx` | F3 | A person's role as a short neutral chip (avatars, notes, focus pins, Agent Room) |
+| `apps/web/lib/role-views.ts` | F3 | Role names (`ROLE_OPTIONS`, `ROLE_LABEL`, `ROLE_SHORT`), card field labels, and `useRoleView()`: the `my_device_card`/`my_arcs` rows when live, the same `role_views.ts` functions offline (CISO lens) |
 | `apps/web/features/review/timeline-notes.tsx` | F3 | **Add note** on the transport row; while on, a click on the track opens a pop-up to write a note at that tick (`annotation_add_note`). Every note on the active run shows as a ▼ marker above the scrubber for everyone; hover to read, click to open, author or presenter can delete |
 | `apps/web/features/review/invite.tsx` | F3 | The session link (`/s/<id>`) with Copy, and the header's Invite button |
 | `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |

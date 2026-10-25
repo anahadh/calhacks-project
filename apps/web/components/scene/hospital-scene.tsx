@@ -3,10 +3,12 @@
 import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import { ARC_MODE } from "../../../../spacetime/src/role_views";
+import type { RoleView } from "@/lib/role-views";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 import { C } from "@/lib/colors";
-import { NetworkArc, type Arc } from "./arcs";
+import { NetworkArc, ServiceAnchor, type Arc } from "./arcs";
 import { FloorSlab, RoomShell } from "./building";
 import { DeviceBox } from "./devices";
 import { RoomChip } from "./labels";
@@ -19,9 +21,12 @@ export function HospitalScene({
   hovered,
   onHover,
   floorId,
+  view,
 }: {
   session: SessionSnapshot;
   index: SessionIndex;
+  /** The caller's role view: which connections to draw (spacetime/src/role_views.ts). */
+  view: RoleView;
   hovered: string | null;
   onHover: (id: string | null) => void;
   /** Show one floor, brought down to ground height; all floors when unset. */
@@ -55,23 +60,66 @@ export function HospitalScene({
     return m;
   }, [hospital.devices, index.deviceState]);
 
-  // Infection path from infected_by, plus the hovered device's own flows.
+  const mode = ARC_MODE[view.role];
+
+  // Where each service's dependency lines meet: above the middle of its devices.
+  const serviceAnchor = useMemo(() => {
+    const m = new Map<string, [number, number, number]>();
+    if (mode !== "dependencies") return m;
+    for (const svc of hospital.services) {
+      const pts = svc.dependsOnDevices.filter((id) => index.device.has(id)).map((id) => devicePoint(id));
+      if (!pts.length) continue;
+      const avg = (k: 0 | 1 | 2) => pts.reduce((n, p) => n + p[k], 0) / pts.length;
+      m.set(svc.id, [avg(0), Math.max(...pts.map((p) => p[1])) + 5, avg(2)]);
+    }
+    return m;
+    // devicePoint only reads from index and floorLevel.
+  }, [mode, hospital.services, index, floorLevel]);
+
+  // The infection path from infected_by for every role, then the role's connections.
+  // Labels show on the hovered device's connections.
   const arcs = useMemo<Arc[]>(() => {
     const shown = (id: string) => shownRoom(index.device.get(id)?.roomId ?? "");
     const out: Arc[] = session.devices
       .filter((s) => s.infected && s.infectedBy && shown(s.deviceId) && shown(s.infectedBy))
       .map((s) => ({ key: `inf_${s.deviceId}`, from: devicePoint(s.infectedBy!), to: devicePoint(s.deviceId), kind: "infection" }));
-    if (hovered) {
-      for (const fl of hospital.flows) {
-        if (fl.active === false || (fl.from !== hovered && fl.to !== hovered)) continue;
-        if (!shown(fl.from) || !shown(fl.to)) continue;
-        if (out.some((a) => a.key === `inf_${fl.to}` || a.key === `inf_${fl.from}`)) continue;
-        out.push({ key: fl.id, from: devicePoint(fl.from), to: devicePoint(fl.to), kind: fl.protected ? "protected" : "flow" });
+    const onPath = (a: string, b: string) => out.some((x) => x.key === `inf_${a}` || x.key === `inf_${b}`);
+
+    if (mode === "none") {
+      // No role yet: only the hovered device's flows, as before roles.
+      if (hovered) {
+        for (const fl of hospital.flows) {
+          if (fl.active === false || (fl.from !== hovered && fl.to !== hovered)) continue;
+          if (!shown(fl.from) || !shown(fl.to) || onPath(fl.from, fl.to)) continue;
+          out.push({ key: fl.id, from: devicePoint(fl.from), to: devicePoint(fl.to), kind: fl.protected ? "protected" : "flow" });
+        }
       }
+      return out;
+    }
+
+    for (const a of view.arcs) {
+      const touches = !!hovered && (a.from === hovered || a.to === hovered);
+      if (a.kind === "dependency") {
+        const anchor = serviceAnchor.get(a.to);
+        if (!anchor || !shown(a.from)) continue;
+        out.push({
+          key: a.id, from: devicePoint(a.from), to: anchor, kind: "dependency",
+          emphasis: touches ? "strong" : a.emphasis, label: touches ? a.label : undefined,
+        });
+        continue;
+      }
+      if (!index.device.has(a.from) || !index.device.has(a.to) || !shown(a.from) || !shown(a.to)) continue;
+      if (onPath(a.from, a.to) && !touches) continue;
+      const fl = index.flow.get(a.id);
+      out.push({
+        key: a.id, from: devicePoint(a.from), to: devicePoint(a.to), kind: fl?.protected ? "protected" : "flow",
+        emphasis: touches ? "strong" : hovered ? (a.emphasis === "strong" ? "normal" : "faint") : a.emphasis,
+        label: touches && a.label ? a.label : undefined,
+      });
     }
     return out;
     // devicePoint only reads from index and floorLevel.
-  }, [session.devices, hospital.flows, hovered, index, floorLevel, floorId]);
+  }, [session.devices, hospital.flows, hovered, index, floorLevel, floorId, mode, view.arcs, serviceAnchor]);
 
   // Down services, keyed by the room of their first device.
   const downByRoom = useMemo(() => {
@@ -148,6 +196,10 @@ export function HospitalScene({
 
         {arcs.map((a) => (
           <NetworkArc key={a.key} arc={a} />
+        ))}
+
+        {[...serviceAnchor].map(([id, pos]) => (
+          <ServiceAnchor key={id} position={pos} name={index.service.get(id)?.name ?? id} down={!!index.serviceState.get(id)?.down} />
         ))}
       </group>
 

@@ -7,12 +7,8 @@ export function tickClock(tick: number): string {
   return `T+${h}:${String(m).padStart(2, "0")}`;
 }
 
-export const ROLE_LABEL = {
-  security: "Security",
-  clinical_engineering: "Clinical engineering",
-  operations: "Operations",
-  observer: "Observer",
-} as const;
+// Role names live with the role views.
+export { ROLE_LABEL } from "./role-views";
 
 /** Two-letter initials for a presence avatar ("Maya R." → "MR"). */
 export function initials(name: string): string {

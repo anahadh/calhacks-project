@@ -1,3 +1,5 @@
+import type { ArcData, DeviceCardData, ViewRole } from "../../../../spacetime/src/role_views";
+
 // Shapes of the hospital file (HOSPITAL_SCHEMA.md) and the subscribed
 // SpacetimeDB rows (spec: Data Model). These are placeholders until
 // `packages/schema` and the generated bindings from `spacetime generate` exist.
@@ -159,6 +161,8 @@ export type SessionSnapshot = {
   recommendations: RecommendationRow[];
   /** This browser's presence row, once it has joined. */
   me?: PresenceRow;
+  /** Live only: this browser's rows from the my_device_card and my_arcs views (role views). */
+  roleView?: { role: ViewRole; cards: DeviceCardData[]; arcs: ArcData[] };
   source: SessionSource;
   /** Set when source is "error". Shown as-is (AGENTS.md rule 14). */
   error?: string;
