@@ -181,7 +181,7 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `apps/web/app/page.tsx` | Base | Load screen |
 | `apps/web/app/s/[sessionId]/page.tsx`, `session-view.tsx` | Base | Session view shell: Simulation tab (rail, one row-driven stepper, scene, side column) and Agents tab |
 | `apps/web/app/s/[sessionId]/solution/[recommendationId]/page.tsx` | F4 | The solution rerun route: opens the solution view for a recommendation's pair |
-| `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence, Log |
+| `apps/web/components/shell/header.tsx` | Base | Hospital name, Simulation / Agents tabs, presence avatars (`Presence` from `timeline.tsx`), Invite |
 | `apps/web/components/shell/badges.tsx` | Base | Patient state badges (color plus glyph) |
 | `apps/web/components/panel/impact.tsx`, `services.tsx`, `inspector.tsx` | Base | Simulation side column: patients affected, service tiles, hovered-device record and choke points |
 | `apps/web/components/panel/device-card.tsx` | Base | Hovered device, kept short: name, state, type and room, the caller's role lines (at most three) from the role view, and the latest focus pin |

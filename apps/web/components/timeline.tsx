@@ -131,7 +131,6 @@ export function Timeline({
               </button>
             ))}
           </div>
-          <Presence session={session} />
         </div>
       </div>
       {err && <p role="alert" className="num m-0 text-xs text-ink-muted">{err}</p>}
@@ -243,8 +242,12 @@ function NewRun({ session, onNewRun }: { session: SessionSnapshot; onNewRun?: ()
 
 const AVATAR_FILL = ["#4A5258", "#3E4448", "#2F3438"];
 
-/** Who is here: three avatars, then +N. The presenter wears the ink ring. */
-function Presence({ session }: { session: SessionSnapshot }) {
+/**
+ * Who is here: three avatars, then +N. The presenter wears the ink ring. Rows
+ * come from presence, which the module deletes on disconnect, so these are the
+ * people connected now. Rendered in the header, so it shows before any run.
+ */
+export function Presence({ session }: { session: SessionSnapshot }) {
   const people = session.presence;
   const shown = people.slice(0, 3);
   const extra = people.length - shown.length;
@@ -252,10 +255,11 @@ function Presence({ session }: { session: SessionSnapshot }) {
     <div role="group" aria-label={`${people.length} ${people.length === 1 ? "person" : "people"} in this session`} className="flex items-center rounded-full border border-line2 p-1">
       {shown.map((p, i) => {
         const presenting = p.name === session.presenterName;
+        const you = !!session.me && p.name === session.me.name && p.role === session.me.role;
         return (
           <span
             key={`${p.name}-${i}`}
-            title={`${p.name} · ${ROLE_LABEL[p.role]}${presenting ? " · presenting" : ""}`}
+            title={`${p.name}${you ? " (you)" : ""} · ${ROLE_LABEL[p.role]}${presenting ? " · presenting" : ""}`}
             className="num relative inline-flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-medium text-ink"
             style={{
               marginLeft: i ? -8 : 0,

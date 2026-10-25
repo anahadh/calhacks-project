@@ -2,6 +2,7 @@
 
 import { Brand } from "@/components/shell/brand";
 import { InviteButton } from "@/features/review/invite";
+import { Presence } from "@/components/timeline";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
 export type ViewId = "simulation" | "agents";
@@ -12,7 +13,7 @@ const TABS: { id: ViewId; key: string; label: string }[] = [
 ];
 
 // Logo, hospital, and on the right the two views (keys 1 and 2) and Invite.
-// Presence lives on the timeline row, beside the controls it follows.
+// Presence sits beside Invite: it shows who is here on both views, before any run.
 export function SessionHeader({
   sessionId,
   session,
@@ -47,6 +48,7 @@ export function SessionHeader({
             </button>
           ))}
         </nav>
+        {session.source === "live" && session.presence.length > 0 && <Presence session={session} />}
         {session.source === "live" && <InviteButton sessionId={sessionId} />}
       </div>
     </header>
