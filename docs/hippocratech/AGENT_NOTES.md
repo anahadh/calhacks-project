@@ -363,3 +363,27 @@ Pure functions; the agents only execute what they return (AGENTS.md rule 7). No 
 ## Options for humans (orchestrator)
 
 Every round, the Coordinator puts the Flow Agent's lead plan and up to two alternatives (`Proposal.alternatives` / `Revision.alternatives`, built by `logic/candidates.py` and tested with hippo-sim) to both guardians. Every rejection, on any plan, adds its constraint, so the next round repairs all of them. The round ends with up to three `Recommendation`s (`option` 1-3) when at least two plans are accepted, when the lead is accepted and no alternative is left to repair, or at the last round with any plan accepted. Humans choose one in the Agent Room and sign it off; agent acceptance is never approval.
+
+## Scorekeeper (optional fifth agent, `SCOREKEEPER=1`)
+
+A deterministic agent that makes the plan search readable. It explains; it never decides (AGENTS.md rule 8).
+
+| | |
+|---|---|
+| Flag | `SCOREKEEPER=1` in `agents/.env` or the shell (`config.scorekeeper_enabled()`). Off by default. |
+| Seed | `SCOREKEEPER_AGENT_SEED` (one per team, shared privately like the other four). Missing with the flag on: the same `ConfigError` as the others. |
+| Port | 8005 (`127.0.0.1:8005/submit` in `local_rules()` only with the flag) |
+| Name, handle | Hippocratech Scorekeeper, `@hippocratech-scorekeeper` (`agents/profiles/scorekeeper.md`) |
+| Files | `agents/scorekeeper.py` (the uAgent), `agents/logic/scorekeeper.py` (pure: ranking, templates, `CopyTracker`) |
+
+- **No model at all.** No Claude, no ASI:One, no `brain.py`. The Scorecard's `why` and every chat reply are fixed templates filled with numbers from the inputs, so the same inputs give byte-identical Scorecards (`tests/test_scorekeeper.py` checks across `PYTHONHASHSEED`s). Relay rows carry `reasonSource: "template"`.
+- **Ranking** (`logic.scorekeeper.RANKING`, one constant): accepted by both guardians first; then fewest patients affected (delayed + disrupted + diverted); fewest devices infected; fewest services down too long (`logic.clinical.services_down_too_long`, so services patient zero takes down are exempt); fewest rules; candidate id as a stable tie-break (then round, for a plan id seen in two rounds).
+- **Messages.** The Coordinator keeps a `CopyTracker` per negotiation, fed the same proposals, revisions and verdicts as its `Round`. When every plan of a round (the lead plus up to two alternatives, as `Round._forward` puts them) has both guardians' verdicts, it sends the Scorekeeper one `ScoreInput` (`score_input`) holding every plan judged so far. The Scorekeeper replies with a `Scorecard` (`scorecard`). Both go through the relay into `agent_message` like every other message (rule 10).
+- **No decision power, by construction.**
+  - The copy is sent from a background task (`coordinator._send_copy`), never awaited by a handler. A failed or hung copy is logged and the round goes on. It leaves the Coordinator's `agent_status` alone.
+  - A received `Scorecard` is only relayed (`coordinator.on_scorecard`). The `Round` never sees it.
+  - `Verdict.agent` and `Question.agent` are `NegotiatingAgent` (the four), so the Scorekeeper can't send either, and the relay's question payload refuses `scorekeeper`.
+  - An error in the Scorekeeper is logged and it goes idle. It never calls `runtime.fail`, so it can't stop a round.
+- **With the flag off, nothing changes:** four agents and ports, the same messages, and the same protocol digests (the `Scorecard` handler is registered only with the flag). No Scorekeeper seed is needed. The cached run and the scripted demo view are untouched. The Agent Room shows a fifth lane and the ranked table only once there are Scorekeeper rows.
+- **Chat (ASI:One):** "what's the ranking?" returns the latest Scorecard as text, "how do you rank?" the order, and anything else a one-line intro.
+- **Ordering differs from the Coordinator's, on purpose.** The Coordinator publishes the lead plan first if both guardians accepted it, then accepted alternatives in Flow's order (`logic.flow.rank`: fewest infected devices, then most patients ok, fewest rules, fewest cuts, name). The Scorekeeper puts patients before devices and doesn't favor the lead. So its table can order plans differently from the recommendation cards. Neither ordering was changed; the Scorekeeper's only explains.

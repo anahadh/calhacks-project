@@ -50,6 +50,7 @@ Design and evidence limits are in [`engine/RESEARCH_DECISIONS.md`](../engine/RES
 | Flow | Minimize spread | Optimizer candidates (Claude as fallback), each tested with `hippo-sim` |
 | Clinical Workflow | Keep care running | Rejects if a protected flow breaks or a critical service goes down beyond the threshold |
 | Sign-off Coordinator | Reach a plan humans can approve | Runs up to 4 rounds, pauses for human answers, and picks which roles must approve each recommendation. Cannot approve |
+| Scorekeeper (optional, `SCOREKEEPER=1`) | Make the plan search readable | Ranks every judged plan in code, with templated text and no model. Never votes, and the round never waits for it |
 
 - All four are uAgents registered on Agentverse, talking over uAgents messaging.
 - **Watchers** (SpacetimeDB subscription clients in `apps/watcher`) wake the agents when a run ends, a challenge appears, or a human answers. They also mirror every message into SpacetimeDB, and the Agent Room animates the conversation live from there.
@@ -61,6 +62,7 @@ Design and evidence limits are in [`engine/RESEARCH_DECISIONS.md`](../engine/RES
 | Flow | Hippocratech Flow Agent | `@hippocratech-flow` | `agent1qv33yl56hxarmtxnyu42rllrldwdpkyszzcnwzphtlgvsr7end77cyu8wrq` | [profile](https://agentverse.ai/agents/details/agent1qv33yl56hxarmtxnyu42rllrldwdpkyszzcnwzphtlgvsr7end77cyu8wrq/profile) |
 | Clinical Workflow | Hippocratech Clinical Workflow | `@hippocratech-clinical-workflow` | `agent1qvszrjp505888yx3959ywsy8w39u20lsuplr6he4ta5j49u9sv2ucask9sh` | [profile](https://agentverse.ai/agents/details/agent1qvszrjp505888yx3959ywsy8w39u20lsuplr6he4ta5j49u9sv2ucask9sh/profile) |
 | Sign-off Coordinator | Hippocratech Coordinator | `@hippocratech-coordinator` | `agent1qdky5mlj78706l87xyvmfthwgevxl4w8uxglpzdc2q49jfw648tux394rsn` | [profile](https://agentverse.ai/agents/details/agent1qdky5mlj78706l87xyvmfthwgevxl4w8uxglpzdc2q49jfw648tux394rsn/profile) |
+| Scorekeeper (optional, `SCOREKEEPER=1`; explains the ranking, does not vote) | Hippocratech Scorekeeper | `@hippocratech-scorekeeper` | `agent1q2s820gl5wr763x98pkkph4yz4pwfly5jdzc3q5cjh86xhdmvfsqz600tsv` | [profile](https://agentverse.ai/agents/details/agent1q2s820gl5wr763x98pkkph4yz4pwfly5jdzc3q5cjh86xhdmvfsqz600tsv/profile) |
 
 Addresses come from the team's shared seed phrases, and the profile URLs from Agentverse. Both were filled in after registering the agents on a laptop ([`hippocratech/AGENTVERSE_SETUP.md`](hippocratech/AGENTVERSE_SETUP.md)).
 
