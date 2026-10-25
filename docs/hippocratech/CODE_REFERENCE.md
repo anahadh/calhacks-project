@@ -219,6 +219,9 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |
 | `apps/web/app/api/export/[sessionId]/route.ts` | F3 | Memo plus ruleset |
 | `apps/web/app/api/floor/route.tsx` | F1 | The hospital floor as a PNG (`next/og` ImageResponse, edge) for ASI:One cards: `?start=&infected=&after=` lights up devices; with `after`, without/with the plan side by side. Drawn from `data/hospitals/demo.json` and the ids in the URL only; the agents link it via `viz.floor_url()` (`IMAGE_BASE_URL`, default `https://hippocratech.vercel.app`) |
+| `apps/web/app/snap/page.tsx` | F1 | `/snap?start=&infected=`: the real 3D hospital scene in one state with nothing around it, for the ASI:One card screenshots. Render-only: the infected set comes from the URL (computed by the engine), services and patients shown untouched, no subscription |
+| `apps/web/public/asi1/*.png` | F1 | Captured 3D scene shots (`overview.png`, `spread-<device>.png` for each legal patient zero), served at `/asi1/<name>.png` for ASI:One cards to link |
+| `agents/scripts/snap_scenes.py` | F1 | Captures `public/asi1/`: runs the engine's no-plan spread (`tools.run_sim`) from every device on the network, opens `/snap` in headless Chrome, and retakes any shot that comes out blank (under 60 KB, the scene not loaded yet); skips shots already captured. Run with the web app up; rerun when the hospital changes |
 | `apps/web/server/ruleset.ts` | F3 | Policy → allow-list JSON and ACL text |
 
 ## Data
