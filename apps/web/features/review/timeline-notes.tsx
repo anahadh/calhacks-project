@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ROLE_LABEL, tickClock } from "@/lib/format";
+import { tickClock } from "@/lib/format";
+import { RoleBadge } from "./role-badge";
 import type { AnnotationRow, SessionSnapshot } from "@/lib/stdb/types";
 
 const NOTE_MAX = 280; // spacetime/src/constants.ts TIMELINE_NOTE_MAX
@@ -217,7 +218,7 @@ function edge(frac: number): string {
 function NoteByline({ note }: { note: AnnotationRow }) {
   return (
     <span className="num text-xs text-ink-muted">
-      <span className="text-ink">▼</span> {note.authorName} · {ROLE_LABEL[note.role]} · {tickClock(note.tick!)}
+      <span className="text-ink">▼</span> {note.authorName} <RoleBadge role={note.role} /> · {tickClock(note.tick!)}
     </span>
   );
 }
