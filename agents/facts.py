@@ -102,6 +102,7 @@ def plan(h: HospitalIndex, policy: Policy, r: RunResult, baseline: RunResult | N
         "agent": AGENT_NAMES["flow"],
         "plan": policy.name,
         "strategy": policy.strategy.replace("_", " "),
+        "segmentsAndHoles": policy.rationale,
         "round": round,
         "rules": [rule.plain for rule in policy.rules[:6]],
         "ruleCount": len(policy.rules),
@@ -127,6 +128,7 @@ def recommendation(h: HospitalIndex, rec: Recommendation, baseline: RunResult | 
     return {
         "agent": AGENT_NAMES["coordinator"],
         "plan": rec.policy.name,
+        "segmentsAndHoles": rec.policy.rationale,
         "round": round,
         "rules": [rule.plain for rule in rec.policy.rules[:6]],
         "requiredSignOff": [ROLE_NAMES[x] for x in rec.requiredRoles],

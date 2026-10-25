@@ -82,6 +82,17 @@ def quarantine(h: HospitalIndex, zone: str) -> set[str]:
         if cross_zone(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"])) and f["protocol"] not in CLINICAL}
 
 
+def holes(h: HospitalIndex, cut: set[str]) -> str:
+    """The traffic a segmented device class still exchanges with the rest of the hospital, in words."""
+    kinds = set()
+    for f in active_flows(h):
+        if f["id"] in cut or not cross_zone(h, f) and not any(h.devices[d]["type"] in MEDICAL_TYPES for d in (f["from"], f["to"])):
+            continue
+        if any(h.devices[d]["type"] in MEDICAL_TYPES for d in (f["from"], f["to"])) or "ADT" in f.get("purpose", "") or f["port"] == 123:
+            kinds.add({"dicom": "DICOM to PACS", "hl7": "HL7 vitals and ADT", "other": "common time (NTP)"}.get(f["protocol"], f["protocol"].upper()))
+    return ", ".join(sorted(kinds)) or "none"
+
+
 def lateral(h: HospitalIndex) -> set[str]:
     return {f["id"] for f in active_flows(h) if cross_zone(h, f) and f["protocol"] in LATERAL}
 
@@ -172,8 +183,9 @@ def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constrain
         candidate(h, "admin_from_it_only", "protect_critical_care", "Server admin access from IT only", admin_from_it_only(h), keep,
                   "Only IT workstations may open file shares or remote desktop on the servers, so a compromised ward PC can't reach them.",
                   "Clinical workstations lose their mapped shared drive."),
-        candidate(h, "isolate_medical_devices", "protect_critical_care", "Isolate medical devices", medical_isolation(h), keep,
-                  "Scanners, monitors and pumps keep only HL7 and DICOM, as on a vendor-segmented VLAN.",
+        candidate(h, "medical_device_segments", "protect_critical_care", "Medical device segments (imaging, monitors, pumps)",
+                  medical_isolation(h), keep,
+                  f"Imaging, monitors and pumps each sit on their own segment with minimum holes: {holes(h, medical_isolation(h) - keep)}.",
                   "Vendor file shares and remote support to medical devices stop."),
         candidate(h, f"quarantine_{start}", "max_containment", f"Quarantine {zone_name(start)}", quarantine(h, start), keep,
                   f"The attack starts in {zone_name(start)}; that zone keeps only clinical traffic to the rest of the hospital.",

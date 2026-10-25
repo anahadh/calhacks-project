@@ -1509,6 +1509,69 @@
         "port": 445,
         "protected": false,
         "purpose": "Shared drive (policies, shift handoff notes)"
+      },
+      {
+        "id": "fl_65",
+        "from": "srv_ehr",
+        "to": "ns_er",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": true,
+        "purpose": "ADT: who is in each ER bed"
+      },
+      {
+        "id": "fl_66",
+        "from": "srv_ehr",
+        "to": "ns_icu",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": true,
+        "purpose": "ADT: who is in each ICU bed"
+      },
+      {
+        "id": "fl_67",
+        "from": "srv_ehr",
+        "to": "ns_ward",
+        "protocol": "hl7",
+        "port": 2575,
+        "protected": true,
+        "purpose": "ADT: who is in each ward bed"
+      },
+      {
+        "id": "fl_68",
+        "from": "srv_dc",
+        "to": "ns_icu",
+        "protocol": "other",
+        "port": 123,
+        "protected": true,
+        "purpose": "Common time (NTP) for the monitor segment"
+      },
+      {
+        "id": "fl_69",
+        "from": "srv_dc",
+        "to": "ns_er",
+        "protocol": "other",
+        "port": 123,
+        "protected": true,
+        "purpose": "Common time (NTP) for the monitor segment"
+      },
+      {
+        "id": "fl_70",
+        "from": "srv_dc",
+        "to": "ns_ward",
+        "protocol": "other",
+        "port": 123,
+        "protected": true,
+        "purpose": "Common time (NTP) for the monitor segment"
+      },
+      {
+        "id": "fl_71",
+        "from": "srv_dc",
+        "to": "srv_pacs",
+        "protocol": "other",
+        "port": 123,
+        "protected": true,
+        "purpose": "Common time (NTP) for imaging"
       }
     ],
     "services": [

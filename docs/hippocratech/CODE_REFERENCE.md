@@ -130,6 +130,7 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `agents/cache/demo_round.json` | F1 | Cached demo-seed conversation, question and answer included |
 | `agents/run_all.py` | F1 | Starts the four agents as separate processes with `[agent]` prefixes; Ctrl-C stops all |
 | `agents/config.py` | F1 | Settings from `agents/.env`: seeds, ports 8001–8004, `AGENT_MAILBOX`, `LOCAL_RESOLVE`, sim/opt/relay settings |
+| `agents/agent_chat.py` | F1 | The chat protocol for the three specialists: answers an ASI:One chat with the agent's profile intro and the last thing it said in a round (`note()`); relays both lines (rule 10); never starts a round |
 | `agents/addresses.py` | F1 | Addresses from seeds; local resolution (address → `127.0.0.1:<port>/submit`, plus `LOCAL_PEERS`), and `LocalFirstResolver` for mailbox mode |
 | `agents/runtime.py` | F1 | Builds each Agent for its mode (`AGENT_MAILBOX` × `LOCAL_RESOLVE`) with its Agentverse profile and `GET /health`; `connect_mailbox` for `AGENTVERSE_API_KEY`; `send`/`received` relay every message and set status |
 | `agents/scripts/start_round.py`, `agents/scripts/answer.py` | F1 | POST `/start_round` and `/resume` to the Coordinator, as the watchers will |

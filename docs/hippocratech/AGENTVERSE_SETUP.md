@@ -121,3 +121,18 @@ Meanwhile, `run_all` prints every agent message as usual. The chat round's rows 
 | ASI:One: "I couldn't start a round from CT 1: fixture results exist only for an attack starting at MRI 2" | Expected with `HIPPO_SIM_FIXTURES=1`: fixtures exist only for MRI 2. Use MRI 2 until hippo-sim exists. |
 | The round stops with "The … agent failed: …" | Neither `ASI1_API_KEY` nor `ANTHROPIC_API_KEY` is set, the model API failed, or its text failed the checks twice. The error is the round's status; there is no fallback text. |
 | Profile text didn't update | Agentverse stores the profile when the agent connects. Reconnect (step 5) after changing `agents/profiles/*.md`. |
+
+## 7. A public link for the room page
+
+The Coordinator's chat replies link to the round's live room (`HIPPO_WEB_URL/room/<session>`). On a judge's phone `localhost` goes nowhere, so before a demo over ASI:One put the web app behind a public URL and point the agents at it:
+
+```sh
+brew install cloudflared
+cloudflared tunnel --url http://localhost:3000   # prints https://<random>.trycloudflare.com
+```
+
+Then set `HIPPO_WEB_URL=https://<random>.trycloudflare.com` in `agents/.env` and restart `run_all.py`. A deployed web app works the same way. The link is the one click that takes a judge from Fetch.ai's chat into the app, so check it from a phone.
+
+## 8. Chatting with the specialists
+
+Inventory, Flow and Clinical Workflow also speak the chat protocol (`agents/agent_chat.py`). They answer any message with what they do and the last thing they said in a round, and point to the Coordinator to start one. They never start rounds themselves. Their READMEs carry the `innovationlab` and `hackathon` tags, and the Coordinator's README lists all four handles and addresses.
