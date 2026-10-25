@@ -1560,36 +1560,9 @@
         "purpose": "Department file sharing between neighboring PCs"
       },
       {
-        "id": "fl_73",
-        "from": "ws_rad_2",
-        "to": "ws_rad_3",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false,
-        "purpose": "Department file sharing between neighboring PCs"
-      },
-      {
-        "id": "fl_74",
-        "from": "ws_img_1",
-        "to": "ws_img_2",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false,
-        "purpose": "Department file sharing between neighboring PCs"
-      },
-      {
         "id": "fl_75",
         "from": "ws_er_1",
         "to": "ns_er",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false,
-        "purpose": "Department file sharing between neighboring PCs"
-      },
-      {
-        "id": "fl_76",
-        "from": "ws_or",
-        "to": "ns_icu",
         "protocol": "smb",
         "port": 445,
         "protected": false,
@@ -1608,15 +1581,6 @@
         "id": "fl_78",
         "from": "ws_admin_1",
         "to": "ws_admin_2",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false,
-        "purpose": "Department file sharing between neighboring PCs"
-      },
-      {
-        "id": "fl_79",
-        "from": "ws_admin_2",
-        "to": "ws_admin_3",
         "protocol": "smb",
         "port": 445,
         "protected": false,
