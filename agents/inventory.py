@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 
 from uagents import Context
 
+import agent_chat
+
 import facts
 import llm
 from config import settings
@@ -69,6 +71,7 @@ async def judge(ctx: Context, sender: str, type: str, msg: Proposal | Revision):
         if question is not None:
             await ask(ctx, s, question)
         await send(ctx, NAME, "coordinator", "verdict", verdict)
+        agent_chat.note(NAME, f"{verdict.decision}: {verdict.reason}")
         await relay.status(msg.sessionId, NAME, "idle")
     except Exception as e:
         await fail(ctx, NAME, msg.sessionId, e)
@@ -99,6 +102,9 @@ async def on_answer(ctx: Context, sender: str, msg: Answer):
 
 
 agent.include(protocol)
+# The chat protocol, so the agent answers a judge on ASI:One; the manifest goes to the
+# Almanac only when the agent registers there (as the Coordinator does).
+agent.include(agent_chat.make_chat(NAME, agent), publish_manifest=settings().mailbox or not settings().local_resolve)
 
 if __name__ == "__main__":
     agent.run()

@@ -108,13 +108,19 @@ def flow_label(h: HospitalIndex, flow_id: str) -> str:
     return f"{device_name(h, f['from'])} → {device_name(h, f['to'])}" + (f" ({f['purpose']})" if f.get("purpose") else "")
 
 
-def target_label(h: HospitalIndex, kind: str, ids: list[str]) -> str:
+def target_label(h: HospitalIndex, kind: str, ids: list[str], most: int = 2) -> str:
+    """What a rejection needs, short enough for a chat card: the first `most` targets by
+    name and a count for the rest (the full list is on the round's live room page)."""
+    def few(names: list[str], what: str) -> str:
+        if len(names) <= most:
+            return ", ".join(names)
+        return f"{len(names)} {what}, including {', '.join(names[:most])}"
     if kind == "keep_flow":
-        return "keep " + "; ".join(flow_label(h, i) for i in ids)
+        return "keep " + few([flow_label(h, i) for i in ids], "protected flows")
     if kind == "keep_service":
-        return "keep up " + ", ".join(h.services[i]["name"] if i in h.services else i for i in ids)
+        return "keep up " + few([h.services[i]["name"] if i in h.services else i for i in ids], "services")
     if kind == "confirm_device":
-        return "a human confirms " + ", ".join(device_name(h, i) for i in ids)
+        return "a human confirms " + few([device_name(h, i) for i in ids], "devices")
     return "fewer rules"
 
 
@@ -217,37 +223,64 @@ def started_card(device: str, device_label: str, session_id: str, room_url: str,
     return message(f"Started. Watch the agents negotiate live: [{room_url}]({room_url})", root)
 
 
+def plan_block(policy_id: str, title: str, what: str, result, reason: str | None, by_policy: dict[str, tuple[Node, Node]]) -> Node:
+    """One plan on the table: title, its tested numbers, the Flow Agent's reason, and an
+    (initially empty) row the guardians' verdict badges go into; their reasons follow it."""
+    children = [heading(title),
+                text(f"{what} · tested: {plural(affected(result), 'patient')} affected, "
+                     f"{plural(result.infectedCount, 'device')} compromised", "muted")]
+    if reason:
+        children.append(text(f"Flow Agent: {reason.strip()}", "muted"))
+    row = group([], direction="row")
+    children.append(row)
+    block = item(children)
+    by_policy[policy_id] = (block, row)
+    return block
+
+
+def traffic_line(events: list[tuple[str, object]], round: int) -> str:
+    """"4 agents · 11 messages over Agentverse · 2 rounds": every uAgents message the
+    Coordinator exchanged in the round, counted from what it saw. A proposal or revision
+    arrives from Flow and goes out to both guardians (3 messages); a verdict or a question
+    is one; a recommendation goes to the app, not an agent."""
+    n = sum(3 if t in ("proposal", "revision") else 1 if t in ("verdict", "question") else 0 for t, _ in events)
+    return f"4 agents · {plural(n, 'message')} over Agentverse · {plural(round, 'round')}"
+
+
 def summary_card(h: HospitalIndex, session_id: str, device_label: str, events: list[tuple[str, object]],
                  state: str, round: int, fixture: bool, room_url: str) -> ChatMessage:
-    """The round as a card: one block per plan with its test result and each agent's verdict,
-    then the recommendation (or no agreement). events as chat.summary takes them."""
+    """The round as a card: a header with how many agents and messages it took, one block
+    per plan the Flow Agent put on the table (the lead plan and its alternatives, each
+    with its test result and each guardian's verdict and reason), then the options for
+    humans (or no agreement). events as chat.summary takes them."""
     plans: list[Node] = []
-    badges: list[Node] = []  # the verdict badges of the newest plan
+    by_policy: dict[str, tuple[Node, Node]] = {}  # policy id → (its block, its badge row), so a verdict lands on the plan it judged
     recommendations = []
     for type, m in events:
         if type in ("proposal", "revision"):
             title = f"Round {m.round} · {m.name}" if type == "proposal" else f"Round {m.round} · revised plan"
             rules = len(m.rules) if type == "proposal" else len(m.diff.added) + len(m.diff.removed)
             what = plural(rules, "rule") if type == "proposal" else plural(rules, "change")
-            row = group([], direction="row")
-            badges = row["children"]
-            plans.append(item([heading(title),
-                               text(f"{what} · tested: {plural(affected(m.testResult), 'patient')} affected, "
-                                    f"{plural(m.testResult.infectedCount, 'device')} compromised", "muted"),
-                               row]))
+            plans.append(plan_block(m.policyId, title, what, m.testResult, m.reason, by_policy))
+            for a in m.alternatives:
+                plans.append(plan_block(a.policyId, f"Round {m.round} · also tested: {a.name}", plural(len(a.rules), "rule"),
+                                        a.testResult, a.reason, by_policy))
         elif type == "verdict" and plans:
+            block, row = by_policy.get(m.policyId, next(reversed(by_policy.values())))
             who = AGENT_NAMES[m.agent]
-            if m.decision == "accept":
-                badges.append(badge(f"✓ {who}", "success"))
-            else:
-                badges.append(badge(f"✕ {who}", "warning"))
-                if m.constraint:
-                    plans[-1]["children"].append(text(f"{who} needs: {target_label(h, m.constraint.kind, m.constraint.targetIds)}"))
+            row["children"].append(badge(f"✓ {who}" if m.decision == "accept" else f"✕ {who}",
+                                         "success" if m.decision == "accept" else "warning"))
+            said = m.reason.strip() if m.reason else ""
+            if m.decision == "reject" and m.constraint:
+                need = target_label(h, m.constraint.kind, m.constraint.targetIds)
+                block["children"].append(text(f"{who}: {said} Needs: {need}." if said else f"{who} needs: {need}", "muted"))
+            elif said:
+                block["children"].append(text(f"{who}: {said}", "muted"))
         elif type == "question" and plans:
-            badges.append(badge("? asked a human", "warning"))
+            next(reversed(by_policy.values()))[1]["children"].append(badge("? asked a human", "warning"))
         elif type == "recommendation":
             recommendations.append(m)
-    children: list[Node] = []
+    children: list[Node] = [text(traffic_line(events, round), "emphasis")]
     if plans:
         children.append({"type": "list", "items": plans})
     if recommendations:

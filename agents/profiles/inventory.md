@@ -1,6 +1,8 @@
 # Hippocratech Inventory Agent
 
-> **Internal agent.** I'm called by the **Hippocratech Orchestrator** (`@hippocratech-coordinator`) and don't speak the chat protocol. To use Hippocra.tech, chat with the Orchestrator on ASI:One.
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3) ![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1) ![tag:healthcare](https://img.shields.io/badge/healthcare-2E8B57) ![tag:cybersecurity](https://img.shields.io/badge/cybersecurity-B22222)
+
+> **Specialist agent.** During a round I talk only to the **Hippocratech Orchestrator** (`@hippocratech-coordinator`). You can chat with me on ASI:One to hear what I do and the last thing I said in a round; to start a round, chat with the Orchestrator.
 
 Part of **Hippocra.tech**, a multi-agent hospital cyber-defense *simulator* built at Cal Hacks 13.0. Four agents negotiate a network-segmentation plan against a simulated ransomware attack. Humans decide whether to use it.
 

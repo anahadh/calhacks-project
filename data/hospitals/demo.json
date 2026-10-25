@@ -1144,7 +1144,8 @@
         "to": "srv_file",
         "protocol": "smb",
         "port": 445,
-        "protected": false
+        "protected": true,
+        "purpose": "ER intake forms on the shared drive"
       },
       {
         "id": "fl_22",
@@ -1176,7 +1177,8 @@
         "to": "srv_file",
         "protocol": "smb",
         "port": 445,
-        "protected": false
+        "protected": true,
+        "purpose": "Pharmacy order sheets on the shared drive"
       },
       {
         "id": "fl_26",

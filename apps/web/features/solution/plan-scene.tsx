@@ -174,7 +174,8 @@ export function PlanScene({
           />
         ))}
 
-        {kept.filter(flowShown).map((f) => (
+        {/* Kept flows only for the hovered segment: by default the scene shows what the plan changes, not every connection. */}
+        {kept.filter((f) => flowShown(f) && !!hoveredZone && [f.from, f.to].some((id) => device.get(id) && zoneOf(device.get(id)!) === hoveredZone)).map((f) => (
           <PlanArc key={f.id} from={point(f.from)} to={point(f.to)} kind="kept" />
         ))}
         {cut.filter(flowShown).map((f) => (

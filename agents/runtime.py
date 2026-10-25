@@ -71,15 +71,15 @@ class Profile:
 PROFILES = {
     "inventory": Profile(
         "Hippocratech Inventory Agent", "hippocratech-inventory",
-        "Internal agent, called by the Hippocratech Orchestrator (no chat). Blocks any network change to a hospital device nobody can name, and asks a human what it is. Simulation only.",
+        "Specialist agent of the Hippocratech Orchestrator; chat to hear what it does. Blocks any network change to a hospital device nobody can name, and asks a human what it is. Simulation only.",
     ),
     "flow": Profile(
         "Hippocratech Flow Agent", "hippocratech-flow",
-        "Internal agent, called by the Hippocratech Orchestrator (no chat). Proposes and revises hospital network-segmentation plans, each tested against the same simulated attack.",
+        "Specialist agent of the Hippocratech Orchestrator; chat to hear what it does. Proposes and revises hospital network-segmentation plans, each tested against the same simulated attack.",
     ),
     "clinical_workflow": Profile(
         "Hippocratech Clinical Workflow", "hippocratech-clinical-workflow",
-        "Internal agent, called by the Hippocratech Orchestrator (no chat). Rejects any segmentation plan that breaks a protected clinical flow or keeps a critical service down.",
+        "Specialist agent of the Hippocratech Orchestrator; chat to hear what it does. Rejects any segmentation plan that breaks a protected clinical flow or keeps a critical service down.",
     ),
     "coordinator": Profile(
         "Hippocratech Orchestrator", "hippocratech-coordinator",

@@ -28,6 +28,10 @@ H = hospital_mod.load()
     ("devices", "devices", None),
     ("where can an attack start?", "devices", None),
     ("protected flows", "protected", None),
+    ("MRI 2", "lookup", "MRI 2"),
+    ("PACS?", "lookup", "PACS"),
+    ("ct1", "lookup", "ct1"),
+    ("hello", "help", None),
     # card button clicks: JSON from a direct chat, prose through ASI:One's planner
     ('{"action": "simulate", "device": "mri_2", "source": "hippocratech"}', "simulate", "mri_2"),
     ('{"action": "status", "source": "hippocratech"}', "status", None),
@@ -41,6 +45,7 @@ def test_parse(text, kind, device):
 
 @pytest.mark.parametrize("query, device", [
     ("MRI 2", "mri_2"), ("mri2", "mri_2"), ("mri_2", "mri_2"), ("pacs", "srv_pacs"), ("file server", "srv_file"),
+    ("mri machine 1", "mri_1"), ("the MRI 2 scanner", "mri_2"), ("mri mchine 1", "mri_1"), ("PACS server", "srv_pacs"),
     ("Toaster 9", None),
     ("dev_unknown_7", None),  # off the network until its challenge is applied
 ])

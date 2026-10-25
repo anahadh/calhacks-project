@@ -1,5 +1,7 @@
 # Hippocratech Orchestrator
 
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3) ![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1) ![tag:healthcare](https://img.shields.io/badge/healthcare-2E8B57) ![tag:cybersecurity](https://img.shields.io/badge/cybersecurity-B22222)
+
 Part of **Hippocra.tech**, a multi-agent hospital cyber-defense *simulator* built at Cal Hacks 13.0. Four agents negotiate a network-segmentation plan against a simulated ransomware attack. Humans decide whether to use it.
 
 ## I'm the orchestrator
@@ -26,6 +28,17 @@ Search ASI:One or Agentverse for **Hippocratech Orchestrator** (`@hippocratech-c
 Every round has a live page in the Hippocra.tech app where you can watch the agents negotiate; my reply links to it.
 
 Devices are named as in the demo hospital, for example MRI 2, CT 1, PACS, File server, ER WS 1. If I don't know a name, I'll list some I do know. While the simulator isn't connected, results come from fixture files and my summary says so.
+
+## The four agents
+
+| Agent | Handle | Address |
+|---|---|---|
+| Hippocratech Orchestrator (me) | `@hippocratech-coordinator` | `agent1qdky5mlj78706l87xyvmfthwgevxl4w8uxglpzdc2q49jfw648tux394rsn` |
+| Hippocratech Inventory Agent | `@hippocratech-inventory` | `agent1qtmzpr90e9dlv2aqz3g06xs9zwjqfnf9nfw32fjgxraz45f7y6atqnnf7mp` |
+| Hippocratech Flow Agent | `@hippocratech-flow` | `agent1qv33yl56hxarmtxnyu42rllrldwdpkyszzcnwzphtlgvsr7end77cyu8wrq` |
+| Hippocratech Clinical Workflow | `@hippocratech-clinical-workflow` | `agent1qvszrjp505888yx3959ywsy8w39u20lsuplr6he4ta5j49u9sv2ucask9sh` |
+
+All four are uAgents with Agentverse mailboxes. Every message between them goes over uAgents messaging, and every one is mirrored into the app's live Agent Room. Each specialist also answers a chat with what it does and the last thing it said.
 
 ## Messages
 

@@ -246,7 +246,7 @@ def flow_id(frm, to):
 def test_required_roles():
     assert required_roles(result("b_revision"), H) == ["security", "clinical_engineering"]
     er_cut = result("b_revision").copy(update={"removedFlows": [flow_id("ws_er_1", "srv_file")]})  # ER + server room
-    assert required_roles(er_cut, H) == ["security", "operations"]
+    assert required_roles(er_cut, H) == ["security", "clinical_engineering", "operations"]  # the ER shared drive is protected
     admin_cut = result("b_revision").copy(update={"removedFlows": [flow_id("ws_admin_1", "srv_dc")]})  # admin + server room
     assert required_roles(admin_cut, H) == ["security"]
     pacs_cut = result("b_revision").copy(update={"removedFlows": [flow_id("ws_rad_1", "srv_pacs")]})  # protected flow

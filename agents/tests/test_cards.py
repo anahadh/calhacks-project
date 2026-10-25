@@ -101,3 +101,31 @@ def test_device_card_has_its_flows_and_a_simulate_button():
 def test_started_card_links_the_live_room():
     msg = ALL["started"]()
     assert "http://x/room/chat-1" in msg.text()
+
+
+def test_summary_card_keeps_each_option_s_verdicts_apart():
+    """Round 1 put a lead plan and an alternative on the table; each guardian judged both.
+    Each plan block gets its own two badges and reasons, not one pile of four."""
+    from protocol import Alternative
+    lead = candidate("cand_isolate_imaging")
+    alt = candidate("cand_keep_scans")
+    prop = Proposal(sessionId="chat-3", round=1, policyId="cand_isolate_imaging",
+                    testResult=result("cand_isolate_imaging"), reason="Smallest blast radius.", reasonSource="asi1",
+                    alternatives=[Alternative(policyId="cand_keep_scans", testResult=result("cand_keep_scans"), reason="Keeps scans.",
+                                              **alt.dict(include={"strategy", "name", "rules", "rationale", "tradeoff"}))],
+                    **lead.dict(include={"strategy", "name", "rules", "rationale", "tradeoff"}))
+    rej = clinical.check("chat-3", 1, "cand_isolate_imaging", result("cand_isolate_imaging"), H)
+    ok = clinical.check("chat-3", 1, "cand_keep_scans", result("cand_keep_scans"), H)
+    card = payload(cards.summary_card(H, "chat-3", "MRI 2", [("proposal", prop), ("verdict", rej), ("verdict", ok)],
+                                      "in_progress", 1, False, "http://x/room/chat-3"))
+    items = card["root"]["children"][1]["items"]
+    assert len(items) == 2
+    rows = [next(c for c in i["children"] if c["type"] == "group") for i in items]
+    assert [b["label"] for b in rows[0]["children"]] == ["✕ Clinical Workflow Agent"]
+    assert [b["label"] for b in rows[1]["children"]] == ["✓ Clinical Workflow Agent"]
+    s = json.dumps(card, ensure_ascii=False)
+    assert "Flow Agent: Smallest blast radius." in s and "also tested: " in s
+    assert "4 agents · 5 messages over Agentverse · 1 round" in s
+    # A long "needs" list is cut to a count and two names.
+    needs = next(c["value"] for c in items[0]["children"] if c["type"] == "text" and "Needs:" in c["value"])
+    assert "protected flows, including" in needs and needs.count("→") == 2

@@ -1,11 +1,14 @@
 """Flow Agent: candidate plans built from the attack itself, in code (rule 8).
 
-Each candidate is a set of connections to cut, chosen from the baseline run: the
-connections the attack actually crossed, the walls around the zone it started in,
-the doors into the server room, and cross-zone file sharing and remote desktop.
-A cut set becomes a Policy (an allow-list, as the engine reads it: a flow is kept
-when some rule matches its source, destination, protocol and port), so the
-engine's test run is the judge of what each plan does.
+The plans follow real hospital segmentation practice (NIST SP 1800-30, HHS 405(d)):
+clinical traffic (HL7, DICOM, HTTPS) keeps flowing between zones, and the protocols
+ransomware moves through (file sharing over SMB, remote desktop over RDP) are what
+gets blocked: between zones, into the server room from outside IT, around medical
+devices, out of the zone the attack starts in, or along the route it took.
+
+A plan is a set of connections to cut. It becomes a Policy (an allow-list, as the
+engine reads it: a flow is kept when some rule matches its source, destination,
+protocol and port), so the engine's test run is the judge of what each plan does.
 
 Connections a keep_flow constraint names are never cut. The Flow Agent is not told
 which flows are protected (the Clinical Workflow Agent rejects plans that cut
@@ -18,6 +21,9 @@ from .hospital import HospitalIndex, Row
 
 MAX_RULES = 40  # protocol.Policy.rules
 LATERAL = ("smb", "rdp")  # file sharing and remote desktop: how ransomware moves between machines
+CLINICAL = ("hl7", "dicom", "https", "http")  # application traffic care runs on; segmentation keeps it
+MEDICAL_TYPES = {"mri", "ct", "patient_monitor", "infusion_pump", "anesthesia_machine", "lab_analyzer"}
+IT_ZONES = {"business", "it_core"}  # where administrators work
 
 ZONE_NAMES = {
     "critical_care": "critical care", "imaging": "imaging", "it_core": "the server room", "clinical_support": "lab and pharmacy",
@@ -57,18 +63,32 @@ def zone_wall(h: HospitalIndex, zone: str) -> set[str]:
     return {f["id"] for f in active_flows(h) if cross_zone(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"]))}
 
 
-def server_room_doors(h: HospitalIndex, entered_from: set[str]) -> set[str]:
-    """Cross-zone connections into the server room over file sharing or remote desktop,
-    plus every connection into it from a zone the attack reached."""
+def admin_from_it_only(h: HospitalIndex) -> set[str]:
+    """File sharing and remote desktop into the server room only from IT."""
+    return {f["id"] for f in active_flows(h)
+            if h.zone(f["to"]) == "it_core" and h.zone(f["from"]) not in IT_ZONES and f["protocol"] in LATERAL}
+
+
+def medical_isolation(h: HospitalIndex) -> set[str]:
+    """Medical devices keep only their clinical protocols (vendor VLAN practice)."""
+    return {f["id"] for f in active_flows(h)
+            if f["protocol"] not in ("hl7", "dicom") and any(h.devices[d]["type"] in MEDICAL_TYPES for d in (f["from"], f["to"]))}
+
+
+def quarantine(h: HospitalIndex, zone: str) -> set[str]:
+    """The zone keeps only clinical traffic to and from other zones."""
     return {
         f["id"] for f in active_flows(h)
-        if h.zone(f["to"]) == "it_core" and cross_zone(h, f)
-        and (f["protocol"] in LATERAL or h.zone(f["from"]) in entered_from)
-    }
+        if cross_zone(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"])) and f["protocol"] not in CLINICAL}
 
 
 def lateral(h: HospitalIndex) -> set[str]:
     return {f["id"] for f in active_flows(h) if cross_zone(h, f) and f["protocol"] in LATERAL}
+
+
+def lateral_route(h: HospitalIndex, path: set[str]) -> set[str]:
+    """The file-sharing and remote-desktop links on the attack's route."""
+    return {fid for fid in path if h.flows[fid]["protocol"] in LATERAL}
 
 
 # --- a cut set as an allow-list ---
@@ -144,22 +164,22 @@ def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constrain
     Agent widens it with each test run, as the attack reroutes around a cut)."""
     keep = kept_by_constraints(constraints)
     start = h.zone(patient_zero)
-    reached = {h.zone(d.id) for d in baseline.infectedDevices}
     path = attack_path(h, baseline) if path is None else path
     out = [
-        candidate(h, "cut_attack_path", "max_containment", "Cut the attack's path", path, keep,
-                  "Cuts the connections the attack crossed in the test run.",
-                  "Only the connections the attack used are cut, so everything else keeps working."),
-        candidate(h, f"wall_{start}", "max_containment", f"Wall off {zone_name(start)}", zone_wall(h, start), keep,
-                  f"The attack starts in {zone_name(start)}; this cuts its connections to every other zone.",
-                  f"Devices in {zone_name(start)} can only talk to each other."),
-        candidate(h, "shield_server_room", "protect_critical_care", "Shield the server room",
-                  server_room_doors(h, reached - {"it_core"}), keep,
-                  "Keeps the attack away from the shared servers (health records, files, scans, logins).",
-                  "Some workstations lose file sharing or remote desktop to the servers."),
-        candidate(h, "no_lateral_movement", "least_disruption", "Block file sharing and remote desktop between zones",
-                  lateral(h), keep,
-                  "Ransomware moves between machines over file sharing and remote desktop; this stops that across zones.",
-                  "Cross-zone file shares and remote sessions stop working."),
+        candidate(h, "clinical_only_between_zones", "least_disruption", "Allow only clinical traffic between zones", lateral(h), keep,
+                  "Zones keep talking over HL7, DICOM and HTTPS; file sharing and remote desktop stop at zone boundaries.",
+                  "Shared drives in other zones stop working."),
+        candidate(h, "admin_from_it_only", "protect_critical_care", "Server admin access from IT only", admin_from_it_only(h), keep,
+                  "Only IT workstations may open file shares or remote desktop on the servers, so a compromised ward PC can't reach them.",
+                  "Clinical workstations lose their mapped shared drive."),
+        candidate(h, "isolate_medical_devices", "protect_critical_care", "Isolate medical devices", medical_isolation(h), keep,
+                  "Scanners, monitors and pumps keep only HL7 and DICOM, as on a vendor-segmented VLAN.",
+                  "Vendor file shares and remote support to medical devices stop."),
+        candidate(h, f"quarantine_{start}", "max_containment", f"Quarantine {zone_name(start)}", quarantine(h, start), keep,
+                  f"The attack starts in {zone_name(start)}; that zone keeps only clinical traffic to the rest of the hospital.",
+                  f"{zone_name(start).capitalize()} loses file shares and remote access outside the zone."),
+        candidate(h, "block_attack_route", "max_containment", "Block the attack's file-sharing route", lateral_route(h, path), keep,
+                  "An emergency cut: the file-sharing and remote-desktop links the attack used in the test run.",
+                  "Targeted to this attack; a different starting point may need a different cut."),
     ]
     return [c for c in out if c is not None]

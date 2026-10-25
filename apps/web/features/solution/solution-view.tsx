@@ -42,7 +42,11 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const rec = session.recommendations.find((r) => r.id === plan?.recommendationId);
   const sides = [none, planRun];
   const clock = pairClock(sides);
-  const tick = planRun?.tick ?? clock.tick;
+  // One clock for both sides: the longer run sets it, so playback shows the whole spread without segmentation.
+  const tick = clock.tick;
+  const longer = (none?.finalTick ?? 0) >= (planRun?.finalTick ?? 0)
+    ? { run: base.run ?? none, snapshots: base.snapshots }
+    : { run: planRun, snapshots: rows.snapshots };
   const segments = useMemo(() => segmentsOf(hospital, rows.devices), [hospital, rows.devices]);
   const flows = useMemo(() => planFlows(hospital, planRun), [hospital, planRun]);
   const stops = useMemo(() => cutStops(flows.cut, rows.devices), [flows.cut, rows.devices]);
@@ -106,7 +110,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
             {(err || rowsError) && (
               <p role="alert" className="num m-0 text-xs text-ink-muted">{err ?? rowsError}</p>
             )}
-            <Scrubber run={planRun} snapshots={rows.snapshots} />
+            <Scrubber run={longer.run} snapshots={longer.snapshots} />
           </div>
 
           <div className="flex flex-grow flex-col bg-scene-ground">
@@ -391,7 +395,7 @@ function Legend() {
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="h-px w-5 bg-state-healthy" />
-        Kept clinical flow
+        Kept connection (hover a segment)
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="inline-flex items-center gap-1">

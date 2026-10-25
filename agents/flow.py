@@ -15,6 +15,8 @@ import json
 
 from uagents import Context
 
+import agent_chat
+
 import facts
 import llm
 from config import settings
@@ -85,12 +87,16 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         msg = await llm.worded(msg.copy(update={"alternatives": worded}), type, words)
         current[req.sessionId] = cand
         await send(ctx, NAME, "coordinator", type, msg)
+        agent_chat.note(NAME, f"{type} \"{msg.name}\": {msg.reason}" if msg.reason else f"{type} \"{msg.name}\"")
         await relay.status(req.sessionId, NAME, "idle")
     except Exception as e:
         await fail(ctx, NAME, req.sessionId, e)
 
 
 agent.include(protocol)
+# The chat protocol, so the agent answers a judge on ASI:One; the manifest goes to the
+# Almanac only when the agent registers there (as the Coordinator does).
+agent.include(agent_chat.make_chat(NAME, agent), publish_manifest=settings().mailbox or not settings().local_resolve)
 
 if __name__ == "__main__":
     agent.run()

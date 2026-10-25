@@ -36,7 +36,13 @@ def test_keep_flow_constraints_are_never_cut():
         assert set(path[:2]) <= C.kept(H, cand.policy.rules), cand.id
 
 
-def test_candidates_name_the_zone_the_attack_starts_in():
+def test_candidates_quarantine_the_zone_the_attack_starts_in():
     ids = [c.id for c in C.generate(H, BASELINE, "mri_2", [])]
-    assert "wall_imaging" in ids and "cut_attack_path" in ids
+    assert "quarantine_imaging" in ids and "clinical_only_between_zones" in ids
     assert len(set(ids)) == len(ids)
+
+
+def test_plans_never_cut_clinical_protocols_between_zones_except_quarantine_and_isolation():
+    """Segmentation keeps HL7, DICOM and HTTPS flowing; it blocks file sharing and remote desktop."""
+    for fid in C.lateral(H) | C.admin_from_it_only(H):
+        assert H.flows[fid]["protocol"] in C.LATERAL

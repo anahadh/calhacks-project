@@ -153,24 +153,15 @@ def test_live_round(agents):
     assert not [m for m in sent if m["type"] == "question"]  # no challenge: no unidentified device
     assert_worded(rows)
 
-    expected = [
-        # From MRI 2, cutting the attack's path contains it best but cuts a protected scan flow.
-        ("proposal", lambda m: m["from"] == "flow" and m["payload"]["policyId"] == "cut_attack_path"),
-        ("clinical reject keep_flow", lambda m: m["type"] == "verdict" and m["from"] == "clinical_workflow"
-            and m["payload"]["decision"] == "reject" and m["payload"]["constraint"]["kind"] == "keep_flow"),
-        ("revision", lambda m: m["type"] == "revision" and m["from"] == "flow"),
-        ("first accept", lambda m: m["type"] == "verdict" and m["payload"]["decision"] == "accept" and m["round"] == 2),
-        ("second accept", lambda m: m["type"] == "verdict" and m["payload"]["decision"] == "accept" and m["round"] == 2),
-        ("recommendation", lambda m: m["type"] == "recommendation"
-            and m["payload"]["requiredRoles"][0] == "security"
-            and m["payload"]["testResult"]["infectedCount"] < m["payload"]["testResult"]["infectedCount"] + 1
-            and not m["payload"]["testResult"]["protectedBroken"]),
-    ]
-    it = iter(sent)
-    for name, match in expected:
-        assert any(match(m) for m in it), f"missing, in order: {name}"
-    accepts = {m["from"] for m in sent if m["type"] == "verdict" and m["round"] == 2}
-    assert accepts == {"inventory", "clinical_workflow"}
+    # From MRI 2: Flow proposes plans built from the attack, both reviewers judge each, and the
+    # orchestrator publishes up to three options, each accepted by both and signed off by Security.
+    proposals = [m for m in sent if m["type"] in ("proposal", "revision") and m["from"] == "flow"]
+    assert proposals and proposals[0]["payload"]["policyId"] == "isolate_medical_devices"
+    judged = {(m["from"], m["payload"]["policyId"]) for m in sent if m["type"] == "verdict"}
+    assert {a for a, _ in judged} == {"inventory", "clinical_workflow"}
+    recs = [m["payload"] for m in sent if m["type"] == "recommendation"]
+    assert recs and all(r["requiredRoles"][0] == "security" and not r["testResult"]["protectedBroken"] for r in recs)
+    assert all(v["decision"] == "accept" for r in recs for v in r["verdicts"])
 
     # Rule 9: every message sent was also relayed by its receiver (humans and relay aside).
     received = {(m["from"], m["to"], m["type"], json.dumps(m["payload"], sort_keys=True))
@@ -291,8 +282,7 @@ def test_live_chat_starts_a_round_and_sends_the_summary(agents):
         assert 'I don\'t know a device called "Toaster 9"' in unknown["text"] and "MRI 2" in unknown["text"]
         assert "Round started: MRI 2" in card(started) and "/room/chat-" in started["text"] and "fixture" not in card(started)
         s = card(summary)
-        assert "Round 1 \u00b7 Cut the attack's path" in s
-        assert "\u2715 Clinical Workflow Agent" in s and "Option 1: " in s
+        assert "Round 1 \u00b7 Isolate medical devices" in s and "Option 1: " in s
         assert "Security must sign off" in s and "fixture" not in s
         for r in (help_, unknown, started, summary):
             assert not FORBIDDEN.search(r["text"] + card(r)), r
