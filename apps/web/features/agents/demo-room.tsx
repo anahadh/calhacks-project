@@ -153,7 +153,7 @@ function NegotiationRoom({ events, done, reopened, badge, controls, onClose, opt
       </header>
 
       <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <div className="grid min-h-0 grid-rows-[300px_minmax(0,1fr)] overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
+        <div className="grid min-h-0 grid-rows-[340px_minmax(0,1fr)] overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
           <section aria-label="Who is talking" className="relative border-b border-line">
             <Web newest={newest} />
           </section>
@@ -202,7 +202,7 @@ function Web({ newest }: { newest?: DemoEvent }) {
   const color = from ? SPEAKER_COLOR[from] : SPEAKER_COLOR.coordinator;
   const verb = newest ? VERB[newest.verb] : undefined;
   return (
-    <svg viewBox="0 0 640 300" className="absolute inset-0 h-full w-full" role="img" aria-label="The agents around the Coordinator">
+    <svg viewBox="-48 -40 736 392" className="absolute inset-0 h-full w-full p-4" role="img" aria-label="The agents around the Coordinator">
       <style>{`@keyframes demo-dash { to { stroke-dashoffset: -16; } } @keyframes demo-pulse { 0%,100% { r: 44 } 50% { r: 52 } }`}</style>
       {(["flow", "inventory", "clinical_workflow", "humans"] as Who[]).map((w) => {
         const lit = !!newest && ((from === "coordinator" && to === w) || (from === w && to === "coordinator"));
