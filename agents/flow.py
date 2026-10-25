@@ -38,6 +38,7 @@ NAME = "flow"
 agent, protocol = make_agent(NAME)
 H = hospital_mod.load(settings().hospital_path)
 current: dict[str, Candidate] = {}  # session → the candidate last sent
+baselines: dict[str, dict[str, int]] = {}  # session → no-plan count per start, computed once
 
 
 @dataclass
@@ -170,14 +171,16 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         # The objective is the whole hospital, not this one machine: phishing can land on any workstation.
         # Among plans that meet every constraint, the lowest average infection over every attack start wins
         # (fewest connections cut breaks a tie). With none meeting them all, the least-violating one goes.
-        counts = {c.id: per_start(c, req) for c, _ in tested}
-        averages = {c.id: average_infected(c, req, counts[c.id]) for c, _ in tested}
-        base_counts = per_start(None, req)
+        # Speed: the lead is picked on this attack's result (constraints first, then fewest infected, fewest
+        # cuts); only the lead is then tested from every start, and the no-plan baseline once per session.
         ok = [(c, r) for c, r in tested if not flow.violates(r, req.constraints, H, len(c.policy.rules))]
         violating = not ok
         pool_ = ok or [min(tested, key=lambda cr: flow.violation_count(cr[1], req.constraints, H, len(cr[0].policy.rules)))]
-        cand, result = min(pool_, key=lambda cr: (averages[cr[0].id], len(cr[1].removedFlows), cr[0].id))
-        cand = with_average(cand, averages[cand.id], average_infected(None, req, base_counts), counts[cand.id], base_counts)
+        cand, result = min(pool_, key=lambda cr: (cr[1].infectedCount, len(cr[1].removedFlows), cr[0].id))
+        base_counts = baselines.get(req.sessionId) or baselines.setdefault(req.sessionId, per_start(None, req))
+        lead_counts = per_start(cand, req)
+        averages = {cand.id: average_infected(cand, req, lead_counts)}
+        cand = with_average(cand, averages[cand.id], average_infected(None, req, base_counts), lead_counts, base_counts)
         policy = cand.policy
         # The other plans that meet every constraint, best first: offered alongside the lead.
         ranked = [] if violating else [

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AgentId } from "@/lib/stdb/types";
+import type { ReactNode } from "react";
 import { AgentGlyph } from "./agent-icon";
 import { SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
 import { DemoScene } from "./demo-scene";
@@ -33,7 +34,7 @@ const VERB: Record<Verb, { label: string; color: string; glyph: string }> = {
   recommends: { label: "sends for sign-off", color: "#3DD68C", glyph: "■" },
 };
 
-export function DemoRoom({ onClose }: { onClose?: () => void }) {
+export function DemoRoom({ onClose, options, status }: { onClose?: () => void; /** The real recommendation, once the live agents publish it. */ options?: ReactNode; /** What the live agents are doing meanwhile. */ status?: string }) {
   const [script, setScript] = useState<DemoEvent[]>(() => demoScript());
   const [shown, setShown] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -112,6 +113,11 @@ export function DemoRoom({ onClose }: { onClose?: () => void }) {
           {plans.length > 0 && <PlanTrail plans={plans} />}
         </section>
       </div>
+      {done && (
+        <footer className="border-t border-line px-6 py-4">
+          {options ?? <p role="status" className="num m-0 text-[14px] text-ink-muted">{status ?? "The agents are finalizing the plan…"}</p>}
+        </footer>
+      )}
     </div>
   );
 }
