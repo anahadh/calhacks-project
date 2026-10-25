@@ -8,6 +8,7 @@ Coordinator does; it has no start_round tool). Every chat in or out is relayed f
 (rule 10), like the Coordinator's; acks aren't.
 """
 
+import asyncio
 import logging
 import re
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Callable
 from uagents import Agent, Context, Model, Protocol
 from uagents_core.contrib.protocols.chat import ChatAcknowledgement, ChatMessage, TextContent, chat_protocol_spec
 
+import addresses
 import brain
 import mcp_server
 from runtime import PROFILES
@@ -97,28 +99,42 @@ async def send_chat(ctx: Context, to: str, message: Model) -> None:
 
 
 async def handle_chat(ctx: Context, name: str, sender: str, msg: ChatMessage, tools: Callable[[], list[brain.Tool]]) -> None:
-    """One chat turn for a specialist: ack, relay in, respond with its tools, relay out, send."""
+    """One chat turn for a specialist: ack, relay in, respond with its tools, relay out, send.
+    A question from the Coordinator (ask_agent) is relayed by the Coordinator at both ends,
+    so it is not relayed here as if a human typed it."""
     await send_chat(ctx, sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
     text = msg.text().strip()
     if not text:
         return
-    await relay.post(CHAT_SESSION, 0, "humans", name, "chat", {"text": text, "via": "asi1"}, direction="received")
+    from_human = sender != addresses.address("coordinator")
+    if from_human:
+        await relay.post(CHAT_SESSION, 0, "humans", name, "chat", {"text": text, "via": "asi1"}, direction="received")
     try:
         all_tools = await mcp_server.as_brain_tools() + list(tools()) + [intro_tool(name), last_said_tool(name)]
         turn = await brain.respond(ctx.storage, name, sender, text, all_tools, system_prompt(name))
         answer = turn.text
     except brain.BrainError as e:
         answer = f"I couldn't answer: {e}"
-    await relay.post(CHAT_SESSION, 0, name, "humans", "chat", {"text": answer, "via": "asi1"}, direction="sent")
+    except Exception as e:  # rule 14: shown, never silent
+        ctx.logger.error(f"chat turn failed: {e!r}")
+        answer = f"I couldn't answer: {e.__class__.__name__}: {e}"
+    if from_human:
+        await relay.post(CHAT_SESSION, 0, name, "humans", "chat", {"text": answer, "via": "asi1"}, direction="sent")
     await send_chat(ctx, sender, ChatMessage(content=[TextContent(text=answer)]))
+
+
+def chat_handler(name: str, tools: Callable[[], list[brain.Tool]]):
+    """The ChatMessage handler: runs the turn as a task so the agent's inbound queue (and a
+    round in progress) is not held up by the model's round trips."""
+    async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
+        asyncio.get_event_loop().create_task(handle_chat(ctx, name, sender, msg, tools))
+    return on_chat
 
 
 def make_chat(name: str, agent: Agent, tools: Callable[[], list[brain.Tool]] = lambda: []) -> Protocol:
     chat = Protocol(spec=chat_protocol_spec)
 
-    @chat.on_message(ChatMessage)
-    async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
-        await handle_chat(ctx, name, sender, msg, tools)
+    chat.on_message(ChatMessage)(chat_handler(name, tools))
 
     @chat.on_message(ChatAcknowledgement)
     async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):

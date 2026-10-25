@@ -45,7 +45,7 @@ AGENT_MAILBOX=1          # register with an Agentverse mailbox (listed, reachabl
 LOCAL_RESOLVE=1          # and keep the four agents talking to each other directly at 127.0.0.1
 HIPPO_SIM_FIXTURES=1     # until hippo-sim exists: results from agents/fixtures/results/, labeled "fixture"
 
-ASI1_API_KEY=...         # ASI:One (`asi1`; ASI1_MODEL overrides) reasons in chat and words the agents' messages, labeled "via ASI:One"
+ASI1_API_KEY=...         # ASI:One: `asi1` reasons in chat (ASI1_CHAT_MODEL overrides), `asi1-mini` words the agents' round messages (ASI1_MODEL overrides)
 ANTHROPIC_API_KEY=...    # optional: Claude words them when ASI1_API_KEY is unset (neither = the agents stop with an error; there is no fallback text)
 AGENTVERSE_API_KEY=...   # optional: lets each agent connect its own mailbox (step 5, option B)
 ```

@@ -85,3 +85,37 @@ def test_narrate_chat_relays_one_row_and_sends_once(monkeypatch, tmp_path):
     assert chat_rows[0]["payload"]["text"] == "[ x ] y"
     assert len(sent) == 1 and sent[0]["destination"] == "agent1qsender"
     assert not (tmp_path / "nochat.jsonl").exists()
+
+
+def test_narration_goes_out_under_the_chat_session(monkeypatch, tmp_path):
+    """ASI:One ties a message to a thread by the envelope session, which uAgents takes from
+    the sending handler's context. Narration is sent from round handlers, so it must be
+    re-stamped with the session the chat message arrived in."""
+    import uuid
+    monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
+    monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
+    monkeypatch.setenv("HIPPO_SIM_FIXTURES", "1")
+    import coordinator
+    seen = []
+
+    class Ctx:
+        def __init__(self, session):
+            self._session = session
+
+        @property
+        def session(self):
+            return self._session
+
+        async def send_raw(self, **kw):
+            seen.append(self._session)
+            return type("S", (), {"status": type("V", (), {"value": "delivered"})(), "detail": ""})()
+
+    chat_session = uuid.uuid4()
+    round_session = uuid.uuid4()
+    coordinator.chats["s2"] = coordinator.ChatRound(sender="agent1qsender", device_name="MRI 2", session=chat_session)
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(coordinator.narrate_chat(Ctx(round_session), "s2", "[ x ] y"))
+    finally:
+        loop.close()
+    assert seen == [chat_session]

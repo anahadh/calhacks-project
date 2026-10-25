@@ -302,7 +302,7 @@ def test_asi1_writes_when_its_key_is_set(asi1):
     fake = asi1((200, json.dumps({"text": "I can't accept this: it cuts a flow care needs."})))
     assert run(llm.explain("verdict_reject", f)) == ("I can't accept this: it cuts a flow care needs.", "asi1")
     body = fake.bodies[0]
-    assert body["model"] == "asi1" and body["messages"][0] == {"role": "system", "content": llm.SYSTEM}
+    assert body["model"] == "asi1-mini" and body["messages"][0] == {"role": "system", "content": llm.SYSTEM}
 
 
 def test_asi1_fenced_json_is_accepted(asi1):

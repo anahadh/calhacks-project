@@ -15,6 +15,7 @@ chat.py reads the text (and card button clicks); cards.py builds the replies; al
 
 import time
 import asyncio
+import copy
 import json
 import uuid
 from dataclasses import dataclass
@@ -63,6 +64,19 @@ class ChatRound:
     sender: str  # the chat user's agent address
     device_name: str
     notified: bool = False
+    session: uuid.UUID | None = None  # the envelope session the chat arrived in: ASI:One's thread key
+
+
+def _with_session(ctx: Context, session: uuid.UUID | None):
+    """The same context, stamping outgoing envelopes with `session`. uAgents takes the
+    envelope session from the sending handler's context, and ASI:One ties a message to a
+    thread by that session; narration and the summary go out from round handlers, so
+    they must carry the chat's session or ASI:One drops them."""
+    if session is None or getattr(ctx, "session", None) == session:
+        return ctx
+    c = copy.copy(ctx)
+    c._session = session
+    return c
 
 
 chats: dict[str, ChatRound] = {}  # session → who to tell when it ends
@@ -238,7 +252,7 @@ async def narrate_chat(ctx: Context, session_id: str, text: str) -> None:
     c = chats.get(session_id)
     if c is None:
         return
-    await chat_send(ctx, c.sender, ChatMessage(content=[TextContent(text=text)]), session_id, text)
+    await chat_send(_with_session(ctx, c.session), c.sender, ChatMessage(content=[TextContent(text=text)]), session_id, text)
 
 
 async def reply_card(ctx: Context, to: str, msg: ChatMessage, session_id: str = CHAT_SESSION) -> None:
@@ -266,8 +280,13 @@ async def notify_chat(ctx: Context, rnd: Round) -> None:
 async def _summary(ctx: Context, rnd: Round) -> None:
     c = chats[rnd.sessionId]
     last_session[:] = [rnd.sessionId]
-    await chat_turn(ctx, c.sender, "The round just ended; summarise it for me, naming each agent by handle and ending "
-                                   "with who must sign off.", session_id=rnd.sessionId, relay_in=False)
+    ctx = _with_session(ctx, c.session)
+    try:
+        await chat_turn(ctx, c.sender, "The round just ended; summarise it for me, naming each agent by handle and ending "
+                                       "with who must sign off.", session_id=rnd.sessionId, relay_in=False)
+    except Exception as e:  # rule 14: a failed summary is shown, never swallowed by the task
+        ctx.logger.error(f"summary failed: {e!r}")
+        await reply(ctx, c.sender, f"I couldn't write the summary: {e.__class__.__name__}: {e}", rnd.sessionId)
 
 
 # --- the Coordinator's own tools (the hospital ones come from mcp_server) ---
@@ -298,7 +317,7 @@ def local_tools(ctx: Context, sender: str) -> list[brain.Tool]:
             return {"error": chat.unknown_device(H, query or "?")}
         name = H.devices[device]["name"]
         session_id = f"chat-{uuid.uuid4().hex[:8]}"
-        chats[session_id] = ChatRound(sender=sender, device_name=name)
+        chats[session_id] = ChatRound(sender=sender, device_name=name, session=getattr(ctx, "session", None))
         req = StartRound(sessionId=session_id, runId=f"run_{session_id.replace('-', '_')}", patientZero=device,
                          seed=chat.DEMO_SEED, challenges=[])
         ack = await begin(ctx, req)
@@ -428,6 +447,10 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
     except brain.BrainError as e:
         await reply(ctx, sender, f"I couldn't answer: {e}", sid)
         return
+    except Exception as e:  # rule 14: any failure (MCP, relay, a tool) is shown, never silent
+        ctx.logger.error(f"chat turn failed: {e!r}")
+        await reply(ctx, sender, f"I couldn't answer: {e.__class__.__name__}: {e}", sid)
+        return
     want = picked.pop(sender, None)
     card = None
     if want == "picker":
@@ -448,10 +471,12 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     await chat_send(ctx, sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id), CHAT_SESSION)
     text = msg.text().strip()
     if not text:
-        if any(isinstance(c, StartSessionContent) for c in msg.content):
-            await chat_turn(ctx, sender, "hello")
-        return
-    await chat_turn(ctx, sender, text)
+        if not any(isinstance(c, StartSessionContent) for c in msg.content):
+            return
+        text = "hello"
+    # A task, not an await: uAgents handles inbound messages one at a time, and a turn's
+    # model round trips must not hold up the round's own messages.
+    asyncio.get_event_loop().create_task(chat_turn(ctx, sender, text))
 
 
 @chat_protocol.on_message(ChatAcknowledgement)

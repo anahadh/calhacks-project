@@ -153,6 +153,7 @@ def test_claude_tool_use_round_trip(monkeypatch):
 
 
 def test_no_key_is_an_error(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)  # agents/.env may have loaded one
     with pytest.raises(brain.BrainError, match="ASI1_API_KEY"):
         run(None, "hi")
 

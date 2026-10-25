@@ -23,6 +23,11 @@ MAX_TOOL_ROUNDS = 6
 HISTORY_TURNS = 20
 TIMEOUT_S = 30.0
 CLAUDE_MAX_TOKENS = 600
+ASI1_CHAT_MODEL = "asi1"  # the tool-calling model for chat; ASI1_CHAT_MODEL overrides. Round wording keeps llm.py's model.
+
+
+def chat_model() -> str:
+    return os.environ.get("ASI1_CHAT_MODEL", "").strip() or ASI1_CHAT_MODEL
 
 
 class BrainError(Exception):
@@ -164,11 +169,16 @@ def _openai_tools(tools: list[Tool]) -> list[dict]:
 async def _asi1_loop(post, system: str, history: list[dict], text: str, tools: list[Tool], run_tool,
                      extra: list[dict] | None = None) -> str:
     messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": text}, *(extra or [])]
-    body = {"model": llm._asi1_model(), "messages": messages, "temperature": 0}
+    body = {"model": chat_model(), "messages": messages, "temperature": 0}
     if tools:
         body["tools"] = _openai_tools(tools)
     for _ in range(MAX_TOOL_ROUNDS):
-        data = await post(body)
+        try:
+            data = await post(body)
+        except BrainError:
+            raise
+        except Exception as e:  # a transport or parsing failure is shown to the user (rule 14)
+            raise BrainError(f"ASI:One call failed: {e.__class__.__name__}: {e}") from e
         try:
             msg = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError) as e:
