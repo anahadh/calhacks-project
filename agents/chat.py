@@ -15,6 +15,34 @@ from logic.inventory import dormant
 DEMO_SEED = 1337
 EXAMPLE = "simulate ransomware from MRI 2"
 
+ATTACK = re.compile(
+    r"\b(?:simulate|start|run|launch|begin|try|infect|attack|compromise|hit|ransomware|malware|patient zero|what happens|what would happen)\b", re.I)
+ATTACK_DEVICE = [
+    re.compile(r"\bpatient zero\b\s*(?:is|=|:)?\s*(?P<device>.+)$", re.I),
+    re.compile(r"\b(?:from|on|at|via|starts? (?:at|from|on)|starting (?:at|from|on))\s+(?P<device>.+)$", re.I),
+    re.compile(r"\b(?:infect|attack|compromise|hit)\s+(?P<device>.+)$", re.I),
+]
+QUESTION_WORDS = re.compile(r"^(?:why|how|which|who|where|when|can|could|should|is|are|do|does|what (?:is|was|are|were|did|does|do)\b)", re.I)
+
+
+def wants_round(text: str) -> str | None:
+    """The device named by a request to simulate an attack ("what happens if ransomware
+    starts at MRI 2", "simulate from PACS", "infect CT 1"), or None for anything else.
+    Code decides this, so a round starts at once and never depends on a model's tool choice."""
+    t = " ".join(text.strip().split())
+    if not t or QUESTION_WORDS.match(t) and not re.search(r"\bwhat (?:happens|would happen)\b", t, re.I):
+        return None
+    if not ATTACK.search(t):
+        return None
+    for pattern in ATTACK_DEVICE:
+        m = pattern.search(t)
+        if m:
+            device = re.sub(r"^(?:the|a|an|device)\s+", "", m.group("device").strip(" .!?\"'`"), flags=re.I)
+            device = re.sub(r"\s+(?:please|now|again)$", "", device, flags=re.I)
+            return device or None
+    return None
+
+
 ACTIONS = {"simulate", "lookup", "devices", "protected", "status", "help"}
 
 

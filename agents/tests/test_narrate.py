@@ -119,3 +119,12 @@ def test_narration_goes_out_under_the_chat_session(monkeypatch, tmp_path):
     finally:
         loop.close()
     assert seen == [chat_session]
+
+
+def test_handoff_lines_name_both_agents():
+    s = narrate.handoff("flow", "proposal_request", 1)
+    assert s.startswith("[ @hippocratech-coordinator ]") and "@hippocratech-flow" in s and "round 1" in s
+    s = narrate.handoff("clinical_workflow", "proposal", 2)
+    assert "@hippocratech-clinical-workflow" in s and "verdict" in s
+    assert "@hippocratech-inventory" in narrate.handoff("inventory", "answer", 2)
+    assert not FORBIDDEN.search(narrate.handoff("flow", "revision", 3))

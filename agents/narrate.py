@@ -29,6 +29,18 @@ def failed(agent: str, error: str) -> str:
     return f"{_tag(agent)} failed: {error}"
 
 
+def handoff(to: str, type: str, round: int) -> str:
+    """The Coordinator handing work to a specialist: one line per message it sends, so the
+    thread shows every call between agents, not only their answers."""
+    what = {
+        "proposal_request": "asked {to} for a plan" if round == 1 else "asked {to} to revise the plan",
+        "proposal": "sent the plan to {to} for a verdict",
+        "revision": "sent the revised plan to {to} for a verdict",
+        "answer": "passed a human's answer to {to}",
+    }.get(type, f"sent {type} to {{to}}")
+    return f"{_tag('coordinator')} {what.format(to=handle(to))} (round {round})."
+
+
 def line(h: HospitalIndex, type: str, msg, baseline: RunResult | None = None) -> str:
     """type: proposal | revision | verdict | question | recommendation."""
     if type == "proposal":

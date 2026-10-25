@@ -53,3 +53,24 @@ def candidate(name):
     import json
 
     return Policy.parse_obj(json.loads((FIXTURES / "candidates" / f"{name}.json").read_text())["policy"])
+
+
+@pytest.mark.parametrize("text, device", [
+    ("what happens malware attack on mri2", "mri2"),
+    ("what happens if ransomware starts at the ICU nurse station?", "ICU nurse station"),
+    ("simulate ransomware from MRI 2", "MRI 2"),
+    ("Simulate an attack from PACS.", "PACS"),
+    ("infect CT 1", "CT 1"),
+    ("run it from the file server", "file server"),
+    ("patient zero: ER WS 1", "ER WS 1"),
+])
+def test_wants_round_finds_the_device(text, device):
+    assert chat.wants_round(text) == device
+
+
+@pytest.mark.parametrize("text", [
+    "what was the final recommendation?", "why did clinical workflow reject the first plan?", "what is PACS?",
+    "where can an attack start?", "hello", "ask the flow agent which plans it tested", "status",
+])
+def test_wants_round_ignores_questions(text):
+    assert chat.wants_round(text) is None

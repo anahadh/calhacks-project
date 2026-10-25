@@ -104,7 +104,30 @@ def test_chat_turn_without_a_card_sends_plain_text(coord, monkeypatch):
     assert sent[-1][3] == "Hello." and sent[-1][4] is None
 
 
-def test_planner_prose_selection_becomes_a_user_turn(coord, monkeypatch):
+def test_planner_prose_selection_starts_the_round_in_code(coord, monkeypatch):
+    """A picker tap arrives as JSON (direct chat) or as planner prose; both start the round
+    at once, without the model."""
+    c, sent = coord
+    begun = []
+
+    async def fake_begin(ctx, req):
+        begun.append(req.patientZero)
+        c.rounds[req.sessionId] = type("R", (), {"state": "running", "round": 1})()
+        return c.RestAck(ok=True, detail="")
+
+    monkeypatch.setattr(c, "begin", fake_begin)
+
+    async def never(*a, **k):
+        raise AssertionError("the model must not be asked")
+
+    monkeypatch.setattr(c.brain, "respond", never)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "The user picked action simulate for device mri_2"))
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "simulate", "device": "ct_1", "source": "hippocratech"}'))
+    assert begun == ["mri_2", "ct_1"]
+    assert all(s[3].startswith("Starting a simulated ransomware round") for s in sent[-2:])
+
+
+def test_other_selections_become_user_turns(coord, monkeypatch):
     c, _ = coord
     seen = []
 
@@ -113,9 +136,9 @@ def test_planner_prose_selection_becomes_a_user_turn(coord, monkeypatch):
         return turn("ok")
 
     monkeypatch.setattr(c.brain, "respond", fake_respond)
-    run(c.chat_turn(c.ctx_stub(), "agent1qs", "The user picked action simulate for device mri_2"))
-    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "simulate", "device": "ct_1", "source": "hippocratech"}'))
-    assert seen == ["simulate ransomware from mri_2", "simulate ransomware from ct_1"]
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "status", "source": "hippocratech"}'))
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "The user picked action lookup for device srv_pacs"))
+    assert seen == ["what is the status of the last round?", "what is srv_pacs?"]
 
 
 def test_brain_error_is_sent_as_the_reply(coord, monkeypatch):
@@ -198,3 +221,38 @@ def test_on_chat_does_not_block_the_message_queue(coord, monkeypatch):
         await asyncio.sleep(0)
 
     run(scenario())
+
+
+def test_attack_question_starts_a_round_in_code_without_the_model(coord, monkeypatch):
+    """'what happens if ransomware starts at MRI 2' must start a round at once: code decides,
+    the reply is instant, and the model is not consulted for the kick-off."""
+    c, sent = coord
+    begun = []
+
+    async def fake_begin(ctx, req):
+        begun.append(req.patientZero)
+        c.rounds[req.sessionId] = type("R", (), {"state": "running", "round": 1})()
+        return c.RestAck(ok=True, detail="")
+
+    monkeypatch.setattr(c, "begin", fake_begin)
+
+    async def never(*a, **k):
+        raise AssertionError("the model must not be asked")
+
+    monkeypatch.setattr(c.brain, "respond", never)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "what happens malware attack on mri2"))
+    assert begun == ["mri_2"]
+    assert sent[-1][3].startswith("Starting a simulated ransomware round from MRI 2") and "@hippocratech-flow" in sent[-1][3]
+
+
+def test_attack_question_with_unknown_device_goes_to_the_model(coord, monkeypatch):
+    c, sent = coord
+    asked = []
+
+    async def fake_respond(storage, who, sender, text, tools, system, session_id=None):
+        asked.append(text)
+        return turn("Which device?")
+
+    monkeypatch.setattr(c.brain, "respond", fake_respond)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "simulate ransomware from Toaster 9"))
+    assert asked and sent[-1][3] == "Which device?"

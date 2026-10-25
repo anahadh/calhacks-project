@@ -114,6 +114,7 @@ async def execute(ctx: Context, rnd: Round, actions: list[Action]):
                 await narrate_chat(ctx, rnd.sessionId, narrate.line(H, "recommendation", msg))
         if a.to in AGENTS:
             await send(ctx, NAME, a.to, a.type, msg)
+            await narrate_chat(ctx, rnd.sessionId, narrate.handoff(a.to, a.type, rnd.round))
         else:  # "humans" (questions) or "relay" (round_state, recommendation)
             reason, source = reason_of(msg)
             await relay.post(rnd.sessionId, rnd.round, NAME, a.to, a.type, msg, reason,
@@ -441,6 +442,19 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         await relay.post(sid, rounds[sid].round if sid in rounds else 0, "humans", NAME, "chat",
                          {"text": text, "via": "asi1"}, direction="received")
     picked.pop(sender, None)
+    # An attack request starts a round at once, decided in code: the reply is instant and the
+    # round narrates itself. Only an unresolvable device falls through to the model.
+    wanted = chat.wants_round(text)
+    if wanted and chat.resolve_device(H, wanted):
+        start = next(t for t in local_tools(ctx, sender) if t.name == "start_round")
+        out = await start.call({"device_query": wanted})
+        if "error" in out:
+            await reply(ctx, sender, f"I couldn't start that: {out['error']}", sid)
+        else:
+            await reply(ctx, sender, f"Starting a simulated ransomware round from {out['device']} (session {out['session_id']}). "
+                                     f"Baseline first, then {narrate.handle('flow')}, {narrate.handle('inventory')} and "
+                                     f"{narrate.handle('clinical_workflow')} negotiate here, step by step.", out["session_id"])
+        return
     try:
         tools = await mcp_server.as_brain_tools() + local_tools(ctx, sender)
         turn = await brain.respond(ctx.storage, NAME, sender, text, tools, SYSTEM_PROMPT, session_id=sid)
