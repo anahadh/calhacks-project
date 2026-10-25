@@ -27,15 +27,15 @@
       "tick": 5
     },
     {
-      "id": "ws_pharm",
+      "id": "ws_rad_1",
       "tick": 6
     },
     {
-      "id": "ws_rad_1",
+      "id": "ws_rad_2",
       "tick": 7
     },
     {
-      "id": "ws_rad_2",
+      "id": "ws_pharm",
       "tick": 8
     }
   ],

@@ -870,7 +870,8 @@
         "to": "srv_ehr",
         "protocol": "https",
         "port": 443,
-        "protected": false
+        "protected": true,
+        "purpose": "ER intake forms to the EHR"
       },
       {
         "id": "fl_14",
@@ -910,7 +911,8 @@
         "to": "srv_ehr",
         "protocol": "https",
         "port": 443,
-        "protected": false
+        "protected": true,
+        "purpose": "Pharmacy order sheets to the EHR"
       },
       {
         "id": "fl_19",
@@ -927,15 +929,6 @@
         "protocol": "https",
         "port": 443,
         "protected": false
-      },
-      {
-        "id": "fl_21",
-        "from": "ws_er_1",
-        "to": "srv_file",
-        "protocol": "smb",
-        "port": 445,
-        "protected": true,
-        "purpose": "ER intake forms on the shared drive"
       },
       {
         "id": "fl_22",
@@ -960,15 +953,6 @@
         "protocol": "smb",
         "port": 445,
         "protected": false
-      },
-      {
-        "id": "fl_25",
-        "from": "ws_pharm",
-        "to": "srv_file",
-        "protocol": "smb",
-        "port": 445,
-        "protected": true,
-        "purpose": "Pharmacy order sheets on the shared drive"
       },
       {
         "id": "fl_26",
