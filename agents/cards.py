@@ -26,7 +26,7 @@ from logic.hospital import HospitalIndex
 
 CARD_PROTOCOL_VERSION = "1"
 SOURCE = "hippocratech"
-PICK_DEVICES = ("mri_2", "ct_1", "srv_pacs", "srv_file", "ws_er_1", "ns_icu")
+PICK_DEVICES = ("mri_2", "ws_reg", "srv_pacs", "srv_file", "ws_admin_1", "ns_icu")  # the engine accepts each as a start
 
 Node = dict[str, Any]
 
