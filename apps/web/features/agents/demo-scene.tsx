@@ -19,7 +19,7 @@ const PAD = 1.4;
 
 type Blob = { key: string; color: string; pts: Point[]; label?: string };
 
-export function DemoScene({ plan, infected, reopened }: { plan: number; infected: number; /** Live: the feeds reopened so far (flow ids); the plan is then always the five networks. */ reopened?: string[] }) {
+export function DemoScene({ plan, infected, reopened, naive }: { plan: number; infected: number; /** Live: the feeds reopened so far (flow ids); the plan is then the five networks unless it is the naive wall. */ reopened?: string[]; /** Live: the plan on the table is the naive department wall. */ naive?: boolean }) {
   const rooms = H.rooms.filter((r) => r.polygon.length >= 3);
   const zoneOf = useMemo(() => new Map(H.rooms.map((r) => [r.id, r.zone])), []);
   const devices = H.devices;
@@ -40,7 +40,9 @@ export function DemoScene({ plan, infected, reopened }: { plan: number; infected
     for (const d of devices) {
       const zone = zoneOf.get(d.roomId) ?? "";
       if (plan === 0) continue;
-      if (reopened) {
+      if (reopened && naive) {
+        if (zone === "imaging") add("imaging", ZONE_STYLE.imaging.color, "Imaging, walled off", d.position);
+      } else if (reopened) {
         const s = segmentOf(d, zone) as FunctionalSegment;
         add(`${s}:${d.roomId}`, SEGMENT[s].color, SEGMENT[s].name, d.position);
       } else if (plan === 1) {
@@ -53,7 +55,7 @@ export function DemoScene({ plan, infected, reopened }: { plan: number; infected
       }
     }
     return [...byKey.entries()].map(([key, g]) => ({ key, color: g.color, label: g.label, pts: roundedHullOf(g.pts, PAD) }));
-  }, [plan, devices, zoneOf, reopened]);
+  }, [plan, devices, zoneOf, reopened, naive]);
 
   // Plan 3: the feeds reopened for care, as lines between the machines they join.
   const holes = useMemo(() => {
@@ -100,20 +102,22 @@ export function DemoScene({ plan, infected, reopened }: { plan: number; infected
           const hit = infectedIds.has(d.id);
           return <circle key={d.id} cx={d.position[0]} cy={d.position[1]} r={hit ? 0.75 : 0.55} fill={hit ? "#FF6A2E" : "#4DB0FF"} stroke={d.id === "mri_2" ? "#E9ECEE" : "none"} strokeWidth={0.2} />;
         })}
-        {[...labels.values()].map((b) => {
-          const top = b.pts.reduce((a, p) => (p[1] < a[1] ? p : a), b.pts[0]);
-          return (
-            <text key={b.label} x={top[0]} y={top[1] - 0.8} textAnchor="middle" fontSize={1.15} fontFamily="ui-monospace, Menlo, monospace" fill={b.color}>
-              {b.label}
-            </text>
-          );
-        })}
       </svg>
+      <ul className="num pointer-events-none absolute bottom-9 left-4 m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[11px]">
+        {[...labels.values()].map((b) => (
+          <li key={b.label} className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: b.color, background: `${b.color}33` }} aria-hidden />
+            <span style={{ color: b.color }}>{b.label}</span>
+          </li>
+        ))}
+      </ul>
       <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
         {reopened
           ? plan === 0
             ? "No plan yet: where the attack reaches"
-            : `Plan ${plan} · five networks by function · teal lines: ${reopened.length ? `${reopened.length} feeds reopened for care` : "no feeds reopened yet"}`
+            : naive
+              ? `Plan ${plan} · one wall around the department the attack started in`
+              : `Plan ${plan} · five networks by function · teal lines: ${reopened.length ? `${reopened.length} feeds reopened for care` : "no feeds reopened yet"}`
           : plan === 0
           ? "No plan: where the attack from MRI 2 reaches"
           : plan === 1

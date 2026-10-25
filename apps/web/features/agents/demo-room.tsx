@@ -185,7 +185,7 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
           </section>
         </div>
         <section aria-label="The plan on the hospital" className="relative min-h-[420px]">
-          <DemoScene plan={plans.length} infected={plans[plans.length - 1]?.devices ?? 9} reopened={reopened} />
+          <DemoScene plan={plans.length} infected={plans[plans.length - 1]?.devices ?? 9} reopened={reopened} naive={!!reopened && /^wall off/i.test(plans[plans.length - 1]?.name ?? "")} />
           {plans.length > 0 && <PlanTrail plans={plans} />}
         </section>
       </div>
