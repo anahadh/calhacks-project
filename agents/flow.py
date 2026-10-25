@@ -12,6 +12,7 @@ Claude (llm.py) words "why this plan" as the message's reason; the choice is cod
 """
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from uagents import Context
 
@@ -31,6 +32,21 @@ NAME = "flow"
 agent, protocol = make_agent(NAME)
 H = hospital_mod.load(settings().hospital_path)
 current: dict[str, Candidate] = {}  # session → the candidate last sent
+CONTAINED = 3  # an attack held to this many devices counts as contained
+MEDICAL = {"mri", "ct", "patient_monitor", "infusion_pump", "anesthesia_machine", "lab_analyzer"}
+# Where an attack can start: workstations, nurse stations and Windows medical consoles (phishing lands there).
+STARTS = sorted(d for d, x in H.devices.items()
+                if x["type"] in ("workstation", "nurse_station") or (x["type"] in MEDICAL and str(x.get("os", "")).startswith("windows")))
+
+
+def with_coverage(c: Candidate, req: ProposalRequest) -> Candidate:
+    """The plan tested against every other starting point: how many attacks it would also hold.
+    The count goes into its rationale, so humans see which plans protect beyond this one attack."""
+    others = [s for s in STARTS if s != req.patientZero]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        held = sum(r.infectedCount <= CONTAINED for r in pool.map(lambda s: run_sim(c, s, req.seed, req.challenges), others))
+    note = f"Also holds {held} of {len(others)} other attack starts to {CONTAINED} devices or fewer."
+    return c.copy(update={"policy": c.policy.copy(update={"rationale": f"{c.policy.rationale} {note}"})})
 
 
 def hospital_without_protection() -> dict:
@@ -55,13 +71,14 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         if chosen is None:
             raise RuntimeError("no candidate plan: every connection the attack used is one the agents must keep")
         policy, result, violating = chosen
-        cand = next(c for c, _ in tested if c.policy is policy)
+        cand = with_coverage(next(c for c, _ in tested if c.policy is policy), req)
+        policy = cand.policy
         # The other plans that meet every constraint, best first: offered alongside the lead.
-        alternatives = [] if violating else [
-            Alternative(policyId=c.id, testResult=r, **c.policy.dict())
-            for p, r in flow.rank([(c.policy, r) for c, r in tested], req.constraints, H)[1:3]
-            for c in [next(c for c, _ in tested if c.policy is p)]
+        ranked = [] if violating else [
+            (next(c for c, _ in tested if c.policy is p), r) for p, r in flow.rank([(c.policy, r) for c, r in tested], req.constraints, H)
         ]
+        alternatives = [Alternative(policyId=c.id, testResult=r, **with_coverage(c, req).policy.dict())
+                        for c, r in [(c, r) for c, r in ranked if c.id != cand.id][:2]]
         if violating:
             ctx.logger.warning(f"no candidate meets every constraint; sending the least-violating, {cand.id}")
 

@@ -308,6 +308,9 @@ export type RecommendationRow = {
   round: number;
   /** 1 = the plan negotiated in the rounds; 2-3 = alternatives both reviewing agents also accepted. */
   option: number;
+  /** The plan's own why and cost, from the Flow Agent (includes how many other attack starts it also holds). */
+  rationale?: string;
+  tradeoff?: string;
   name: string;
   rules: string[];
   explanation: string;

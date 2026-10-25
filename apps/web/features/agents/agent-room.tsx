@@ -532,6 +532,8 @@ function Transcript({ messages, names }: { messages: readonly (TimedMessage & { 
 // --- The options humans choose between: the negotiated plan and the alternatives both reviewers accepted. ---
 
 const ROLE: Record<string, string> = { security: "Security", clinical_engineering: "Clinical engineering", operations: "Operations" };
+/** "Also holds 12 of 17 other attack starts…" from the plan's rationale, as the card's headline difference. */
+const coverage = (rationale?: string) => rationale?.match(/Also holds \d+ of \d+ other attack starts[^.]*\./)?.[0];
 const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function OptionCards({ recs, review }: { recs: readonly RecommendationRow[]; review?: (rec: RecommendationRow) => ReactNode }) {
@@ -557,7 +559,11 @@ export function OptionCards({ recs, review }: { recs: readonly RecommendationRow
               {count(r.verified.devicesCompromised, "device")} compromised · {count(r.verified.removedFlows.length, "connection")} cut ·{" "}
               {count(r.verified.protectedBroken.length, "protected flow")} broken
             </div>
-            {r.explanation && <p className="m-0 mt-2 line-clamp-3 text-[13px] leading-5 text-ink-muted" title={r.explanation}>{r.explanation}</p>}
+            {coverage(r.rationale) && (
+              <div className="num mt-2 rounded-ctl border border-line2 px-2 py-1 text-[12px] text-ink">{coverage(r.rationale)}</div>
+            )}
+            {r.tradeoff && <p className="m-0 mt-2 text-[13px] leading-5 text-ink-muted"><span className="text-ink-faint">Cost: </span>{r.tradeoff}</p>}
+            {r.explanation && <p className="m-0 mt-2 line-clamp-2 text-[13px] leading-5 text-ink-faint" title={r.explanation}>{r.explanation}</p>}
             <div className="num mt-2 text-[12px] text-ink-faint">
               {r.verdicts.map((v) => `${v.decision === "accept" ? "●" : "✕"} ${SPEAKER_LABEL[v.agent].replace(" Agent", "")}`).join("  ")}
             </div>
