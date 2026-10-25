@@ -108,6 +108,24 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
               <span className="eyebrow">Same attack, twice</span>
               <span className="readout text-[19px] leading-6 text-ink">{rec?.name ?? planRun?.label ?? "Computing the plan…"}</span>
               <span className="num text-xs text-ink-muted">{subtitle}</span>
+              {rec && session.isPresenter && session.entryPoints.length > 0 && (
+                <label className="num ml-auto flex items-center gap-2 text-xs text-ink-muted">
+                  Attack starts at
+                  <select
+                    value={planRun?.patientZero ?? ""}
+                    onChange={(e) => {
+                      setErr(undefined);
+                      session.actions.showSolution(rec.id, undefined, e.target.value).catch((x: Error) => setErr(x.message));
+                    }}
+                    className="ctl h-9 bg-panel2 px-2 text-[13px] text-ink"
+                    title="Rerun both sides from another entry point: the plan is designed for any of them"
+                  >
+                    {session.entryPoints.map((id) => (
+                      <option key={id} value={id}>{index.device.get(id)?.name ?? id}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
 
             <Transport session={session} sides={sides} tick={tick} statusLine={clock.line.startsWith("Step") ? undefined : clock.line} onError={setErr} />

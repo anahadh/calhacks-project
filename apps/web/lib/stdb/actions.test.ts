@@ -60,8 +60,8 @@ describe("sessionActions", () => {
     await a.showSolution("s1:2", 0.5);
     await a.closeSolution();
     expect(calls).toEqual([
-      ["solutionStart", { sessionId: "s1", recommendationId: "s1:2", speed: 2 }],
-      ["solutionStart", { sessionId: "s1", recommendationId: "s1:2", speed: 0.5 }],
+      ["solutionStart", { sessionId: "s1", recommendationId: "s1:2", speed: 2, patientZero: "" }],
+      ["solutionStart", { sessionId: "s1", recommendationId: "s1:2", speed: 0.5, patientZero: "" }],
       ["solutionClose", { sessionId: "s1" }],
     ]);
   });

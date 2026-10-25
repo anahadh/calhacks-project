@@ -56,8 +56,8 @@ export function sessionActions(
     clearFocus: async (id) => need().annotationClear({ annotationId: BigInt(id) }),
     defend: async () => need().defendRequest({ sessionId }),
     answerQuestion: async (questionId, choice) => need().questionAnswer({ sessionId, questionId, choice }),
-    showSolution: async (recommendationId, speed?: Speed) =>
-      need().solutionStart({ sessionId, recommendationId, speed: speed ?? activeRun?.speed ?? 1 }),
+    showSolution: async (recommendationId, speed?: Speed, patientZero = "") =>
+      need().solutionStart({ sessionId, recommendationId, speed: speed ?? activeRun?.speed ?? 1, patientZero }),
     closeSolution: async () => need().solutionClose({ sessionId }),
   };
 }
