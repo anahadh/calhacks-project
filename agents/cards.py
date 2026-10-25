@@ -427,7 +427,7 @@ def feed_row(line: str) -> Node | None:
         to = re.search(r"@hippocratech-([a-z-]+)", rest)
         if to:
             target = {"flow": "Flow", "inventory": "Inventory", "clinical-workflow": "Clinical Workflow"}.get(to.group(1), to.group(1))
-            what = re.sub(r"\s*@hippocratech-[a-z-]+\s*", " ", rest).replace("  ", " ").strip()
+            what = re.sub(r"@hippocratech-[a-z-]+", target, rest).strip()
             return item([text(f"Coordinator → {target}: {what}", "muted")])
         return item([text(f"Coordinator: {rest}", "emphasis")])
     label, variant = agent_state([line], "@" + m.group("handle"))

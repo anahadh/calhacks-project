@@ -72,6 +72,7 @@ class ChatRound:
     last_sent: float = 0.0  # monotonic time of the last trace message
     flush: asyncio.Task | None = None  # the pending coalesced send, if any
     summary_sent: bool = False
+    shown: int = 0  # trace lines already sent in a live card
     map_image: str | None = None  # the baseline spread on the floor plan, once known
     infected: set | None = None  # devices the baseline attack reaches
 
@@ -303,8 +304,15 @@ async def _flush_trace(ctx: Context, session_id: str, wait: float) -> None:
     c.last_sent = time.monotonic()
     rnd = rounds.get(session_id)
     start = getattr(rnd, "patient_zero", None) if rnd else None
-    msg = cards.live_card(list(c.trace), rnd.round if rnd else 1, c.device_name,
-                          len(c.infected) if c.infected is not None else None, viz.scene_url(f"spread-{start}") if start else None)
+    # Only the lines not yet shown: ASI:One can't edit a sent card, so each update is the next
+    # part of the conversation, and the 3D picture rides on the first one only.
+    new = list(c.trace[c.shown:])
+    if not new:
+        return
+    scene = viz.scene_url(f"spread-{start}") if start and c.shown == 0 else None
+    c.shown = len(c.trace)
+    msg = cards.live_card(new, rnd.round if rnd else 1, c.device_name,
+                          len(c.infected) if c.infected is not None else None, scene)
     await reply_card(ctx, c.sender, msg, session_id)
 
 

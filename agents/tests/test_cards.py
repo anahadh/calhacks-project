@@ -250,3 +250,9 @@ def test_final_report_has_pictures_numbers_story_and_signoff():
     assert "rejected" in s and "MCP" in s and "Security" in s and rec.policy.name in s
     assert cards.depth(root) <= 8 and len(meta["card_payload"]) < 64 * 1024
     cards.validate(root)
+
+
+def test_feed_handoff_keeps_the_agents_name():
+    row = cards.feed_row("[ @hippocratech-coordinator ] sent the plan to @hippocratech-inventory for a verdict (round 1).")
+    s = json.dumps(row, ensure_ascii=False)
+    assert "Coordinator → Inventory: sent the plan to Inventory for a verdict" in s and "to for" not in s

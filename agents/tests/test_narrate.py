@@ -205,3 +205,32 @@ def test_bubble_drops_handoffs_but_keeps_mcp_calls():
              "[ @hippocratech-inventory · round 1 ] accepted."]
     out = narrate.render(lines)
     assert "asked @hippocratech-flow" not in out and "🔧 **MCP**" in out and "**Inventory**" in out
+
+
+def test_each_live_update_carries_only_new_lines_and_the_picture_once(monkeypatch, tmp_path):
+    import uuid
+    monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
+    monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
+    import coordinator
+    monkeypatch.setattr(coordinator, "NARRATE_INTERVAL_S", 0.05)
+    monkeypatch.setattr(coordinator.viz, "scene_url", lambda name: "https://img/x.png")
+    coordinator.rounds["s4"] = type("R", (), {"state": "running", "round": 1, "patient_zero": "mri_2"})()
+    coordinator.chats["s4"] = coordinator.ChatRound(sender="agent1qsender", device_name="MRI 2")
+    ctx = Ctx()
+
+    async def go():
+        await coordinator.narrate_chat(ctx, "s4", "[ @hippocratech-inventory · round 1 ] accepted.")
+        await asyncio.sleep(0.15)
+        await coordinator.narrate_chat(ctx, "s4", "[ @hippocratech-clinical-workflow · round 1 ] rejected: no.")
+        await asyncio.sleep(0.15)
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(go())
+    finally:
+        loop.close()
+    cards_sent = [json.loads(next(c["metadata"]["card_payload"] for c in json.loads(kw["message_body"])["content"]
+                                  if c.get("type") == "metadata")) for _, kw in ctx.sent]
+    first, second = (json.dumps(c, ensure_ascii=False) for c in cards_sent)
+    assert "Inventory" in first and "https://img/x.png" in first
+    assert "Clinical Workflow" in second and "Inventory → Coordinator" not in second and "https://img/x.png" not in second
