@@ -138,8 +138,8 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
   const [tab, setTab] = useState<"cards" | "chat">("cards");
 
   return (
-    <div className="flex h-full w-full flex-col rounded-panel border border-line bg-panel shadow-overlay">
-      <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-4 border-b border-line px-6 py-3">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-panel border border-line bg-panel shadow-overlay">
+      <header className="flex min-h-[72px] shrink-0 flex-wrap items-center justify-between gap-4 border-b border-line px-6 py-3">
         <div>
           <h1 className="m-0 text-[24px] font-normal tracking-[-0.01em] text-ink">Agents negotiating the plan</h1>
           <div className="num mt-0.5 text-[12px] text-ink-faint">{subtitle}</div>
@@ -155,12 +155,12 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <div className="grid min-h-0 grid-rows-[300px_minmax(0,1fr)] border-b border-line lg:border-b-0 lg:border-r">
+      <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <div className="grid min-h-0 grid-rows-[300px_minmax(0,1fr)] overflow-hidden border-b border-line lg:border-b-0 lg:border-r">
           <section aria-label="Who is talking" className="relative border-b border-line">
             <Web newest={newest} />
           </section>
-          <section aria-label="Contributions" className="flex min-h-0 flex-col">
+          <section aria-label="Contributions" className="flex min-h-0 flex-col overflow-hidden">
             {chat && (
               <div role="tablist" aria-label="View" className="flex gap-1 px-5 pt-3">
                 <button type="button" role="tab" aria-selected={tab === "cards"} onClick={() => setTab("cards")} className={`h-9 rounded-ctl px-3 text-[14px] ${tab === "cards" ? "bg-select-wash text-ink" : "text-ink-muted hover:text-ink"}`}>
@@ -183,13 +183,15 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
             )}
           </section>
         </div>
-        <section aria-label="The plan on the hospital" className="relative min-h-[420px]">
-          <DemoScene plan={plans.length} infected={plans[plans.length - 1]?.devices ?? 9} reopened={reopened} naive={!!reopened && /^wall off/i.test(plans[plans.length - 1]?.name ?? "")} />
+        <section aria-label="The plan on the hospital" className="flex min-h-[420px] min-w-0 flex-col overflow-hidden">
           {plans.length > 0 && <PlanTrail plans={plans} />}
+          <div className="relative min-h-0 flex-1">
+            <DemoScene plan={plans.length} infected={plans[plans.length - 1]?.devices ?? 9} reopened={reopened} naive={!!reopened && /^wall off/i.test(plans[plans.length - 1]?.name ?? "")} />
+          </div>
         </section>
       </div>
       {done && (
-        <footer className="border-t border-line px-6 py-4">
+        <footer className="max-h-[42%] shrink-0 overflow-y-auto border-t border-line px-6 py-4">
           {options ?? <p role="status" className="num m-0 text-[14px] text-ink-muted">{status ?? "The agents are finalizing the plan…"}</p>}
         </footer>
       )}
@@ -257,7 +259,7 @@ function Web({ newest }: { newest?: DemoEvent }) {
 /** The plans so far, top right: each one's machines and patients, falling. */
 function PlanTrail({ plans }: { plans: NonNullable<DemoEvent["plan"]>[] }) {
   return (
-    <ol className="absolute right-4 top-4 m-0 flex list-none flex-col gap-1.5 p-0">
+    <ol className="m-0 flex shrink-0 list-none flex-col gap-1.5 border-b border-line p-3">
       {plans.map((p, i) => {
         const prev = plans[i - 1];
         return (

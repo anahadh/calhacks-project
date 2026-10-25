@@ -202,12 +202,14 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                   status={session.roundState.state === "running" ? "The agents are finalizing the plan behind the scenes…" : session.roundState.state === "idle" && !session.messages.length ? "Press Create segmentation plan to wake the agents." : undefined}
                   options={
                     session.recommendations.length ? (
-                      <OptionCards
-                        recs={session.recommendations.filter((r) => r.round === session.recommendations[0]?.round)}
-                        review={(rec) => (
-                          <RecommendationCard rec={rec} index={index} blocked={showBlocker(session, rec.id)} onShow={() => session.actions.showSolution(rec.id)} />
-                        )}
-                      />
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <span className="eyebrow">Recommendation · for human review</span>
+                          <div className="mt-1 text-[17px] text-ink">{session.recommendations[0].name}</div>
+                          <div className="num text-[12px] text-ink-faint">Security, Clinical engineering and Operations must sign off. Agent agreement is not approval.</div>
+                        </div>
+                        <RecommendationCard rec={session.recommendations[0]} index={index} blocked={showBlocker(session, session.recommendations[0].id)} onShow={() => session.actions.showSolution(session.recommendations[0].id)} />
+                      </div>
                     ) : undefined
                   }
                 />
