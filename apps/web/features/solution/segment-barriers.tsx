@@ -17,8 +17,8 @@ import { hullOf, type Segment } from "./pair";
 // the animation only reveals them (rule 16).
 
 const H = WALL_H + 1.1;
-const RISE_MS = 1100;
-const STAGGER_MS = 160;
+const RISE_MS = 2800;
+const STAGGER_MS = 450;
 const PAD = 1.8;
 
 type Barrier = { key: string; zone: string; floorId: string; level: number; color: string; hull: Point[]; anchor: Point; order: number };
@@ -85,16 +85,17 @@ function Rising({ b, lit, label }: { b: Barrier; lit: boolean; label?: { name: s
   }, [b.hull]);
   const wallGeo = useMemo(() => {
     const pos: number[] = [];
+    // Plan coordinates, relative to the group (which sits at the floor's origin): plan y is scene z.
     for (let i = 0; i < b.hull.length; i++) {
-      const [ax, , az] = to3(b.hull[i], 0, 0);
-      const [bx, , bz] = to3(b.hull[(i + 1) % b.hull.length], 0, 0);
+      const [ax, az] = b.hull[i];
+      const [bx, bz] = b.hull[(i + 1) % b.hull.length];
       pos.push(ax, 0, az, bx, 0, bz, bx, H, bz, ax, 0, az, bx, H, bz, ax, H, az);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     return g;
   }, [b.hull]);
-  const rail = useMemo(() => [...b.hull, b.hull[0]].map((p) => to3(p, 0, H) as THREE.Vector3Tuple), [b.hull]);
+  const rail = useMemo(() => [...b.hull, b.hull[0]].map(([x, y]) => [x, H, y] as THREE.Vector3Tuple), [b.hull]);
 
   useFrame(({ clock }) => {
     const now = clock.getElapsedTime() * 1000;
@@ -118,7 +119,7 @@ function Rising({ b, lit, label }: { b: Barrier; lit: boolean; label?: { name: s
         <Line points={rail} color={b.color} lineWidth={lit ? 2.4 : 1.4} transparent opacity={lit ? 1 : 0.75} />
       </group>
       {label && (
-        <Html position={to3(b.anchor, 0, H + 2.6)} center zIndexRange={[20, 10]} style={{ pointerEvents: "none" }}>
+        <Html position={[b.anchor[0], H + 2.6, b.anchor[1]]} center zIndexRange={[20, 10]} style={{ pointerEvents: "none" }}>
           <div className="num flex items-center gap-2 whitespace-nowrap rounded-ctl border bg-bg/90 px-2.5 py-0.5 text-[11px]" style={{ borderColor: b.color }}>
             <span className="text-ink">{label.name}</span>
             <span className={label.infected > 0 ? "text-state-infected" : "text-ink-faint"}>{label.infected > 0 ? `${label.infected}/${label.total}` : label.total}</span>
