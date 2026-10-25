@@ -183,3 +183,26 @@ def test_hospital_and_recommendation_cards_carry_the_floor():
     assert "Emergency" in json.dumps(root)
     _, root = payload(cards.recommendation_card(H, "s", rec, base, "http://x", "Done."))
     assert "Imaging" in json.dumps(root) and "→" in json.dumps(root, ensure_ascii=False)
+
+
+def test_result_is_a_detail_card_with_hero_rows_and_ask_buttons():
+    m = cards.result_card(H, rec, base, "https://img/x.png", "Done.")
+    meta = next(c.metadata for c in m.content if c.type == "metadata")
+    p = json.loads(meta["card_payload"])
+    assert meta["card_kind"] == "detail" and p["title"] == rec.policy.name and p["hero_image"] == "https://img/x.png"
+    rows = {r["label"]: r["value"] for r in p["summary_rows"]}
+    assert rows["Devices infected"] == f"{base.infectedCount} → {res.infectedCount}" and "Must sign off" in rows
+    assert [c["selection"]["agent"] for c in p["ctas"]] == ["flow", "inventory", "clinical_workflow"]
+    assert "hero_image" not in json.loads(next(c.metadata for c in cards.result_card(H, rec, base, None, "x").content if c.type == "metadata")["card_payload"])
+
+
+def test_roster_is_a_carousel_of_the_four_agents():
+    lines = ['[ @hippocratech-flow · round 2 ] revised the plan, now "X": ok.', "[ @hippocratech-inventory · round 2 ] accepted.",
+             "[ @hippocratech-clinical-workflow · round 1 ] rejected: no.", "[ @hippocratech-clinical-workflow · round 2 ] accepted."]
+    m = cards.roster_card(lines, "https://img/chart.png", "The agents.")
+    meta = next(c.metadata for c in m.content if c.type == "metadata")
+    p = json.loads(meta["card_payload"])
+    assert meta["card_kind"] == "carousel" and len(p["items"]) == 4
+    flow = p["items"][0]
+    assert flow["title"] == "Flow" and flow["image"] == "https://img/chart.png" and flow["primary_cta"]["selection"]["agent"] == "flow"
+    assert p["items"][2]["badges"][0]["label"] == "accepted"

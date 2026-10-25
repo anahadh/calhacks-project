@@ -335,3 +335,58 @@ def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_u
                        for a in ("flow", "inventory", "clinical_workflow")], direction="row", gap=8)]
     root = section("Recommendation", children, subtitle=f"Session {session_id}")
     return message(bubble, root, False)
+
+
+# --- Fetch's predefined card kinds (uagents_core builders, validated by the library) ---
+
+
+def _card(bubble: str, payload, interactive: bool = True) -> ChatMessage:
+    from uagents_core.contrib.protocols.chat.cards import create_card_content
+    meta = create_card_content(payload, is_terminal=not interactive, preferred_drawer_width_px=560)
+    return ChatMessage(timestamp=datetime.now(timezone.utc), msg_id=uuid4(),
+                       content=[TextContent(type="text", text=bubble), meta])
+
+
+ASK_AGENTS = (("flow", "Flow"), ("inventory", "Inventory"), ("clinical_workflow", "Clinical Workflow"))
+
+
+def result_card(h: HospitalIndex, rec, baseline, hero: str | None, bubble: str) -> ChatMessage:
+    """The round's result as a `detail` card: an optional hosted hero image, the numbers as
+    rows (all from the engine's results), and a button per agent to ask it why."""
+    from uagents_core.contrib.protocols.chat.cards import CtaAction, DetailCardPayload, DetailSummaryRow
+    after = rec.testResult
+    arrow = lambda b, a: f"{b} → {a}" if b is not None else str(a)
+    rows = [
+        ("Devices infected", arrow(baseline.infectedCount if baseline else None, after.infectedCount)),
+        ("Patients with care delayed or disrupted", arrow(affected(baseline) if baseline else None, affected(after))),
+        ("Connections the plan cuts", str(len(after.removedFlows))),
+        ("Protected clinical flows broken", str(len(after.protectedBroken))),
+        ("Must sign off", "  ·  ".join(ROLE_NAMES[r] for r in rec.requiredRoles)),
+    ]
+    payload = DetailCardPayload(
+        title=rec.policy.name, hero_image=hero if hero and hero.startswith("https://") else None,
+        summary_rows=[DetailSummaryRow(label=l, value=v) for l, v in rows],
+        ctas=[CtaAction(label=f"Ask {name} why", selection={"action": "ask", "source": SOURCE, "agent": a, "about": ""},
+                        primary=(a == "flow")) for a, name in ASK_AGENTS])
+    return _card(bubble, payload)
+
+
+def roster_card(lines: list[str], chart: str | None, bubble: str) -> ChatMessage:
+    """The four agents as a `carousel`: each one's state from the trace, the last thing it
+    did, and a button to ask it."""
+    from uagents_core.contrib.protocols.chat.cards import CarouselBadge, CarouselCardPayload, CarouselItem, CtaAction
+    from runtime import PROFILES
+    items = []
+    for agent, name in (*ASK_AGENTS, ("coordinator", "Coordinator")):
+        handle = "@" + PROFILES[agent].handle
+        label, variant = agent_state(lines, handle)
+        last = next((TAG.match(l).group("rest") for l in reversed(lines) if TAG.match(l) and TAG.match(l).group("handle") == handle[1:]), "")
+        if agent == "coordinator" and "agree on" in last:
+            label, variant = "agreed", "success"
+        items.append(CarouselItem(
+            id=agent, title=name, subtitle=handle,
+            image=chart if agent == "flow" and chart and chart.startswith("https://") else None,
+            badges=[CarouselBadge(label=label, variant=variant)],
+            secondary_text=(last[:180] + "…") if len(last) > 180 else (last or None),
+            primary_cta=CtaAction(label=f"Ask {name}", selection={"action": "ask", "source": SOURCE, "agent": agent, "about": ""})))
+    return _card(bubble, CarouselCardPayload(title="The agents behind this plan", subtitle="Tap one to ask it why", items=items))

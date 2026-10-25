@@ -343,6 +343,13 @@ async def _summary(ctx: Context, rnd: Round) -> None:
         ctx.logger.error(f"summary failed: {e!r}")
         await reply(ctx, c.sender, f"{prefix}I couldn't write the summary: {e.__class__.__name__}: {e}", rnd.sessionId)
     c.summary_sent = True
+    # Then the agents themselves, as a carousel (spaced out: ASI:One rate-limits bursts).
+    await asyncio.sleep(NARRATE_INTERVAL_S)
+    try:
+        await reply_card(ctx, c.sender, cards.roster_card(c.trace, None, "Here are the agents who negotiated this. Tap one to ask it why."),
+                         rnd.sessionId)
+    except Exception as e:
+        ctx.logger.error(f"roster failed: {e!r}")
 
 
 # --- the Coordinator's own tools (the hospital ones come from mcp_server) ---
@@ -549,17 +556,7 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         rsid = want.split(":", 1)[1]
         rnd = rounds.get(rsid)
         if rnd is not None and rnd.recommendation is not None:
-            chart = floor = None
-            try:
-                rows = viz.rows_from_events(events.get(rsid, []))
-                if rows and rnd.baseline is not None:
-                    device = chats[rsid].device_name if rsid in chats else rnd.patient_zero
-                    chart = viz.data_uri(viz.negotiation_chart(device, rnd.baseline.infectedCount, rows))
-                    floor = viz.data_uri(viz.before_after(H, rnd.patient_zero, {d.id for d in rnd.baseline.infectedDevices},
-                                                          {d.id for d in rnd.recommendation.testResult.infectedDevices}))
-            except Exception as e:  # the chart is a garnish: the card still goes without it
-                ctx.logger.error(f"chart failed: {e!r}")
-            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), out, chart=chart, floor=floor)
+            card = cards.result_card(H, rnd.recommendation, rnd.baseline, None, out)
     if card is not None:
         await reply_card(ctx, sender, card, sid)
     else:

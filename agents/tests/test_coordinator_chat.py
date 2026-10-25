@@ -272,18 +272,21 @@ def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, mo
         return turn("The agents agree.")  # the model did not call the recommendation tool: the card still comes
 
     monkeypatch.setattr(c.brain, "respond", fake_respond)
+    monkeypatch.setattr(c, "NARRATE_INTERVAL_S", 0.01)
     c.chats["s"] = c.ChatRound(sender="agent1qs", device_name="MRI 2", trace=["[ a ] one", "[ b ] two"])
     rnd = type("R", (), {"state": "done", "round": 2, "sessionId": "s", "recommendation": rec, "baseline": base})()
     c.rounds["s"] = rnd
 
     async def go():
         await c.notify_chat(c.ctx_stub(), rnd)
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(1.0)  # the summary turn lists the MCP tools first
 
     run(go())
-    to, message, session_id, text, card = sent[-1]
-    assert text.startswith("[ a ] one\n\n[ b ] two\n\n") and text.endswith("The agents agree.")
-    assert card is not None and "Recommendation" in json.dumps(card)
+    summary = next(x for x in sent if x[3] and x[3].endswith("The agents agree."))
+    assert summary[3].startswith("[ a ] one\n\n[ b ] two\n\n")
+    assert summary[4] is not None and policy.name in json.dumps(summary[4])
+    roster = sent[-1]
+    assert roster[3].startswith("Here are the agents") and len(roster[4]["items"]) == 4
 
 
 def test_ask_selection_asks_that_agent_in_code(coord, monkeypatch):
