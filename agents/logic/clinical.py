@@ -34,15 +34,43 @@ def services_down_too_long(result: RunResult, hospital: HospitalIndex, service_i
     return sorted(out)
 
 
+# Clinical engineering reviews a plan one department at a time, most critical first:
+# the first department with a broken protected connection or a critical service down
+# too long is the round's objection, and the next department's turn comes once that
+# one is fixed. So a plan that breaks care in two places takes two rounds to settle.
+REVIEW_ORDER = ("critical_care", "imaging", "clinical_support", "inpatient", "business", "public", "it_core")
+
+
+def department_of(hospital: HospitalIndex, device_ids) -> str:
+    """The most critical department among the devices' zones (REVIEW_ORDER's first)."""
+    zones = {hospital.zone(d) for d in device_ids if d in hospital.devices}
+    rank = lambda z: REVIEW_ORDER.index(z) if z in REVIEW_ORDER else len(REVIEW_ORDER)
+    return min(zones, key=rank) if zones else REVIEW_ORDER[-1]
+
+
+def objections(result: RunResult, hospital: HospitalIndex) -> list[tuple[str, str, list[str]]]:
+    """(department, kind, target ids) in review order: protected flows broken and services
+    down too long, grouped by the department they serve."""
+    by: dict[str, dict[str, list[str]]] = {}
+    for fid in sorted(result.protectedBroken):
+        f = hospital.flows.get(fid)
+        dept = department_of(hospital, (f["from"], f["to"])) if f else REVIEW_ORDER[-1]
+        by.setdefault(dept, {}).setdefault("keep_flow", []).append(fid)
+    for sid in services_down_too_long(result, hospital):
+        dept = department_of(hospital, hospital.services[sid].get("dependsOnDevices", []))
+        by.setdefault(dept, {}).setdefault("keep_service", []).append(sid)
+    rank = lambda z: REVIEW_ORDER.index(z) if z in REVIEW_ORDER else len(REVIEW_ORDER)
+    return [(dept, kind, ids) for dept in sorted(by, key=rank) for kind in ("keep_flow", "keep_service") if (ids := by[dept].get(kind))]
+
+
 def check(session_id: str, round: int, policy_id: str, result: RunResult, hospital: HospitalIndex) -> Verdict:
     def verdict(decision, constraint=None):
         return Verdict(
             sessionId=session_id, round=round, policyId=policy_id, agent=AGENT, decision=decision, reason="[reason]", constraint=constraint
         )
 
-    if result.protectedBroken:
-        return verdict("reject", Constraint(kind="keep_flow", targetIds=sorted(result.protectedBroken)))
-    down = services_down_too_long(result, hospital)
-    if down:
-        return verdict("reject", Constraint(kind="keep_service", targetIds=down))
+    found = objections(result, hospital)
+    if found:
+        _, kind, ids = found[0]
+        return verdict("reject", Constraint(kind=kind, targetIds=ids))
     return verdict("accept")

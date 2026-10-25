@@ -79,14 +79,24 @@ def preflight(
     return [question(session_id, round, d) for d in sorted(flagged & path)]
 
 
+# The most allow rules the inventory's switches carry as ACLs. A longer plan is
+# rejected with max_rules, and the Flow Agent folds its rules into department-level
+# ones (precise rules are safer; fewer rules are what people can run).
+RULE_BUDGET = 24
+
+
 def check(
     session_id: str, round: int, policy_id: str, result: RunResult, hospital: HospitalIndex, confirmed: dict[str, str],
-    challenges=(),
+    challenges=(), rule_count: int | None = None,
 ) -> tuple[Verdict, Question | None]:
     """Reject a policy that touches a flagged device, and ask about the first one.
-    When several are touched, the others are asked about on later checks, one at a time."""
+    When several are touched, the others are asked about on later checks, one at a time.
+    Otherwise reject a policy with more rules than RULE_BUDGET (max_rules)."""
     touched = sorted(flagged_devices(hospital, confirmed, challenges) & hospital.touched(result))
     if not touched:
+        if rule_count is not None and rule_count > RULE_BUDGET:
+            return Verdict(sessionId=session_id, round=round, policyId=policy_id, agent=AGENT, decision="reject", reason="[reason]",
+                           constraint=Constraint(kind="max_rules", targetIds=[], limit=RULE_BUDGET)), None
         return Verdict(sessionId=session_id, round=round, policyId=policy_id, agent=AGENT, decision="accept", reason="[reason]"), None
     verdict = Verdict(
         sessionId=session_id,

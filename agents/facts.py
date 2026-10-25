@@ -89,11 +89,24 @@ def verdict(h: HospitalIndex, v: Verdict, msg: Proposal | Revision, plan_name: s
         f["brokenProtectedFlows"] = [flow(h, x) for x in sorted(r.protectedBroken)]
     if v.constraint is not None:
         f["constraintAdded"] = constraint(h, v.constraint)
+    if v.agent == "clinical_workflow" and v.constraint is not None:
+        from logic.clinical import department_of
+        from logic.candidates import zone_name
+        ids = v.constraint.targetIds
+        ends = [d for i in ids for d in ((h.flows[i]["from"], h.flows[i]["to"]) if i in h.flows else h.services.get(i, {}).get("dependsOnDevices", []))]
+        f["departmentReviewedThisRound"] = zone_name(department_of(h, ends))
+        f["reviewOrder"] = "one department per round, most critical first; the next department's turn comes once this is fixed"
     if v.agent == "inventory":
         touched = sorted(h.touched(r))
         f["devicesThisPlanChanges"] = len(touched)
-        if v.constraint is not None:
+        if v.constraint is not None and v.constraint.kind == "confirm_device":
             f["unidentifiedDevices"] = [device(h, d) for d in v.constraint.targetIds]
+        if v.constraint is not None and v.constraint.kind == "max_rules":
+            rules = len(msg.rules) if hasattr(msg, "rules") else None
+            f["ruleBudget"] = v.constraint.limit
+            if rules is not None:
+                f["ruleCount"] = rules
+            f["why"] = "the switches carry at most this many allow rules as ACLs; fold rules department to department"
     return f
 
 

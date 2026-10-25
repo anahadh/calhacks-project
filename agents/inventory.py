@@ -35,6 +35,7 @@ class Session:
     challenges: list[str] = field(default_factory=list)  # from round 1's request
     baseline: RunResult | None = None  # from round 1's request, for the reason's numbers
     asked: dict[str, str] = field(default_factory=dict)  # question id → device id
+    rule_count: int | None = None  # the current plan's rules, kept across revisions (diffs)
 
 
 sessions: dict[str, Session] = {}
@@ -63,8 +64,13 @@ async def judge(ctx: Context, sender: str, type: str, msg: Proposal | Revision):
     try:
         await received(NAME, sender, type, msg)
         s = sessions.setdefault(msg.sessionId, Session())
+        # The rule count: a proposal carries its rules, a revision only its diff.
+        if isinstance(msg, Proposal):
+            s.rule_count = len(msg.rules)
+        elif s.rule_count is not None:
+            s.rule_count += len(msg.diff.added) - len(msg.diff.removed)
         verdict, question = inventory.check(
-            msg.sessionId, msg.round, msg.policyId, msg.testResult, H, s.confirmed, s.challenges
+            msg.sessionId, msg.round, msg.policyId, msg.testResult, H, s.confirmed, s.challenges, rule_count=s.rule_count
         )
         kind = "verdict_accept" if verdict.decision == "accept" else "verdict_reject"
         verdict = await llm.worded(verdict, kind, facts.verdict(H, verdict, msg, msg.name, s.baseline))

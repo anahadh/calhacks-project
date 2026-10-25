@@ -184,40 +184,65 @@ def _plain_side(h: HospitalIndex, s: Selector) -> str:
     return f"{zone_name(s.zone)} {kind}s" if s.zone else "any device"
 
 
-def allow_list(h: HospitalIndex, cut: set[str]) -> list[PolicyRule]:
+def allow_list(h: HospitalIndex, cut: set[str], limit: int | None = None) -> list[PolicyRule]:
     """Rules that keep every active flow except `cut`. A zone none of whose outgoing
     flows are cut keeps everything in one rule; otherwise one rule per kept
-    (source kind, destination kind, protocol, port)."""
+    (source kind, destination kind, protocol, port). With a `limit` (a max_rules
+    constraint), rules are folded department to department, coarsest tier that
+    fits: by protocol and port, then by protocol, then any traffic, as long as a
+    folded rule re-allows nothing in `cut`."""
     flows = active_flows(h)
-    rules: list[PolicyRule] = []
     zones = sorted({h.zone(f["from"]) for f in flows})
     whole = {z for z in zones if not any(f["id"] in cut for f in flows if h.zone(f["from"]) == z)}
-    for z in sorted(whole):
-        rules.append(PolicyRule(id=f"r_{z}", **{"from": Selector(zone=z)}, to=Selector(),
-                                plain=f"Devices in {zone_name(z)} keep all their connections."))
-    seen = set()
-    for f in flows:
-        if f["id"] in cut or h.zone(f["from"]) in whole:
-            continue
+    base: list[PolicyRule] = [
+        PolicyRule(id=f"r_{z}", **{"from": Selector(zone=z)}, to=Selector(), plain=f"Devices in {zone_name(z)} keep all their connections.")
+        for z in sorted(whole)
+    ]
+    rest = [f for f in flows if f["id"] not in cut and h.zone(f["from"]) not in whole]
+    cuts = [h.flows[i] for i in cut if i in h.flows]
+
+    def fine(f: Row) -> tuple[tuple, PolicyRule]:
         src, dst = selector(h, f["from"]), selector(h, f["to"])
-        key = (src.json(), dst.json(), f["protocol"], f["port"])
-        if key in seen:
-            continue
-        seen.add(key)
-        rules.append(PolicyRule(
-            id=f"r_{len(rules)}", **{"from": src}, to=dst, protocol=f["protocol"], port=f["port"],
-            plain=f"{_plain_side(h, src).capitalize()} may reach {_plain_side(h, dst)} over {f['protocol'].upper()} ({f['port']}).",
-        ))
+        return (src.json(), dst.json(), f["protocol"], f["port"]), PolicyRule(
+            id="r", **{"from": src}, to=dst, protocol=f["protocol"], port=f["port"],
+            plain=f"{_plain_side(h, src).capitalize()} may reach {_plain_side(h, dst)} over {f['protocol'].upper()} ({f['port']}).")
+
+    def coarse(f: Row, tier: int) -> tuple[tuple, PolicyRule] | None:
+        """A department-to-department rule at `tier` (1: protocol and port, 2: protocol, 3: any), or None if it would re-allow a cut."""
+        sz, dz = h.zone(f["from"]), h.zone(f["to"])
+        proto = f["protocol"] if tier <= 2 else None
+        port = f["port"] if tier == 1 else None
+        reallows = any(h.zone(c["from"]) == sz and h.zone(c["to"]) == dz and (proto is None or c["protocol"] == proto) and (port is None or c["port"] == port) for c in cuts)
+        if reallows:
+            return None
+        over = f" over {proto.upper()}" + (f" ({port})" if port else "") if proto else " (all traffic)"
+        return (sz, dz, proto, port), PolicyRule(id="r", **{"from": Selector(zone=sz)}, to=Selector(zone=dz), protocol=proto, port=port,
+                                               plain=f"{zone_name(sz).capitalize()} may reach {zone_name(dz)}{over}.")
+
+    def build(tier: int) -> list[PolicyRule]:
+        seen: dict[tuple, PolicyRule] = {}
+        for f in rest:
+            key, rule = (coarse(f, tier) if tier else None) or fine(f)
+            seen.setdefault(key, rule)
+        return base + [r.copy(update={"id": f"r_{i}"}) for i, r in enumerate(seen.values(), start=len(base))]
+
+    rules = build(0)
+    if limit is not None and len(rules) > limit:
+        for tier in (1, 2, 3):
+            rules = build(tier)
+            if len(rules) <= limit:
+                break
     return rules
 
 
 def candidate(h: HospitalIndex, id: str, strategy: str, name: str, cut: set[str], keep: set[str],
-              rationale: str, tradeoff: str) -> Candidate | None:
-    """None when the cut set is empty after keeping `keep`, or needs more than MAX_RULES rules."""
+              rationale: str, tradeoff: str, limit: int | None = None) -> Candidate | None:
+    """None when the cut set is empty after keeping `keep`, or needs more than MAX_RULES rules.
+    `limit` (a max_rules constraint) folds the rules department to department."""
     cut = {fid for fid in cut - keep if fid in h.flows and boundary(h, h.flows[fid])}
     if not cut:
         return None
-    rules = allow_list(h, cut)
+    rules = allow_list(h, cut, limit)
     if len(rules) > MAX_RULES:
         return None
     return Candidate(id=id, policy=Policy(strategy=strategy, name=name, rules=rules, rationale=rationale, tradeoff=tradeoff))
@@ -240,10 +265,15 @@ def proposal_facts(h: HospitalIndex, baseline: RunResult, patient_zero: str, con
     }
 
 
+def rule_limit(constraints: list[Constraint]) -> int | None:
+    """The lowest max_rules limit in force, or None."""
+    return min((c.limit for c in constraints if c.kind == "max_rules" and c.limit), default=None)
+
+
 def from_proposal(h: HospitalIndex, i: int, name: str, strategy: str, rationale: str, tradeoff: str,
-                  cut: list[str], keep: set[str]) -> Candidate | None:
+                  cut: list[str], keep: set[str], limit: int | None = None) -> Candidate | None:
     """A model-proposed plan as a Candidate (the cut becomes an allow-list; kept links are never cut)."""
-    return candidate(h, f"proposed_{i}", strategy, name, set(cut), keep, rationale, tradeoff)
+    return candidate(h, f"proposed_{i}", strategy, name, set(cut), keep, rationale, tradeoff, limit)
 
 
 def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constraints: list[Constraint],
@@ -254,6 +284,6 @@ def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constrain
         candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that keep every attack in its department",
                   optimized_cuts(h, starts or [patient_zero], keep), keep,
                   "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department.",
-                  "Chosen by an optimizer over every starting point, not just this one."),
+                  "Chosen by an optimizer over every starting point, not just this one.", rule_limit(constraints)),
     ]
     return [c for c in out if c is not None]

@@ -99,7 +99,8 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
                 ctx.logger.warning(f"model plans dropped: {e}")
                 plans = []
             candidates = [c for i, p in enumerate(plans, start=1)
-                          if (c := candidates_mod.from_proposal(H, i, p.name, p.strategy, p.rationale, p.tradeoff, p.cut, keep))]
+                          if (c := candidates_mod.from_proposal(H, i, p.name, p.strategy, p.rationale, p.tradeoff, p.cut, keep,
+                                                                candidates_mod.rule_limit(req.constraints)))]
             candidates += candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints, starts=STARTS)
         tested = [(c, run_sim(c, req.patientZero, req.seed, req.challenges)) for c in candidates]
         if not tested:
