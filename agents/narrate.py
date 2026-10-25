@@ -25,6 +25,12 @@ def started(h: HospitalIndex, baseline: RunResult) -> str:
             f"Asking {handle('flow')} for a plan…")
 
 
+def render(lines: list[str]) -> str:
+    """The trace as chat text. ASI:One renders markdown, where one line break folds into
+    the paragraph, so each line gets a blank line after it."""
+    return "\n\n".join(lines)
+
+
 def failed(agent: str, error: str) -> str:
     return f"{_tag(agent)} failed: {error}"
 

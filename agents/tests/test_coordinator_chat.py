@@ -269,8 +269,7 @@ def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, mo
     rec = Recommendation(policy=policy, testResult=res, verdicts=[], explanation="Works.", requiredRoles=["security"])
 
     async def fake_respond(storage, who, sender, text, tools, system, session_id=None):
-        await {t.name: t for t in tools}["recommendation"].call({})
-        return turn("The agents agree.", ["recommendation"])
+        return turn("The agents agree.")  # the model did not call the recommendation tool: the card still comes
 
     monkeypatch.setattr(c.brain, "respond", fake_respond)
     c.chats["s"] = c.ChatRound(sender="agent1qs", device_name="MRI 2", trace=["[ a ] one", "[ b ] two"])
@@ -283,5 +282,5 @@ def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, mo
 
     run(go())
     to, message, session_id, text, card = sent[-1]
-    assert text.startswith("[ a ] one\n[ b ] two") and text.endswith("The agents agree.")
+    assert text.startswith("[ a ] one\n\n[ b ] two\n\n") and text.endswith("The agents agree.")
     assert card is not None and "Recommendation" in json.dumps(card)

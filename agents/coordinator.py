@@ -315,10 +315,11 @@ async def _summary(ctx: Context, rnd: Round) -> None:
     ctx = _with_session(ctx, c.session)
     if c.flush is not None and not c.flush.done():
         c.flush.cancel()  # the summary message carries the whole trace itself
-    prefix = "\n".join(c.trace) + "\n\n" if c.trace else ""
+    prefix = narrate.render(c.trace) + "\n\n" if c.trace else ""
     try:
         await chat_turn(ctx, c.sender, "The round just ended; summarise it for me, naming each agent by handle and ending "
-                                       "with who must sign off.", session_id=rnd.sessionId, relay_in=False, prefix=prefix)
+                                       "with who must sign off.", session_id=rnd.sessionId, relay_in=False, prefix=prefix,
+                        default_card=f"recommendation:{rnd.sessionId}" if rnd.recommendation is not None else None)
     except Exception as e:  # rule 14: a failed summary is shown, never swallowed by the task
         ctx.logger.error(f"summary failed: {e!r}")
         await reply(ctx, c.sender, f"{prefix}I couldn't write the summary: {e.__class__.__name__}: {e}", rnd.sessionId)
@@ -469,7 +470,7 @@ def _selection_text(text: str) -> str:
 
 
 async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None = None, relay_in: bool = True,
-                    prefix: str = "") -> None:
+                    prefix: str = "", default_card: str | None = None) -> None:
     """One ASI:One turn: relay the text in, let the loop pick tools and write the reply,
     relay the reply out, send it with a card when a tool asked for one."""
     text = _selection_text(text)
@@ -501,7 +502,7 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         ctx.logger.error(f"chat turn failed: {e!r}")
         await reply(ctx, sender, f"I couldn't answer: {e.__class__.__name__}: {e}", sid)
         return
-    want = picked.pop(sender, None)
+    want = picked.pop(sender, None) or default_card  # the card is code's call when the round has a result
     out = prefix + turn.text
     card = None
     if want == "picker":

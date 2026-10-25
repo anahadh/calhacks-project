@@ -39,7 +39,7 @@ def test_picker_has_at_most_six_rows_and_is_interactive():
     items = next(n for n in walk(root) if n["type"] == "list")["items"]
     assert len(items) == 6
     assert all(i["action"]["selection"]["action"] == "simulate" and i["action"]["selection"]["device"] in on for i in items)
-    assert meta["requires_card_interaction"] == "true"
+    assert meta["requires_card_interaction"] == "true" and "is_terminal" not in meta
     assert cards.depth(root) <= 8 and all(n["type"] in ALLOWED for n in walk(root))
     assert m.text() == "Pick one."
 
@@ -57,7 +57,7 @@ def test_recommendation_card_has_four_numbers_roles_and_room_link():
         assert str(n) in s
     assert "Security" in s and "Clinical engineering" in s and "http://x/room/chat-1" in s
     assert "approved" not in s.lower() and not FORBIDDEN.search(s)
-    assert meta["requires_card_interaction"] == "false"
+    assert meta["requires_card_interaction"] == "false" and meta["is_terminal"] == "true"
     assert len(meta["card_payload"]) < 64 * 1024 and cards.depth(root) <= 8
     assert all(n["type"] in ALLOWED for n in walk(root))
 
@@ -89,7 +89,8 @@ def test_trace_card_shows_each_agent_state_and_the_lines():
     assert "Isolate imaging" in s and "http://x/room/chat-1" in s
     assert meta["requires_card_interaction"] == "false"
     assert cards.depth(root) <= 8 and all(n["type"] in ALLOWED for n in walk(root))
-    assert m.text() == "\n".join(lines)
+    assert m.text() == "\n\n".join(lines)
+    assert meta["is_terminal"] == "true"
 
 
 def test_trace_card_keeps_only_the_last_lines_and_stays_small():

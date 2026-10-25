@@ -81,12 +81,15 @@ def message(bubble: str, root: Node, interactive: bool = False) -> ChatMessage:
 
 
 def metadata(root: Node, interactive: bool = False) -> dict[str, str]:
-    return {
+    meta = {
         "card_protocol_version": CARD_PROTOCOL_VERSION,
         "requires_card_interaction": "true" if interactive else "false",
         "card_kind": "custom",
         "card_payload": json.dumps({"root": root}),
     }
+    if not interactive:
+        meta["is_terminal"] = "true"  # an informational card (ASI:One: set only on cards that need no input)
+    return meta
 
 
 def depth(node: Any) -> int:
@@ -183,7 +186,8 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
     children = [{"type": "list", "items": lanes}, DIVIDER, heading("What happened", 4), rows,
                 button("Open the live room", "open", False, url=room_url)]
     root = section(f"Round {round} · {state.replace('_', ' ')}", children, subtitle=f"Attack from {device_label} · session {session_id}")
-    return message("\n".join(lines), root, False)
+    import narrate
+    return message(narrate.render(lines), root, False)
 
 
 def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_url: str, bubble: str) -> ChatMessage:
