@@ -118,6 +118,15 @@ def lateral_route(h: HospitalIndex, path: set[str]) -> set[str]:
     return {fid for fid in path if h.flows[fid]["protocol"] in LATERAL}
 
 
+def strict_feeds(h: HospitalIndex) -> set[str]:
+    """The feeds a strict first plan also closes between networks: HL7 and vendor ports
+    crossing a segment wall. Common time (NTP), charts over HTTPS and DICOM stay open. The
+    Flow Agent is not told which feeds care needs, so it starts here and reopens exactly the
+    holes clinical engineering asks for (keep_flow), department by department."""
+    return {f["id"] for f in active_flows(h)
+            if cross_segment(h, f) and (f["protocol"] == "hl7" or (f["protocol"] == "other" and f["port"] != 123))}
+
+
 # --- the optimizer: fewest lateral cuts so no attack spreads beyond LIMIT devices ---
 
 INFECTABLE = {"workstation", "nurse_station", "server_rack"}  # plus Windows medical consoles (the engine's rule)
@@ -289,11 +298,12 @@ def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constrain
     """The algorithmic candidate: the optimizer over every start. (The other plans come from the model.)"""
     keep = kept_by_constraints(constraints)
     out = [
-        candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that keep every attack in its segment",
-                  optimized_cuts(h, starts or [patient_zero], keep), keep,
+        candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: every attack held in its segment, holes only where care asks",
+                  optimized_cuts(h, starts or [patient_zero], keep) | strict_feeds(h), keep,
                   "The fewest file-sharing and remote-desktop links to cut between the functional networks (core servers, imaging and PACS, "
-                  "bedside monitoring, clinical workstations, business) so an attack from any workstation stays in its own segment; "
-                  "DICOM to PACS, HL7 vitals and ADT, charts over HTTPS and common time still cross.",
+                  "bedside monitoring, clinical workstations, business) so an attack from any workstation stays in its own segment. "
+                  "Feeds between networks (HL7, vendor ports) start closed and reopen only where clinical engineering names them; "
+                  "DICOM to PACS, charts over HTTPS and common time stay open.",
                   "Chosen by an optimizer over every starting point, not just this one.", rule_limit(constraints)),
     ]
     return [c for c in out if c is not None]

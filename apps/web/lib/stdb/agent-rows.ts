@@ -10,7 +10,7 @@ import type {
   AgentId, AgentMessageRow, AgentStatusRow, QuestionRow, RecommendationRow, ReviewRole, RoundState, Speaker, TextSource,
 } from "./types";
 
-const MAX_ROUNDS = 4; // agents/logic/coordinator.py MAX_ROUNDS
+const MAX_ROUNDS = 6; // agents/logic/coordinator.py MAX_ROUNDS
 const AGENTS = new Set<string>(["inventory", "flow", "clinical_workflow", "coordinator"]);
 
 type Counts = { ok: number; delayed: number; disrupted: number; diverted: number };

@@ -44,7 +44,7 @@ from protocol import (
 from . import flow
 from .hospital import HospitalIndex
 
-MAX_ROUNDS = 4
+MAX_ROUNDS = 6
 MAX_OPTIONS = 3  # recommendations offered to humans: the lead and up to two alternatives
 GUARDIANS: tuple[AgentName, ...] = ("inventory", "clinical_workflow")
 CLINICAL_TYPES = {
