@@ -11,7 +11,8 @@ import type { ServerReducers, SessionInfo } from "./stdb";
 
 const BODY_MAX = 256 * 1024;
 
-const Speaker = z.enum(["inventory", "flow", "clinical_workflow", "coordinator", "humans", "relay"]);
+// "scorekeeper" (SCOREKEEPER=1) explains the ranking; it never asks a question (QuestionPayload below).
+const Speaker = z.enum(["inventory", "flow", "clinical_workflow", "coordinator", "scorekeeper", "humans", "relay"]);
 const TextSource = z.enum(["claude", "asi1", "template"]);
 
 export const AgentMessageRow = z
@@ -20,7 +21,10 @@ export const AgentMessageRow = z
     round: z.number().int().min(0),
     from: Speaker,
     to: Speaker,
-    type: z.enum(["proposal_request", "proposal", "revision", "verdict", "question", "answer", "recommendation", "round_state", "chat"]),
+    type: z.enum([
+      "proposal_request", "proposal", "revision", "verdict", "question", "answer", "recommendation", "round_state", "chat",
+      "score_input", "scorecard",
+    ]),
     payload: z.record(z.string(), z.unknown()),
     reason: z.string().nullable(),
     reasonSource: TextSource.nullable(),
@@ -33,7 +37,7 @@ export const AgentMessageRow = z
 export const AgentStatusRow = z
   .object({
     sessionId: z.string().min(1),
-    agent: z.enum(["inventory", "flow", "clinical_workflow", "coordinator"]),
+    agent: z.enum(["inventory", "flow", "clinical_workflow", "coordinator", "scorekeeper"]),
     status: z.enum(["idle", "thinking", "speaking", "waiting"]),
     updatedAt: z.string(),
     fixture: z.boolean(),

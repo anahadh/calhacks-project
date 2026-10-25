@@ -30,12 +30,14 @@ export const EVENT_TARGETS = {
 } as const;
 export const PATIENT_STATES = ["ok", "delayed", "disrupted", "diverted"] as const;
 
-// Agent rows (F1). Names match agents/protocol.py.
-export const AGENT_NAMES = ["inventory", "flow", "clinical_workflow", "coordinator"] as const;
+// Agent rows (F1). Names match agents/protocol.py AgentName. The Scorekeeper runs only with
+// SCOREKEEPER=1; it explains the ranking and decides nothing (score_input in, scorecard out).
+export const AGENT_NAMES = ["inventory", "flow", "clinical_workflow", "coordinator", "scorekeeper"] as const;
 /** Who can appear on either end of an agent_message row. "relay" receives round_state and recommendation. */
 export const SPEAKERS = [...AGENT_NAMES, "humans", "relay"] as const;
 export const MESSAGE_TYPES = [
   "proposal_request", "proposal", "revision", "verdict", "question", "answer", "recommendation", "round_state", "chat",
+  "score_input", "scorecard",
 ] as const;
 export const AGENT_STATUSES = ["idle", "thinking", "speaking", "waiting"] as const;
 export const ROUND_STATES = ["idle", "running", "waiting_for_human", "done"] as const;

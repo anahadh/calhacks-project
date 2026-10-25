@@ -111,6 +111,22 @@ describe("relay", () => {
     expect(calls.map((c) => c[0])).toEqual(["agentMessageAdd"]);
   });
 
+  it("stores the Scorekeeper's copies and scorecards, with no side effect, and never a question from it", async () => {
+    const card = { sessionId: "demo", round: 1, rankedBy: ["accepted by both guardians"], rows: [], why: "Plan B leads.", whySource: "template" };
+    expect((await post("/agent_message", message({ from: "coordinator", to: "scorekeeper", type: "score_input", payload: { sessionId: "demo", round: 1, candidates: [] }, reason: null, reasonSource: null }))).status).toBe(200);
+    expect((await post("/agent_message", message({ from: "scorekeeper", to: "coordinator", type: "scorecard", payload: card, reason: card.why }))).status).toBe(200);
+    expect(calls).toEqual([
+      ["agentMessageAdd", expect.objectContaining({ fromAgent: "coordinator", toAgent: "scorekeeper", type: "score_input", reason: "" })],
+      ["agentMessageAdd", expect.objectContaining({
+        fromAgent: "scorekeeper", toAgent: "coordinator", type: "scorecard", payloadJson: JSON.stringify(card), reason: "Plan B leads.",
+      })],
+    ]);
+    const asked = await post("/agent_message", message({ from: "coordinator", to: "humans", type: "question", payload: { ...question, agent: "scorekeeper" } }));
+    expect(asked.status).toBe(400);
+    expect((await post("/agent_status", { sessionId: "demo", agent: "scorekeeper", status: "thinking", updatedAt: "now", fixture: false })).status).toBe(200);
+    expect(calls.at(-1)).toEqual(["agentStatusSet", { sessionId: "demo", agent: "scorekeeper", status: "thinking" }]);
+  });
+
   it("writes agent status", async () => {
     const r = await post("/agent_status", { sessionId: "demo", agent: "flow", status: "thinking", updatedAt: "now", fixture: true });
     expect(r.status).toBe(200);
