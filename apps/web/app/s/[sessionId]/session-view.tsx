@@ -11,6 +11,7 @@ import { PatientBadge } from "@/components/shell/badges";
 import { SessionHeader, type ViewId } from "@/components/shell/header";
 import { Timeline } from "@/components/timeline";
 import { AgentRoom } from "@/features/agents/agent-room";
+import { DemoRoom } from "@/features/agents/demo-room";
 import { defendBlocker } from "@/features/agents/defend-button";
 import { QuestionBanner } from "@/features/agents/question-card";
 import { JoinModal } from "@/features/review/join-modal";
@@ -54,9 +55,12 @@ export function SessionView({ sessionId }: { sessionId: string }) {
     }
   };
 
-  // ?view=agents opens straight onto the Agents tab.
+  // ?view=agents opens straight onto the Agents tab; ?demo=1 plays the scripted negotiation there.
+  const [demo, setDemo] = useState(false);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("view") === "agents") setView("agents");
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("view") === "agents") setView("agents");
+    if (q.get("demo") === "1") setDemo(true);
   }, []);
 
   // 1 and 2 switch views.
@@ -166,7 +170,13 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       ) : (
         <main className="flex-grow space-y-3.5 p-4 md:p-6">
           <Counters session={session} />
-          <AgentRoom session={session} index={index} onClose={() => setView("simulation")} />
+          {demo ? (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-[2px] md:p-8" role="dialog" aria-modal="true">
+              <div className="h-full w-full max-w-[1760px]"><DemoRoom onClose={() => setView("simulation")} /></div>
+            </div>
+          ) : (
+            <AgentRoom session={session} index={index} onClose={() => setView("simulation")} />
+          )}
         </main>
       )}
 
