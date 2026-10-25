@@ -33,6 +33,7 @@ import cards
 import chat
 import facts
 import llm
+import narrate
 from config import AGENTS, settings
 from logic import hospital as hospital_mod
 from logic.coordinator import Action, Round
@@ -72,6 +73,8 @@ async def execute(ctx: Context, rnd: Round, actions: list[Action]):
             if msg.option == 1:
                 rnd.recommendation = msg
             events.setdefault(rnd.sessionId, []).append(("recommendation", msg))
+            if msg.option == 1:
+                await narrate_chat(ctx, rnd.sessionId, narrate.line(H, "recommendation", msg))
         if a.to in AGENTS:
             await send(ctx, NAME, a.to, a.type, msg)
         else:  # "humans" (questions) or "relay" (round_state, recommendation)
@@ -99,6 +102,7 @@ async def begin(ctx: Context, req: StartRound) -> RestAck:
             baseline = run_sim(None, req.patientZero, req.seed, req.challenges)
             rnd = Round(req.sessionId, H)
             ctx.logger.info(f"[begin] baseline done: {baseline.infectedCount} infected over {baseline.ticks} ticks")
+            await narrate_chat(ctx, req.sessionId, narrate.started(H, baseline))
             actions = rnd.start(req.runId, req.patientZero, baseline, req.seed, req.challenges)
             rounds[req.sessionId] = rnd
             started[req.sessionId] = time.monotonic()
@@ -107,6 +111,7 @@ async def begin(ctx: Context, req: StartRound) -> RestAck:
             await execute(ctx, rnd, actions)
         except Exception as e:
             await fail(ctx, NAME, req.sessionId, e)
+            await narrate_chat(ctx, req.sessionId, narrate.failed(NAME, f"{type(e).__name__}: {e}"))
             return RestAck(ok=False, detail=f"{type(e).__name__}: {e}")
         return RestAck(ok=True, detail=f"round 1 started for {req.runId}")
 
@@ -149,9 +154,11 @@ async def handle(ctx: Context, sender: str, type: str, msg, event):
             if rnd is None:
                 raise ValueError(f"{type} for session {msg.sessionId}, which has no round")
             events.setdefault(msg.sessionId, []).append((type, msg))
+            await narrate_chat(ctx, msg.sessionId, narrate.line(H, type, msg, baseline=rnd.baseline))
             await execute(ctx, rnd, event(rnd))
         except Exception as e:
             await fail(ctx, NAME, msg.sessionId, e)
+            await narrate_chat(ctx, msg.sessionId, narrate.failed(NAME, f"{e.__class__.__name__}: {e}"))
 
 
 @protocol.on_message(Proposal)
@@ -200,6 +207,15 @@ async def chat_send(ctx: Context, to: str, message: Model, session_id: str, text
 
 async def reply(ctx: Context, to: str, text: str, session_id: str = CHAT_SESSION) -> None:
     await chat_send(ctx, to, ChatMessage(content=[TextContent(text=text)]), session_id, text)
+
+
+async def narrate_chat(ctx: Context, session_id: str, text: str) -> None:
+    """One live status line to the chat user whose message started this session's round
+    (nothing for rounds started from the web app). Relayed first, like every reply."""
+    c = chats.get(session_id)
+    if c is None:
+        return
+    await chat_send(ctx, c.sender, ChatMessage(content=[TextContent(text=text)]), session_id, text)
 
 
 async def reply_card(ctx: Context, to: str, msg: ChatMessage, session_id: str = CHAT_SESSION) -> None:
