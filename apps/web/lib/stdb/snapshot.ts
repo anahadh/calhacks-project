@@ -209,7 +209,8 @@ export function snapshotOf(sessionId: string, tables: SessionTables, me?: Identi
       .filter((a) => a.active)
       .map(
         (a): AnnotationRow => ({
-          id: a.id.toString(), targetId: a.targetId, note: a.note, authorName: a.authorName,
+          id: a.id.toString(), kind: a.kind === "note" ? "note" : "focus", runId: a.runId, targetId: a.targetId,
+          tick: a.kind === "note" && a.tick >= 0 ? a.tick : undefined, note: a.note, authorName: a.authorName,
           role: (ROLES.has(a.role) ? a.role : "observer") as AnnotationRow["role"],
           active: a.active, mine: !!me && a.author.isEqual(me),
         }),
