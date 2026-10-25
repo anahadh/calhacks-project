@@ -90,16 +90,6 @@ export function SegmentHalos({
           </group>
         );
       })}
-      {labels
-        .filter((l) => shown(l.floorId) && (litZone === l.zone || l.infected > 0))
-        .map((l) => (
-          <Html key={l.key} position={l.at} center zIndexRange={[20, 10]} style={{ pointerEvents: "none" }}>
-            <div className="num flex items-center gap-2 whitespace-nowrap rounded-ctl border bg-bg/90 px-2.5 py-0.5 text-[11px]" style={{ borderColor: l.color }}>
-              <span className="text-ink">{l.name}</span>
-              <span className={l.infected > 0 ? "text-state-infected" : "text-ink-faint"}>{l.infected > 0 ? `${l.infected}/${l.total}` : l.total}</span>
-            </div>
-          </Html>
-        ))}
     </>
   );
 }

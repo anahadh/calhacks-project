@@ -17,6 +17,7 @@ import {
   type Delta, type Segment,
 } from "./pair";
 import { Conclusion } from "./conclusion";
+import { SegmentBarriers } from "./segment-barriers";
 import { SegmentHalos } from "./segment-halos";
 
 // The segmentation plan screen (UX.md "Solution view"): the same attack
@@ -156,6 +157,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     floorId={floor === "all" ? undefined : floor}
                     view={roleView}
                   >
+                    <SegmentBarriers hospital={hospital} segments={segments} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
                     <SegmentHalos hospital={hospital} segments={segments} devices={rows.devices} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
                   </HospitalScene>
                 </SceneBoundary>
@@ -411,7 +413,7 @@ function Saved({ deltas, pending }: { deltas: Delta[]; pending: string | null })
 function Segments({ segments, hovered, onHover }: { segments: Segment[]; hovered: string | null; onHover: (zone: string | null) => void }) {
   return (
     <section aria-labelledby="segments" className="flex flex-col gap-3">
-      <h2 id="segments" className="eyebrow m-0">Segments the plan makes · {segments.length} · the halos</h2>
+      <h2 id="segments" className="eyebrow m-0">Segments the plan makes · {segments.length} · the barriers</h2>
       <ul className="m-0 flex list-none flex-col overflow-hidden rounded-panel border border-line p-0" onMouseLeave={() => onHover(null)}>
         {segments.map((s) => {
           const lit = s.infected > 0 || hovered === s.zone;
@@ -463,7 +465,7 @@ function Legend() {
       </li>
       <li className="inline-flex items-center gap-2">
         <span aria-hidden className="h-3.5 w-3.5 rounded-full border-2" style={{ borderColor: "#B08CFF" }} />
-        Halo: its segment (same color = still connected)
+        Barrier: a segment (machines inside still reach each other)
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="h-2 w-2 rounded-full" style={{ background: "#6FCF97" }} />
