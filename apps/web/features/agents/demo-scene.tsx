@@ -39,6 +39,7 @@ export function DemoScene({ plan, infected, reopened }: { plan: number; infected
     };
     for (const d of devices) {
       const zone = zoneOf.get(d.roomId) ?? "";
+      if (plan === 0) continue;
       if (reopened) {
         const s = segmentOf(d, zone) as FunctionalSegment;
         add(`${s}:${d.roomId}`, SEGMENT[s].color, SEGMENT[s].name, d.position);
@@ -102,7 +103,7 @@ export function DemoScene({ plan, infected, reopened }: { plan: number; infected
         {[...labels.values()].map((b) => {
           const top = b.pts.reduce((a, p) => (p[1] < a[1] ? p : a), b.pts[0]);
           return (
-            <text key={b.label} x={top[0]} y={top[1] - 0.8} textAnchor="middle" fontSize={1.4} fontFamily="ui-monospace, Menlo, monospace" fill={b.color}>
+            <text key={b.label} x={top[0]} y={top[1] - 0.8} textAnchor="middle" fontSize={1.15} fontFamily="ui-monospace, Menlo, monospace" fill={b.color}>
               {b.label}
             </text>
           );

@@ -289,11 +289,13 @@ function Graph({ newest, speaking, asi1 }: { newest: AgentMessageRow | undefined
       ))}
       {/* What the newest message is, said by its sender: a bubble beside the node, restarted by the row's seq. */}
       {newest && from && bubble && (
-        <g key={newest.seq} transform={`translate(${NODE[from].x + (NODE[from].x > 320 ? -NODE[from].r - 8 : NODE[from].r + 8)} ${NODE[from].y - NODE[from].r - 6})`} className="fx-pop">
+        <g key={newest.seq} transform={`translate(${NODE[from].x + (NODE[from].x > 320 ? -NODE[from].r - 8 : NODE[from].r + 8)} ${NODE[from].y - NODE[from].r - 6})`}>
+          <g className="fx-pop">
           <rect x={NODE[from].x > 320 ? -(bubble.length * 7.2 + 18) : 0} y={-11} width={bubble.length * 7.2 + 18} height={22} rx={4} fill="#0D0F10" stroke={SPEAKER_COLOR[from]} strokeWidth={1} />
           <text x={NODE[from].x > 320 ? -(bubble.length * 7.2 + 18) / 2 : (bubble.length * 7.2 + 18) / 2} y={4} textAnchor="middle" className="font-mono text-[12px]" style={{ fill: SPEAKER_COLOR[from] }}>
             {bubble}
           </text>
+          </g>
         </g>
       )}
       <text x={NODE.coordinator.x} y={NODE.coordinator.y + NODE.coordinator.r + 20} textAnchor="middle" className="fill-[#A1A8AE] font-mono text-[12px]">

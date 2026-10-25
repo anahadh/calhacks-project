@@ -220,11 +220,13 @@ function Web({ newest }: { newest?: DemoEvent }) {
               {w === "humans" ? "HUMANS" : SPEAKER_LABEL[w].replace(" Agent", "").toUpperCase()}
             </text>
             {active && verb && (
-              <g transform={`translate(${x + r + 10} ${y - 10})`} className="fx-pop">
-                <rect x={0} y={0} width={verb.label.length * 7.4 + 22} height={20} rx={4} fill="#0D0F10" stroke={verb.color} />
-                <text x={11 + (verb.label.length * 7.4) / 2} y={14} textAnchor="middle" className="font-mono text-[11px]" style={{ fill: verb.color }}>
-                  {verb.glyph} {verb.label}
-                </text>
+              <g transform={`translate(${x > 320 ? x - r - 10 - (verb.label.length * 7.4 + 22) : x + r + 10} ${y - 10})`}>
+                <g className="fx-pop">
+                  <rect x={0} y={0} width={verb.label.length * 7.4 + 22} height={20} rx={4} fill="#0D0F10" stroke={verb.color} />
+                  <text x={11 + (verb.label.length * 7.4) / 2} y={14} textAnchor="middle" className="font-mono text-[11px]" style={{ fill: verb.color }}>
+                    {verb.glyph} {verb.label}
+                  </text>
+                </g>
               </g>
             )}
           </g>

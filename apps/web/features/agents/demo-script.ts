@@ -79,7 +79,12 @@ export function eventsFromRows(messages: readonly AgentMessageRow[], names: Name
   const out: DemoEvent[] = [];
   let name = "";
   let rules = 0;
+  const opened = new Set<number>();
   for (const m of [...messages].sort((a, b) => a.seq - b.seq)) {
+    if (m.type === "request") {
+      if (opened.has(m.round)) continue; // round 1's request goes to Flow and Inventory alike: one card
+      opened.add(m.round);
+    }
     if (m.type === "chat" || m.type === "answer") continue;
     if (m.from === "coordinator" && (m.type === "proposal" || m.type === "revision")) continue;
     if (m.from === "humans" || m.from === "asi1") continue;
