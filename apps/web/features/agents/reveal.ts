@@ -1,4 +1,4 @@
-// UX rule 5: agent messages reveal no faster than one every 1.2 seconds, so a
+// UX rule 5: agent messages reveal no faster than one every 3.5 seconds, so a
 // judge can read each one. This paces display only: every bubble is still one
 // agent_message row, shown in seq order, and nothing is invented, merged or
 // dropped. Rows that were already there when this tab opened the thread show at
@@ -6,7 +6,7 @@
 // its own; agent-room.tsx drives it.
 
 /** The shortest gap between two messages appearing. */
-export const REVEAL_MS = 1200;
+export const REVEAL_MS = 3500;
 
 /**
  * Remembers when this tab shows each message. observe() is idempotent for the
