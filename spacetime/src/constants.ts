@@ -11,8 +11,8 @@ export const NOTE_MAX = 140;
 export const TIMELINE_NOTE_MAX = 280;
 /** The furthest tick a timeline note may mark (the rail shows 48; runs can go longer). */
 export const TIMELINE_TICK_MAX = 10_000;
-export const ROLES = ["security", "clinical_engineering", "operations", "observer"] as const;
-export const ANNOTATING_ROLES = ["security", "clinical_engineering", "operations"] as const;
+export const ROLES = ["security", "network", "clinical_engineering", "operations", "observer"] as const;
+export const ANNOTATING_ROLES = ["security", "network", "clinical_engineering", "operations"] as const;
 
 // Runs. The engine computes every frame; the run watcher feeds them in (ingest.ts).
 /** requested: waiting for the engine. running/paused: frames arriving. done: the final frame landed. error: see run.detail. */

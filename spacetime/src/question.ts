@@ -32,7 +32,7 @@ export const question_add = spacetimedb.reducer(
     if (stringList(a.choices_json, "choices").length < 2) fail("A question needs at least two choices.");
     const roles = stringList(a.allowed_roles_json, "allowed_roles");
     if (!roles.length || roles.some((r) => !(ANNOTATING_ROLES as readonly string[]).includes(r))) {
-      fail("Allowed roles are security, clinical_engineering or operations.");
+      fail(`Allowed roles are ${ANNOTATING_ROLES.join(", ")}.`);
     }
     const id = `${a.session_id}:${a.question_id}`;
     if (ctx.db.question.id.find(id)) fail(`Question "${a.question_id}" already exists.`);
