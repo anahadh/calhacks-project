@@ -18,6 +18,7 @@ import time
 import asyncio
 import copy
 import json
+import re
 import uuid
 from dataclasses import dataclass, field
 
@@ -547,6 +548,10 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         ctx.logger.error(f"chat turn failed: {e!r}")
         await reply(ctx, sender, f"I couldn't answer: {e.__class__.__name__}: {e}", sid)
         return
+    if "start_round" not in turn.tools_called and re.search(r"\b(?:round|simulation)\b[^.]*\b(?:has )?start(?:ed|ing)\b", turn.text, re.I):
+        # The model said a round started without starting one: never let that stand (rule 14).
+        turn.text = ("I didn't start a round for that. Say which device the attack starts on, e.g. "
+                     "\"simulate ransomware from MRI 2\", or say \"view my hospital\" to pick one.")
     want = picked.pop(sender, None) or default_card  # the card is code's call when the round has a result
     out = prefix + turn.text
     card = None

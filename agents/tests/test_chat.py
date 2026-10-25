@@ -63,6 +63,9 @@ def candidate(name):
     ("infect CT 1", "CT 1"),
     ("run it from the file server", "file server"),
     ("patient zero: ER WS 1", "ER WS 1"),
+    ("what happens if ransomware hits mri 2", "mri 2"),
+    ("what if malware infects the PACS server", "PACS server"),
+    ("ransomware attacking CT 1", "CT 1"),
 ])
 def test_wants_round_finds_the_device(text, device):
     assert chat.wants_round(text) == device

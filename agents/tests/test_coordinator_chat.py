@@ -166,7 +166,7 @@ def test_summary_is_sent_once(coord, monkeypatch):
         ctx = c.ctx_stub()
         await c.notify_chat(ctx, rnd)
         await c.notify_chat(ctx, rnd)
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(1.0)
 
     run(twice())
     assert sum(1 for s in sent if s[3] == "Done.") == 1
@@ -351,3 +351,14 @@ def test_live_session_env_makes_every_chat_round_use_one_session(coord, monkeypa
     run(tool.call({"device_query": "MRI 2"}))
     run(tool.call({"device_query": "CT 1"}))
     assert begun == ["asi1-live", "asi1-live"]
+
+
+def test_model_claiming_a_round_started_without_starting_one_is_corrected(coord, monkeypatch):
+    c, sent = coord
+
+    async def liar(*a, **k):
+        return turn("A new simulated ransomware round from MRI 2 has started.")
+
+    monkeypatch.setattr(c.brain, "respond", liar)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "do the thing with the scanner"))
+    assert "started" not in sent[-1][3].split("(")[0] or "didn't start" in sent[-1][3]
