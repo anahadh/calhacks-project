@@ -256,3 +256,32 @@ def test_attack_question_with_unknown_device_goes_to_the_model(coord, monkeypatc
     monkeypatch.setattr(c.brain, "respond", fake_respond)
     run(c.chat_turn(c.ctx_stub(), "agent1qs", "simulate ransomware from Toaster 9"))
     assert asked and sent[-1][3] == "Which device?"
+
+
+def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, monkeypatch):
+    import json
+    from protocol import Policy, Recommendation, RunResult
+    from tests_paths import FIXTURES
+    c, sent = coord
+    base = RunResult.parse_file(FIXTURES / "results" / "baseline.json")
+    res = RunResult.parse_file(FIXTURES / "results" / "cand_isolate_imaging.json")
+    policy = Policy.parse_obj(json.loads((FIXTURES / "candidates" / "cand_isolate_imaging.json").read_text())["policy"])
+    rec = Recommendation(policy=policy, testResult=res, verdicts=[], explanation="Works.", requiredRoles=["security"])
+
+    async def fake_respond(storage, who, sender, text, tools, system, session_id=None):
+        await {t.name: t for t in tools}["recommendation"].call({})
+        return turn("The agents agree.", ["recommendation"])
+
+    monkeypatch.setattr(c.brain, "respond", fake_respond)
+    c.chats["s"] = c.ChatRound(sender="agent1qs", device_name="MRI 2", trace=["[ a ] one", "[ b ] two"])
+    rnd = type("R", (), {"state": "done", "round": 2, "sessionId": "s", "recommendation": rec, "baseline": base})()
+    c.rounds["s"] = rnd
+
+    async def go():
+        await c.notify_chat(c.ctx_stub(), rnd)
+        await asyncio.sleep(0.1)
+
+    run(go())
+    to, message, session_id, text, card = sent[-1]
+    assert text.startswith("[ a ] one\n[ b ] two") and text.endswith("The agents agree.")
+    assert card is not None and "Recommendation" in json.dumps(card)

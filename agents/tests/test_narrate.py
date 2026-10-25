@@ -60,65 +60,109 @@ def narrate_norm(n: str) -> str:
     return _norm(n)
 
 
-def test_narrate_chat_relays_one_row_and_sends_once(monkeypatch, tmp_path):
-    monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
-    monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
-    monkeypatch.setenv("HIPPO_SIM_FIXTURES", "1")
-    import coordinator
-    sent = []
+class Ctx:
+    """A context stand-in: records every send_raw with the session it carried."""
 
-    async def fake_send_raw(**kw):
-        sent.append(kw)
-        return type("S", (), {"status": type("V", (), {"value": "delivered"})(), "detail": ""})()
+    def __init__(self, session=None, fail_times=0):
+        import uuid
+        self._session = session or uuid.uuid4()
+        self.sent = []
+        self.fail_times = fail_times
+        self.logger = __import__("logging").getLogger("test")
 
-    ctx = type("Ctx", (), {"send_raw": staticmethod(fake_send_raw)})()
-    coordinator.chats["s1"] = coordinator.ChatRound(sender="agent1qsender", device_name="MRI 2")
-    loop = asyncio.new_event_loop()  # asyncio.run() would close the loop later Agent() calls need
-    try:
-        loop.run_until_complete(coordinator.narrate_chat(ctx, "s1", "[ x ] y"))
-        loop.run_until_complete(coordinator.narrate_chat(ctx, "nochat", "[ x ] z"))
-    finally:
-        loop.close()
-    rows = [json.loads(l) for l in (tmp_path / "s1.jsonl").read_text().splitlines()]
-    chat_rows = [r for r in rows if r["table"] == "agent_message" and r["type"] == "chat"]
-    assert len(chat_rows) == 1 and chat_rows[0]["from"] == "coordinator" and chat_rows[0]["to"] == "humans"
-    assert chat_rows[0]["payload"]["text"] == "[ x ] y"
-    assert len(sent) == 1 and sent[0]["destination"] == "agent1qsender"
-    assert not (tmp_path / "nochat.jsonl").exists()
+    @property
+    def session(self):
+        return self._session
+
+    async def send_raw(self, **kw):
+        self.sent.append((self._session, kw))
+        ok = len(self.sent) > self.fail_times
+        return type("S", (), {"status": type("V", (), {"value": "delivered" if ok else "failed"})(), "detail": "429" if not ok else ""})()
 
 
-def test_narration_goes_out_under_the_chat_session(monkeypatch, tmp_path):
-    """ASI:One ties a message to a thread by the envelope session, which uAgents takes from
-    the sending handler's context. Narration is sent from round handlers, so it must be
-    re-stamped with the session the chat message arrived in."""
+def body_text(kw) -> str:
+    import json
+    return " ".join(c["text"] for c in json.loads(kw["message_body"])["content"] if c.get("type") == "text")
+
+
+def has_card(kw) -> bool:
+    import json
+    return any(c.get("type") == "metadata" for c in json.loads(kw["message_body"])["content"])
+
+
+def chat_rows(path):
+    return [json.loads(l) for l in path.read_text().splitlines() if '"agent_message"' in l and '"chat"' in l]
+
+
+def test_narration_accumulates_into_one_message_with_a_trace_card(monkeypatch, tmp_path):
+    """ASI:One shows one message per agent turn and rate-limits bursts, so every update
+    carries the whole trace so far, with a live trace card, and updates are coalesced."""
     import uuid
     monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
     monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
     monkeypatch.setenv("HIPPO_SIM_FIXTURES", "1")
     import coordinator
-    seen = []
-
-    class Ctx:
-        def __init__(self, session):
-            self._session = session
-
-        @property
-        def session(self):
-            return self._session
-
-        async def send_raw(self, **kw):
-            seen.append(self._session)
-            return type("S", (), {"status": type("V", (), {"value": "delivered"})(), "detail": ""})()
-
+    monkeypatch.setattr(coordinator, "NARRATE_INTERVAL_S", 0.05)
     chat_session = uuid.uuid4()
-    round_session = uuid.uuid4()
-    coordinator.chats["s2"] = coordinator.ChatRound(sender="agent1qsender", device_name="MRI 2", session=chat_session)
+    coordinator.chats["s1"] = coordinator.ChatRound(sender="agent1qsender", device_name="MRI 2", session=chat_session)
+    ctx = Ctx(uuid.uuid4())
+
+    async def go():
+        await coordinator.narrate_chat(ctx, "s1", "[ a ] first")
+        await coordinator.narrate_chat(ctx, "s1", "[ b ] second")
+        await coordinator.narrate_chat(ctx, "nochat", "[ x ] ignored")
+        await asyncio.sleep(0.2)
+
     loop = asyncio.new_event_loop()
     try:
-        loop.run_until_complete(coordinator.narrate_chat(Ctx(round_session), "s2", "[ x ] y"))
+        loop.run_until_complete(go())
     finally:
         loop.close()
-    assert seen == [chat_session]
+    assert len(ctx.sent) == 1, "two lines within the interval coalesce into one send"
+    session, kw = ctx.sent[0]
+    assert session == chat_session
+    assert body_text(kw) == "[ a ] first\n[ b ] second" and has_card(kw)
+    rows = chat_rows(tmp_path / "s1.jsonl")
+    assert len(rows) == 1 and rows[0]["payload"]["text"] == "[ a ] first\n[ b ] second" and rows[0]["payload"]["card"]
+    assert coordinator.chats["s1"].trace == ["[ a ] first", "[ b ] second"]
+    assert not (tmp_path / "nochat.jsonl").exists()
+
+
+def test_narration_after_the_interval_sends_again_with_the_full_trace(monkeypatch, tmp_path):
+    monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
+    monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
+    import coordinator
+    monkeypatch.setattr(coordinator, "NARRATE_INTERVAL_S", 0.05)
+    coordinator.chats["s3"] = coordinator.ChatRound(sender="agent1qsender", device_name="MRI 2")
+    ctx = Ctx()
+
+    async def go():
+        await coordinator.narrate_chat(ctx, "s3", "one")
+        await asyncio.sleep(0.15)
+        await coordinator.narrate_chat(ctx, "s3", "two")
+        await asyncio.sleep(0.15)
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(go())
+    finally:
+        loop.close()
+    assert [body_text(kw) for _, kw in ctx.sent] == ["one", "one\ntwo"]
+
+
+def test_chat_send_retries_a_failed_delivery(monkeypatch, tmp_path):
+    monkeypatch.setenv("RELAY_LOG_DIR", str(tmp_path))
+    monkeypatch.delenv("WATCHER_RELAY_URL", raising=False)
+    import coordinator
+    monkeypatch.setattr(coordinator, "SEND_BACKOFF_S", 0.01)
+    from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+    ctx = Ctx(fail_times=2)
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(coordinator.chat_send(ctx, "agent1qto", ChatMessage(content=[TextContent(text="hi")]), "asi1-chat", "hi"))
+    finally:
+        loop.close()
+    assert len(ctx.sent) == 3
 
 
 def test_handoff_lines_name_both_agents():

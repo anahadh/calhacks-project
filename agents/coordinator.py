@@ -18,7 +18,7 @@ import asyncio
 import copy
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from uagents import Context, Model, Protocol
 from uagents_core.contrib.protocols.chat import (
@@ -65,6 +65,15 @@ class ChatRound:
     device_name: str
     notified: bool = False
     session: uuid.UUID | None = None  # the envelope session the chat arrived in: ASI:One's thread key
+    trace: list[str] = field(default_factory=list)  # every narration line so far, in order
+    last_sent: float = 0.0  # monotonic time of the last trace message
+    flush: asyncio.Task | None = None  # the pending coalesced send, if any
+    summary_sent: bool = False
+
+
+NARRATE_INTERVAL_S = 4.0  # ASI:One rate-limits bursts (429): at most one trace message per interval
+SEND_TRIES = 4
+SEND_BACKOFF_S = 2.0
 
 
 def _with_session(ctx: Context, session: uuid.UUID | None):
@@ -233,14 +242,18 @@ async def chat_send(ctx: Context, to: str, message: Model, session_id: str, text
         rnd = rounds.get(session_id)
         payload = {"text": text, "via": "asi1"} | ({"card": card} if card is not None else {})
         await relay.post(session_id, rnd.round if rnd else 0, NAME, "humans", "chat", payload, direction="sent")
-    status = await ctx.send_raw(
-        destination=to,
-        message_schema_digest=Model.build_schema_digest(message),
-        message_body=message.model_dump_json(),
-        protocol_digest=chat_protocol.digest,
-    )
-    if status.status.value not in ("delivered", "sent"):
-        ctx.logger.error(f"chat reply to {to[:16]}… not delivered: {status.detail}")
+    for attempt in range(1, SEND_TRIES + 1):
+        status = await ctx.send_raw(
+            destination=to,
+            message_schema_digest=Model.build_schema_digest(message),
+            message_body=message.model_dump_json(),
+            protocol_digest=chat_protocol.digest,
+        )
+        if status.status.value in ("delivered", "sent"):
+            return
+        ctx.logger.error(f"chat reply to {to[:16]}… not delivered (try {attempt}/{SEND_TRIES}): {status.detail}")
+        if attempt < SEND_TRIES:
+            await asyncio.sleep(SEND_BACKOFF_S * attempt)  # ASI:One's 429s clear in seconds
 
 
 async def reply(ctx: Context, to: str, text: str, session_id: str = CHAT_SESSION) -> None:
@@ -248,12 +261,30 @@ async def reply(ctx: Context, to: str, text: str, session_id: str = CHAT_SESSION
 
 
 async def narrate_chat(ctx: Context, session_id: str, text: str) -> None:
-    """One live status line to the chat user whose message started this session's round
-    (nothing for rounds started from the web app). Relayed first, like every reply."""
+    """One live status line for the chat user whose message started this session's round
+    (nothing for rounds started from the web app). The line joins the session's trace, and
+    the whole trace goes out as one message with the trace card: ASI:One shows one message
+    per agent turn and rate-limits bursts, so sends are coalesced to NARRATE_INTERVAL_S."""
     c = chats.get(session_id)
     if c is None:
         return
-    await chat_send(_with_session(ctx, c.session), c.sender, ChatMessage(content=[TextContent(text=text)]), session_id, text)
+    c.trace.append(text)
+    if c.flush is not None and not c.flush.done():
+        return  # the pending send will carry this line too
+    wait = max(0.0, NARRATE_INTERVAL_S - (time.monotonic() - c.last_sent))
+    c.flush = asyncio.get_event_loop().create_task(_flush_trace(_with_session(ctx, c.session), session_id, wait))
+
+
+async def _flush_trace(ctx: Context, session_id: str, wait: float) -> None:
+    await asyncio.sleep(wait)
+    c = chats.get(session_id)
+    if c is None or c.notified and c.summary_sent:
+        return
+    c.last_sent = time.monotonic()
+    rnd = rounds.get(session_id)
+    msg = cards.trace_card(H, session_id, c.device_name, list(c.trace), rnd.round if rnd else 1,
+                           rnd.state if rnd else "starting", room_url(session_id))
+    await reply_card(ctx, c.sender, msg, session_id)
 
 
 async def reply_card(ctx: Context, to: str, msg: ChatMessage, session_id: str = CHAT_SESSION) -> None:
@@ -282,12 +313,16 @@ async def _summary(ctx: Context, rnd: Round) -> None:
     c = chats[rnd.sessionId]
     last_session[:] = [rnd.sessionId]
     ctx = _with_session(ctx, c.session)
+    if c.flush is not None and not c.flush.done():
+        c.flush.cancel()  # the summary message carries the whole trace itself
+    prefix = "\n".join(c.trace) + "\n\n" if c.trace else ""
     try:
         await chat_turn(ctx, c.sender, "The round just ended; summarise it for me, naming each agent by handle and ending "
-                                       "with who must sign off.", session_id=rnd.sessionId, relay_in=False)
+                                       "with who must sign off.", session_id=rnd.sessionId, relay_in=False, prefix=prefix)
     except Exception as e:  # rule 14: a failed summary is shown, never swallowed by the task
         ctx.logger.error(f"summary failed: {e!r}")
-        await reply(ctx, c.sender, f"I couldn't write the summary: {e.__class__.__name__}: {e}", rnd.sessionId)
+        await reply(ctx, c.sender, f"{prefix}I couldn't write the summary: {e.__class__.__name__}: {e}", rnd.sessionId)
+    c.summary_sent = True
 
 
 # --- the Coordinator's own tools (the hospital ones come from mcp_server) ---
@@ -433,7 +468,8 @@ def _selection_text(text: str) -> str:
             "protected": "which flows are protected?"}.get(sel.kind, "help")
 
 
-async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None = None, relay_in: bool = True) -> None:
+async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None = None, relay_in: bool = True,
+                    prefix: str = "") -> None:
     """One ASI:One turn: relay the text in, let the loop pick tools and write the reply,
     relay the reply out, send it with a card when a tool asked for one."""
     text = _selection_text(text)
@@ -466,18 +502,19 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         await reply(ctx, sender, f"I couldn't answer: {e.__class__.__name__}: {e}", sid)
         return
     want = picked.pop(sender, None)
+    out = prefix + turn.text
     card = None
     if want == "picker":
-        card = cards.picker_card(H, chat.devices_on_network(H), turn.text)
+        card = cards.picker_card(H, chat.devices_on_network(H), out)
     elif want and want.startswith("recommendation:"):
         rsid = want.split(":", 1)[1]
         rnd = rounds.get(rsid)
         if rnd is not None and rnd.recommendation is not None:
-            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), turn.text)
+            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), out)
     if card is not None:
         await reply_card(ctx, sender, card, sid)
     else:
-        await reply(ctx, sender, turn.text, sid)
+        await reply(ctx, sender, out, sid)
 
 
 @chat_protocol.on_message(ChatMessage)

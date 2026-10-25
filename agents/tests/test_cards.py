@@ -71,3 +71,30 @@ def test_deleted_cards_are_gone():
     for name in ("help_card", "devices_card", "protected_card", "device_card", "started_card", "progress_card",
                  "summary_card", "lanes", "lanes_list", "plan_block", "traffic_line"):
         assert not hasattr(cards, name), name
+
+
+def test_trace_card_shows_each_agent_state_and_the_lines():
+    lines = ["Baseline: 9 devices infected over 9 ticks. Asking @hippocratech-flow for a plan…",
+             "[ @hippocratech-coordinator ] asked @hippocratech-flow for a plan (round 1).",
+             '[ @hippocratech-flow · round 1 ] proposed "Isolate imaging": 3 devices infected with it, 9 without.',
+             "[ @hippocratech-inventory · round 1 ] accepted.",
+             "[ @hippocratech-clinical-workflow · round 1 ] rejected: it cuts imaging. Needs: keep MRI 2 → PACS."]
+    m = cards.trace_card(H, "chat-1", "MRI 2", lines, 1, "running", "http://x/room/chat-1")
+    meta, root = payload(m)
+    s = json.dumps(root)
+    for handle in ("@hippocratech-flow", "@hippocratech-inventory", "@hippocratech-clinical-workflow"):
+        assert handle in s
+    badges = [n for n in walk(root) if n["type"] == "badge"]
+    assert {b["label"] for b in badges} >= {"accepted", "rejected", "proposed"}
+    assert "Isolate imaging" in s and "http://x/room/chat-1" in s
+    assert meta["requires_card_interaction"] == "false"
+    assert cards.depth(root) <= 8 and all(n["type"] in ALLOWED for n in walk(root))
+    assert m.text() == "\n".join(lines)
+
+
+def test_trace_card_keeps_only_the_last_lines_and_stays_small():
+    lines = [f"[ @hippocratech-flow · round {i} ] proposed \"plan {i}\": 3 devices infected with it, 9 without." for i in range(200)]
+    m = cards.trace_card(H, "chat-1", "MRI 2", lines, 6, "running", "http://x/room/chat-1")
+    meta, root = payload(m)
+    assert len(meta["card_payload"]) < 64 * 1024
+    assert "plan 199" in json.dumps(root) and "plan 0\"" not in json.dumps(root)

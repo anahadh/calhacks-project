@@ -147,6 +147,45 @@ def picker_card(h: HospitalIndex, on_network: list[str], bubble: str) -> ChatMes
     return message(bubble, root, True)
 
 
+TRACE_LINES = 30
+AGENT_STATES = (  # the last line naming the handle decides the badge
+    ("rejected", "rejected", "danger"), ("accepted", "accepted", "success"), ("proposed", "proposed", "info"),
+    ("revised", "revised", "info"), ("asking a human", "asking a human", "warning"), ("failed", "failed", "danger"),
+    ("asked", "working", "info"), ("asking", "working", "info"), ("sent the", "judging", "info"),
+)
+
+
+def agent_state(lines: list[str], handle: str) -> tuple[str, str]:
+    """(label, variant) for one agent from the trace: what the last line about it says."""
+    for line in reversed(lines):
+        if handle not in line:
+            continue
+        for needle, label, variant in AGENT_STATES:
+            if needle in line:
+                return label, variant
+        return "working", "info"
+    return "idle", "neutral"
+
+
+def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list[str], round: int, state: str,
+               room_url: str) -> ChatMessage:
+    """The live trace: every agent's state as a badge, the last TRACE_LINES lines of the
+    negotiation, and the live-room button. The bubble is the whole trace, so the one
+    message ASI:One shows per turn carries everything so far."""
+    from runtime import PROFILES
+    lanes = []
+    for agent in ("flow", "inventory", "clinical_workflow"):
+        handle = "@" + PROFILES[agent].handle
+        label, variant = agent_state(lines, handle)
+        lanes.append(item([heading(handle, 4), badge(label, variant)]))
+    recent = lines[-TRACE_LINES:]
+    rows = {"type": "list", "items": [item([text(l, "muted" if l.startswith("[ @hippocratech-coordinator ]") else "body")]) for l in recent]}
+    children = [{"type": "list", "items": lanes}, DIVIDER, heading("What happened", 4), rows,
+                button("Open the live room", "open", False, url=room_url)]
+    root = section(f"Round {round} · {state.replace('_', ' ')}", children, subtitle=f"Attack from {device_label} · session {session_id}")
+    return message("\n".join(lines), root, False)
+
+
 def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_url: str, bubble: str) -> ChatMessage:
     """The round's result: the plan, before and after, who must sign off, the live room."""
     before = baseline
