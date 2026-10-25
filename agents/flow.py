@@ -86,8 +86,10 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         ranked = [] if violating else [
             (next(c for c, _ in tested if c.policy is p), r) for p, r in flow.rank([(c.policy, r) for c, r in tested], req.constraints, H)
         ]
+        # Only plans that actually contain the attack are offered: safe-but-useless plans stay off the table.
+        contains = lambda r: r.infectedCount <= max(CONTAINED, req.baseline.infectedCount // 4)
         alternatives = [Alternative(policyId=c.id, testResult=r, **with_coverage(c, req).policy.dict())
-                        for c, r in [(c, r) for c, r in ranked if c.id != cand.id][:2]]
+                        for c, r in [(c, r) for c, r in ranked if c.id != cand.id and contains(r)][:2]]
         if violating:
             ctx.logger.warning(f"no candidate meets every constraint; sending the least-violating, {cand.id}")
 
