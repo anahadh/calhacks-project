@@ -8,8 +8,15 @@ import type { DeviceType, SessionSnapshot } from "@/lib/stdb/types";
 // infected with services offline under it, then what is down and who
 // depends on it, newest first. Counting and lookup only.
 
+// What ransomware can encrypt, as the engine reads the hospital: Windows IT machines and the Windows
+// consoles of medical devices. Embedded medical devices and appliances aren't encrypted; they lose services.
+const MEDICAL = new Set(["mri", "ct", "patient_monitor", "infusion_pump", "anesthesia_machine", "lab_analyzer"]);
+const attackable = (d: { type: string; os?: string }) =>
+  ["workstation", "nurse_station", "server_rack"].includes(d.type) || (MEDICAL.has(d.type) && String(d.os ?? "").startsWith("windows"));
+
 export function SpreadStats({ session, index }: { session: SessionSnapshot; index: SessionIndex }) {
-  const total = session.hospital.devices.length;
+  const total = session.hospital.devices.filter(attackable).length;
+  const others = session.hospital.devices.length - total;
   const infected = session.devices.filter((d) => d.infected).length;
   const share = total ? Math.round((infected / total) * 100) : 0;
   const services = session.hospital.services;
@@ -18,12 +25,15 @@ export function SpreadStats({ session, index }: { session: SessionSnapshot; inde
   return (
     <div className="panel flex flex-col gap-6 p-6">
       <div className="flex flex-col gap-4">
-        <span className="eyebrow">Devices infected</span>
+        <span className="eyebrow">Machines encrypted</span>
         <div className="flex items-baseline gap-2.5 tabular-nums">
           <span className="readout text-[64px] leading-[0.9] tracking-[-0.035em]">{infected}</span>
           <span className="readout text-[34px] leading-none tracking-[-0.02em] text-ink-muted">/ {total}</span>
           <span className="num ml-auto text-[13px] text-ink-muted">{share}%</span>
         </div>
+        <p className="num m-0 text-[12px] leading-5 text-ink-faint">
+          of {total} attackable machines. {others} medical devices and appliances can't be encrypted, but lose the services they depend on.
+        </p>
         <div
           role="progressbar"
           aria-label="Devices infected"
