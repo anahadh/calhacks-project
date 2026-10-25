@@ -13,11 +13,12 @@ import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
 import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import {
-  beforeAfter, pairClock, pairRefusal, pairTarget, planFlows, planSegmentsOf, sceneOf, stripPending, withoutSegmentation,
+  beforeAfter, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, stripPending, withoutSegmentation,
   type Delta, type Segment,
 } from "./pair";
 import { Conclusion } from "./conclusion";
 import { SegmentBarriers } from "./segment-barriers";
+import { functionalSegmentsOf } from "./segments";
 import { SegmentHalos } from "./segment-halos";
 
 // The segmentation plan screen (UX.md "Solution view"): the same attack
@@ -55,9 +56,10 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   // The run row's removed flows arrive with the engine's first frame; until then the recommendation's
   // test run (the same engine, same policy: parity) says what the plan cuts.
   const removedFlows = planRun?.removedFlows.length ? planRun.removedFlows : rec?.verified.removedFlows ?? [];
+  // The plan's segments: the functional networks its rules wall off (segments.ts), once a plan exists.
   const segments = useMemo(
-    () => (removedFlows.length ? planSegmentsOf(hospital, planScene.devices, removedFlows) : []),
-    [hospital, planScene.devices, removedFlows],
+    () => (removedFlows.length ? functionalSegmentsOf(hospital, planScene.devices) : []),
+    [hospital, planScene.devices, removedFlows.length],
   );
   const segmentOf = useMemo(() => new Map(segments.flatMap((s) => s.deviceIds.map((id) => [id, s.zone] as const))), [segments]);
   const hoveredZone = hovered ? segmentOf.get(hovered) ?? null : null;
@@ -471,7 +473,7 @@ function Legend() {
       </li>
       <li className="inline-flex items-center gap-2">
         <span aria-hidden className="h-3.5 w-3.5 rounded-full border-2" style={{ borderColor: "#B08CFF" }} />
-        Barrier: a segment (machines inside still reach each other)
+        Barrier: a functional segment (its machines still reach each other)
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="h-2 w-2 rounded-full" style={{ background: "#6FCF97" }} />

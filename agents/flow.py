@@ -23,6 +23,7 @@ import agent_chat
 import facts
 import llm
 from config import settings
+from logic.segments import segment_of
 from logic import candidates as candidates_mod
 from logic import flow
 from logic import hospital as hospital_mod
@@ -38,11 +39,11 @@ CONTAINED = 3  # an attack held to this many devices counts as contained whereve
 
 
 def contained(r, start: str) -> bool:
-    """An attack is contained when it stayed inside the department it started in (segmentation's
-    promise: the department's machines may be hit, the rest of the hospital is not), or when it
-    touched CONTAINED devices or fewer wherever they are."""
-    zone = H.zone(start)
-    return r.infectedCount <= CONTAINED or all(H.zone(d.id) == zone for d in r.infectedDevices if d.id in H.devices)
+    """An attack is contained when it stayed inside the functional segment it started in
+    (segmentation's promise: that network's machines may be hit, the rest of the hospital is not),
+    or when it touched CONTAINED devices or fewer wherever they are."""
+    seg = segment_of(H, start)
+    return r.infectedCount <= CONTAINED or all(segment_of(H, d.id) == seg for d in r.infectedDevices if d.id in H.devices)
 MEDICAL = {"mri", "ct", "patient_monitor", "infusion_pump", "anesthesia_machine", "lab_analyzer"}
 # Where an attack can start: workstations, nurse stations and Windows medical consoles (phishing lands there).
 STARTS = sorted(d for d, x in H.devices.items()
@@ -67,7 +68,7 @@ def with_coverage(c: Candidate, req: ProposalRequest) -> Candidate:
     others = [s for s in STARTS if s != req.patientZero]
     with ThreadPoolExecutor(max_workers=8) as pool:
         held = sum(contained(r, s) for s, r in zip(others, pool.map(lambda s: run_sim(c, s, req.seed, req.challenges), others)))
-    note = f"Also holds {held} of {len(others)} other attack starts inside the department they begin in."
+    note = f"Also holds {held} of {len(others)} other attack starts inside the segment they begin in."
     return c.copy(update={"policy": c.policy.copy(update={"rationale": f"{c.policy.rationale} {note}"})})
 
 

@@ -1,14 +1,14 @@
 {
  "format": 1,
  "label": "Cached run",
- "recordedAt": "2026-10-25T04:17:05+00:00",
+ "recordedAt": "2026-10-25T04:24:03+00:00",
  "sourceSessionId": "dev",
  "patientZero": "mri_2",
  "engine": "hippo-sim (hippo-sim)",
  "modelSources": [
   "asi1"
  ],
- "gitCommit": "dc5e42a443cdaf9f4bd825ba3cef70cc1ed930ff",
+ "gitCommit": "5936fcee7376316d3eb6b44d4d6ba60eca7da9f4",
  "rowCount": 55,
  "rows": [
   {
@@ -18,13 +18,13 @@
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:32.118+00:00",
+    "updatedAt": "2026-10-25T04:23:34.258+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 46,
+   "offsetMs": 61,
    "row": {
     "sessionId": "dev",
     "round": 1,
@@ -39,25 +39,25 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T04:16:32.164+00:00",
+    "createdAt": "2026-10-25T04:23:34.319+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 46,
+   "offsetMs": 64,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:32.164+00:00",
+    "updatedAt": "2026-10-25T04:23:34.322+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 46,
+   "offsetMs": 65,
    "row": {
     "sessionId": "dev",
     "round": 1,
@@ -148,14 +148,14 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T04:16:32.164+00:00",
+    "createdAt": "2026-10-25T04:23:34.323+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 54,
+   "offsetMs": 76,
    "row": {
     "sessionId": "dev",
     "round": 1,
@@ -246,69 +246,69 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T04:16:32.172+00:00",
+    "createdAt": "2026-10-25T04:23:34.334+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 57,
+   "offsetMs": 77,
    "row": {
     "sessionId": "dev",
     "agent": "flow",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:32.175+00:00",
+    "updatedAt": "2026-10-25T04:23:34.335+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 65,
+   "offsetMs": 93,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:32.183+00:00",
+    "updatedAt": "2026-10-25T04:23:34.351+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 66,
+   "offsetMs": 98,
    "row": {
     "sessionId": "dev",
     "agent": "inventory",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:32.184+00:00",
+    "updatedAt": "2026-10-25T04:23:34.356+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 66,
+   "offsetMs": 98,
    "row": {
     "sessionId": "dev",
     "agent": "inventory",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:32.184+00:00",
+    "updatedAt": "2026-10-25T04:23:34.356+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 11232,
+   "offsetMs": 7788,
    "row": {
     "sessionId": "dev",
     "agent": "flow",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:43.350+00:00",
+    "updatedAt": "2026-10-25T04:23:42.046+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 11233,
+   "offsetMs": 7789,
    "row": {
     "sessionId": "dev",
     "round": 1,
@@ -320,7 +320,7 @@
      "round": 1,
      "policyId": "optimized_min_cuts",
      "strategy": "least_disruption",
-     "name": "Optimized: fewest cuts that keep every attack in its department",
+     "name": "Optimized: fewest cuts that keep every attack in its segment",
      "rules": [
       {
        "id": "r_it_core",
@@ -703,42 +703,6 @@
       {
        "id": "r_21",
        "from": {
-        "zone": "critical_care",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "critical_care",
-        "deviceType": "nurse_station",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "smb",
-       "port": 445,
-       "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
-      },
-      {
-       "id": "r_22",
-       "from": {
-        "zone": "inpatient",
-        "deviceType": "nurse_station",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "inpatient",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "smb",
-       "port": 445,
-       "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
-      },
-      {
-       "id": "r_23",
-       "from": {
         "zone": "business",
         "deviceType": "workstation",
         "role": null,
@@ -755,7 +719,7 @@
        "plain": "Admin workstations may reach admin workstations over SMB (445)."
       },
       {
-       "id": "r_24",
+       "id": "r_22",
        "from": {
         "zone": "imaging",
         "deviceType": "workstation",
@@ -773,7 +737,7 @@
        "plain": "Imaging workstations may reach imaging mris over SMB (445)."
       },
       {
-       "id": "r_25",
+       "id": "r_23",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -791,7 +755,7 @@
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
       },
       {
-       "id": "r_26",
+       "id": "r_24",
        "from": {
         "zone": "critical_care",
         "deviceType": "nurse_station",
@@ -809,7 +773,7 @@
        "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
       },
       {
-       "id": "r_27",
+       "id": "r_25",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -827,7 +791,7 @@
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy pharmacy cabinets over SMB (445)."
       }
      ],
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
+     "rationale": "The fewest file-sharing and remote-desktop links to cut between the functional networks (core servers, imaging and PACS, bedside monitoring, clinical workstations, business) so an attack from any workstation stays in its own segment; DICOM to PACS, HL7 vitals and ADT, charts over HTTPS and common time still cross. Average over 16 attack starts: 2.6 devices infected (vs 10.1 without segmentation).",
      "tradeoff": "Chosen by an optimizer over every starting point, not just this one.",
      "testResult": {
       "ticks": 5,
@@ -882,56 +846,59 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_81"
+       "fl_75",
+       "fl_77",
+       "fl_81",
+       "fl_86"
       ]
      },
-     "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
+     "reason": "I chose this plan to keep attacks in their own segment with minimal cuts. It limits infections to 5 devices and disrupts care for 26 patients, compared to 9 infected and 90 disrupted without it.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
+    "reason": "I chose this plan to keep attacks in their own segment with minimal cuts. It limits infections to 5 devices and disrupts care for 26 patients, compared to 9 infected and 90 disrupted without it.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:43.351+00:00",
+    "createdAt": "2026-10-25T04:23:42.047+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 11242,
+   "offsetMs": 7799,
    "row": {
     "sessionId": "dev",
     "agent": "flow",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:43.360+00:00",
+    "updatedAt": "2026-10-25T04:23:42.057+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 11246,
+   "offsetMs": 7800,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:43.364+00:00",
+    "updatedAt": "2026-10-25T04:23:42.058+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 11246,
+   "offsetMs": 7801,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:43.364+00:00",
+    "updatedAt": "2026-10-25T04:23:42.059+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 11246,
+   "offsetMs": 7802,
    "row": {
     "sessionId": "dev",
     "round": 1,
@@ -943,7 +910,7 @@
      "round": 1,
      "policyId": "optimized_min_cuts",
      "strategy": "least_disruption",
-     "name": "Optimized: fewest cuts that keep every attack in its department",
+     "name": "Optimized: fewest cuts that keep every attack in its segment",
      "rules": [
       {
        "id": "r_it_core",
@@ -1326,42 +1293,6 @@
       {
        "id": "r_21",
        "from": {
-        "zone": "critical_care",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "critical_care",
-        "deviceType": "nurse_station",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "smb",
-       "port": 445,
-       "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
-      },
-      {
-       "id": "r_22",
-       "from": {
-        "zone": "inpatient",
-        "deviceType": "nurse_station",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "inpatient",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "smb",
-       "port": 445,
-       "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
-      },
-      {
-       "id": "r_23",
-       "from": {
         "zone": "business",
         "deviceType": "workstation",
         "role": null,
@@ -1378,7 +1309,7 @@
        "plain": "Admin workstations may reach admin workstations over SMB (445)."
       },
       {
-       "id": "r_24",
+       "id": "r_22",
        "from": {
         "zone": "imaging",
         "deviceType": "workstation",
@@ -1396,7 +1327,7 @@
        "plain": "Imaging workstations may reach imaging mris over SMB (445)."
       },
       {
-       "id": "r_25",
+       "id": "r_23",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -1414,7 +1345,7 @@
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
       },
       {
-       "id": "r_26",
+       "id": "r_24",
        "from": {
         "zone": "critical_care",
         "deviceType": "nurse_station",
@@ -1432,7 +1363,7 @@
        "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
       },
       {
-       "id": "r_27",
+       "id": "r_25",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -1450,7 +1381,7 @@
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy pharmacy cabinets over SMB (445)."
       }
      ],
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
+     "rationale": "The fewest file-sharing and remote-desktop links to cut between the functional networks (core servers, imaging and PACS, bedside monitoring, clinical workstations, business) so an attack from any workstation stays in its own segment; DICOM to PACS, HL7 vitals and ADT, charts over HTTPS and common time still cross. Average over 16 attack starts: 2.6 devices infected (vs 10.1 without segmentation).",
      "tradeoff": "Chosen by an optimizer over every starting point, not just this one.",
      "testResult": {
       "ticks": 5,
@@ -1505,23 +1436,26 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_81"
+       "fl_75",
+       "fl_77",
+       "fl_81",
+       "fl_86"
       ]
      },
-     "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
+     "reason": "I chose this plan to keep attacks in their own segment with minimal cuts. It limits infections to 5 devices and disrupts care for 26 patients, compared to 9 infected and 90 disrupted without it.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
+    "reason": "I chose this plan to keep attacks in their own segment with minimal cuts. It limits infections to 5 devices and disrupts care for 26 patients, compared to 9 infected and 90 disrupted without it.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:43.364+00:00",
+    "createdAt": "2026-10-25T04:23:42.060+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 11254,
+   "offsetMs": 7809,
    "row": {
     "sessionId": "dev",
     "round": 1,
@@ -1533,7 +1467,7 @@
      "round": 1,
      "policyId": "optimized_min_cuts",
      "strategy": "least_disruption",
-     "name": "Optimized: fewest cuts that keep every attack in its department",
+     "name": "Optimized: fewest cuts that keep every attack in its segment",
      "rules": [
       {
        "id": "r_it_core",
@@ -1916,42 +1850,6 @@
       {
        "id": "r_21",
        "from": {
-        "zone": "critical_care",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "critical_care",
-        "deviceType": "nurse_station",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "smb",
-       "port": 445,
-       "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
-      },
-      {
-       "id": "r_22",
-       "from": {
-        "zone": "inpatient",
-        "deviceType": "nurse_station",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "inpatient",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "smb",
-       "port": 445,
-       "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
-      },
-      {
-       "id": "r_23",
-       "from": {
         "zone": "business",
         "deviceType": "workstation",
         "role": null,
@@ -1968,7 +1866,7 @@
        "plain": "Admin workstations may reach admin workstations over SMB (445)."
       },
       {
-       "id": "r_24",
+       "id": "r_22",
        "from": {
         "zone": "imaging",
         "deviceType": "workstation",
@@ -1986,7 +1884,7 @@
        "plain": "Imaging workstations may reach imaging mris over SMB (445)."
       },
       {
-       "id": "r_25",
+       "id": "r_23",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -2004,7 +1902,7 @@
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
       },
       {
-       "id": "r_26",
+       "id": "r_24",
        "from": {
         "zone": "critical_care",
         "deviceType": "nurse_station",
@@ -2022,7 +1920,7 @@
        "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
       },
       {
-       "id": "r_27",
+       "id": "r_25",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -2040,7 +1938,7 @@
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy pharmacy cabinets over SMB (445)."
       }
      ],
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
+     "rationale": "The fewest file-sharing and remote-desktop links to cut between the functional networks (core servers, imaging and PACS, bedside monitoring, clinical workstations, business) so an attack from any workstation stays in its own segment; DICOM to PACS, HL7 vitals and ADT, charts over HTTPS and common time still cross. Average over 16 attack starts: 2.6 devices infected (vs 10.1 without segmentation).",
      "tradeoff": "Chosen by an optimizer over every starting point, not just this one.",
      "testResult": {
       "ticks": 5,
@@ -2095,141 +1993,81 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_81"
+       "fl_75",
+       "fl_77",
+       "fl_81",
+       "fl_86"
       ]
      },
-     "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
+     "reason": "I chose this plan to keep attacks in their own segment with minimal cuts. It limits infections to 5 devices and disrupts care for 26 patients, compared to 9 infected and 90 disrupted without it.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
+    "reason": "I chose this plan to keep attacks in their own segment with minimal cuts. It limits infections to 5 devices and disrupts care for 26 patients, compared to 9 infected and 90 disrupted without it.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:43.372+00:00",
+    "createdAt": "2026-10-25T04:23:42.067+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 11256,
+   "offsetMs": 7811,
    "row": {
     "sessionId": "dev",
     "agent": "inventory",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:43.374+00:00",
+    "updatedAt": "2026-10-25T04:23:42.069+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 11264,
+   "offsetMs": 7822,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:43.382+00:00",
+    "updatedAt": "2026-10-25T04:23:42.080+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 11276,
+   "offsetMs": 7831,
    "row": {
     "sessionId": "dev",
     "agent": "clinical_workflow",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:43.394+00:00",
+    "updatedAt": "2026-10-25T04:23:42.089+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 12436,
+   "offsetMs": 8828,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:23:43.086+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 8828,
    "row": {
     "sessionId": "dev",
     "agent": "inventory",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:44.554+00:00",
+    "updatedAt": "2026-10-25T04:23:43.086+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 12436,
-   "row": {
-    "sessionId": "dev",
-    "round": 1,
-    "from": "inventory",
-    "to": "coordinator",
-    "type": "verdict",
-    "payload": {
-     "sessionId": "dev",
-     "round": 1,
-     "policyId": "optimized_min_cuts",
-     "agent": "inventory",
-     "decision": "reject",
-     "reason": "I can't accept this: the plan uses 28 rules, but the switches carry at most 24 allow rules as ACLs. I need at most 24 rules.",
-     "constraint": {
-      "kind": "max_rules",
-      "targetIds": [],
-      "limit": 24
-     },
-     "reasonSource": "asi1"
-    },
-    "reason": "I can't accept this: the plan uses 28 rules, but the switches carry at most 24 allow rules as ACLs. I need at most 24 rules.",
-    "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:44.554+00:00",
-    "direction": "sent",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 12443,
-   "row": {
-    "sessionId": "dev",
-    "agent": "inventory",
-    "status": "idle",
-    "updatedAt": "2026-10-25T04:16:44.561+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 12443,
-   "row": {
-    "sessionId": "dev",
-    "agent": "coordinator",
-    "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:44.561+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 12443,
-   "row": {
-    "sessionId": "dev",
-    "agent": "coordinator",
-    "status": "idle",
-    "updatedAt": "2026-10-25T04:16:44.561+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 12520,
-   "row": {
-    "sessionId": "dev",
-    "agent": "clinical_workflow",
-    "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:44.638+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_message",
-   "offsetMs": 12521,
+   "offsetMs": 8829,
    "row": {
     "sessionId": "dev",
     "round": 1,
@@ -2242,42 +2080,105 @@
      "policyId": "optimized_min_cuts",
      "agent": "clinical_workflow",
      "decision": "accept",
-     "reason": "I accept this: the optimized plan uses 14 cuts to keep every attack in its department, affecting 26 patients with care delayed or disrupted and leaving 1 service offline.",
+     "reason": "I accept this: the plan optimizes cuts to keep every attack in its segment, resulting in 5 infected devices, 26 patients with care delayed or disrupted, 1 service offline, and 17 connections cut.",
      "constraint": null,
      "reasonSource": "asi1"
     },
-    "reason": "I accept this: the optimized plan uses 14 cuts to keep every attack in its department, affecting 26 patients with care delayed or disrupted and leaving 1 service offline.",
+    "reason": "I accept this: the plan optimizes cuts to keep every attack in its segment, resulting in 5 infected devices, 26 patients with care delayed or disrupted, 1 service offline, and 17 connections cut.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:44.639+00:00",
+    "createdAt": "2026-10-25T04:23:43.087+00:00",
+    "direction": "sent",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 8829,
+   "row": {
+    "sessionId": "dev",
+    "round": 1,
+    "from": "inventory",
+    "to": "coordinator",
+    "type": "verdict",
+    "payload": {
+     "sessionId": "dev",
+     "round": 1,
+     "policyId": "optimized_min_cuts",
+     "agent": "inventory",
+     "decision": "reject",
+     "reason": "I can't accept this: the plan uses 26 rules, but the constraint added says at most 24 rules. The switches carry at most this many allow rules as ACLs; fold rules department to department.",
+     "constraint": {
+      "kind": "max_rules",
+      "targetIds": [],
+      "limit": 24
+     },
+     "reasonSource": "asi1"
+    },
+    "reason": "I can't accept this: the plan uses 26 rules, but the constraint added says at most 24 rules. The switches carry at most this many allow rules as ACLs; fold rules department to department.",
+    "reasonSource": "asi1",
+    "createdAt": "2026-10-25T04:23:43.087+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 12531,
+   "offsetMs": 8836,
    "row": {
     "sessionId": "dev",
-    "agent": "clinical_workflow",
+    "agent": "inventory",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:44.649+00:00",
+    "updatedAt": "2026-10-25T04:23:43.094+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 12532,
+   "offsetMs": 8840,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:23:43.098+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 8840,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:44.650+00:00",
+    "updatedAt": "2026-10-25T04:23:43.098+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 8840,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:23:43.098+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 8841,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:23:43.099+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 12532,
+   "offsetMs": 8841,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -2292,25 +2193,25 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T04:16:44.650+00:00",
+    "createdAt": "2026-10-25T04:23:43.099+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 12532,
+   "offsetMs": 8841,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:44.650+00:00",
+    "updatedAt": "2026-10-25T04:23:43.099+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 12532,
+   "offsetMs": 8842,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -2407,47 +2308,47 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T04:16:44.650+00:00",
+    "createdAt": "2026-10-25T04:23:43.100+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 12538,
+   "offsetMs": 8850,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:44.656+00:00",
+    "updatedAt": "2026-10-25T04:23:43.108+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 12539,
+   "offsetMs": 8850,
    "row": {
     "sessionId": "dev",
     "agent": "flow",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:44.657+00:00",
+    "updatedAt": "2026-10-25T04:23:43.108+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 21838,
+   "offsetMs": 15512,
    "row": {
     "sessionId": "dev",
     "agent": "flow",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:53.956+00:00",
+    "updatedAt": "2026-10-25T04:23:49.770+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 21839,
+   "offsetMs": 15513,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -2751,42 +2652,6 @@
        {
         "id": "r_17",
         "from": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care may reach critical care over SMB (445)."
-       },
-       {
-        "id": "r_18",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards may reach the wards over SMB (445)."
-       },
-       {
-        "id": "r_19",
-        "from": {
          "zone": "business",
          "deviceType": null,
          "role": null,
@@ -2801,6 +2666,24 @@
         "protocol": "smb",
         "port": 445,
         "plain": "Admin may reach admin over SMB (445)."
+       },
+       {
+        "id": "r_18",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "to": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
        }
       ],
       "removed": [
@@ -2822,8 +2705,6 @@
        "r_23",
        "r_24",
        "r_25",
-       "r_26",
-       "r_27",
        "r_3",
        "r_4",
        "r_5",
@@ -2890,56 +2771,59 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_81"
+       "fl_75",
+       "fl_77",
+       "fl_81",
+       "fl_86"
       ]
      },
-     "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
+     "reason": "I cut 17 file-sharing links to keep attacks in their segments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
+    "reason": "I cut 17 file-sharing links to keep attacks in their segments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:53.957+00:00",
+    "createdAt": "2026-10-25T04:23:49.771+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 21847,
+   "offsetMs": 15523,
    "row": {
     "sessionId": "dev",
     "agent": "flow",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:53.965+00:00",
+    "updatedAt": "2026-10-25T04:23:49.781+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 21848,
+   "offsetMs": 15525,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:53.966+00:00",
+    "updatedAt": "2026-10-25T04:23:49.783+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 21850,
+   "offsetMs": 15526,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:53.968+00:00",
+    "updatedAt": "2026-10-25T04:23:49.784+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 21850,
+   "offsetMs": 15526,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -3243,42 +3127,6 @@
        {
         "id": "r_17",
         "from": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care may reach critical care over SMB (445)."
-       },
-       {
-        "id": "r_18",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards may reach the wards over SMB (445)."
-       },
-       {
-        "id": "r_19",
-        "from": {
          "zone": "business",
          "deviceType": null,
          "role": null,
@@ -3293,6 +3141,24 @@
         "protocol": "smb",
         "port": 445,
         "plain": "Admin may reach admin over SMB (445)."
+       },
+       {
+        "id": "r_18",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "to": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
        }
       ],
       "removed": [
@@ -3314,8 +3180,6 @@
        "r_23",
        "r_24",
        "r_25",
-       "r_26",
-       "r_27",
        "r_3",
        "r_4",
        "r_5",
@@ -3382,23 +3246,37 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_81"
+       "fl_75",
+       "fl_77",
+       "fl_81",
+       "fl_86"
       ]
      },
-     "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
+     "reason": "I cut 17 file-sharing links to keep attacks in their segments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
+    "reason": "I cut 17 file-sharing links to keep attacks in their segments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:53.968+00:00",
+    "createdAt": "2026-10-25T04:23:49.784+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
+   "table": "agent_status",
+   "offsetMs": 15537,
+   "row": {
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:23:49.795+00:00",
+    "fixture": false
+   }
+  },
+  {
    "table": "agent_message",
-   "offsetMs": 21857,
+   "offsetMs": 15537,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -3702,42 +3580,6 @@
        {
         "id": "r_17",
         "from": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care may reach critical care over SMB (445)."
-       },
-       {
-        "id": "r_18",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards may reach the wards over SMB (445)."
-       },
-       {
-        "id": "r_19",
-        "from": {
          "zone": "business",
          "deviceType": null,
          "role": null,
@@ -3752,6 +3594,24 @@
         "protocol": "smb",
         "port": 445,
         "plain": "Admin may reach admin over SMB (445)."
+       },
+       {
+        "id": "r_18",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "to": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
        }
       ],
       "removed": [
@@ -3773,8 +3633,6 @@
        "r_23",
        "r_24",
        "r_25",
-       "r_26",
-       "r_27",
        "r_3",
        "r_4",
        "r_5",
@@ -3841,67 +3699,59 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_81"
+       "fl_75",
+       "fl_77",
+       "fl_81",
+       "fl_86"
       ]
      },
-     "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
+     "reason": "I cut 17 file-sharing links to keep attacks in their segments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
+    "reason": "I cut 17 file-sharing links to keep attacks in their segments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:53.975+00:00",
+    "createdAt": "2026-10-25T04:23:49.795+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 21858,
-   "row": {
-    "sessionId": "dev",
-    "agent": "inventory",
-    "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:53.976+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 21863,
+   "offsetMs": 15559,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:53.981+00:00",
+    "updatedAt": "2026-10-25T04:23:49.817+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 21865,
+   "offsetMs": 15563,
    "row": {
     "sessionId": "dev",
     "agent": "clinical_workflow",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:53.983+00:00",
+    "updatedAt": "2026-10-25T04:23:49.821+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 22723,
+   "offsetMs": 16658,
    "row": {
     "sessionId": "dev",
     "agent": "inventory",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:54.841+00:00",
+    "updatedAt": "2026-10-25T04:23:50.916+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 22723,
+   "offsetMs": 16659,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -3914,64 +3764,31 @@
      "policyId": "optimized_min_cuts",
      "agent": "inventory",
      "decision": "accept",
-     "reason": "I accept this: the optimized_min_cuts plan reduces patients with care delayed or disrupted from 90 to 26, prevents 4 infections, and keeps services offline down to 1 instead of 4.",
+     "reason": "I accept this: the optimized_min_cuts plan reduces infected devices from 9 to 5 and cuts patients with care delayed or disrupted from 90 to 26.",
      "constraint": null,
      "reasonSource": "asi1"
     },
-    "reason": "I accept this: the optimized_min_cuts plan reduces patients with care delayed or disrupted from 90 to 26, prevents 4 infections, and keeps services offline down to 1 instead of 4.",
+    "reason": "I accept this: the optimized_min_cuts plan reduces infected devices from 9 to 5 and cuts patients with care delayed or disrupted from 90 to 26.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:54.841+00:00",
+    "createdAt": "2026-10-25T04:23:50.917+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 22731,
-   "row": {
-    "sessionId": "dev",
-    "agent": "inventory",
-    "status": "idle",
-    "updatedAt": "2026-10-25T04:16:54.849+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 22732,
-   "row": {
-    "sessionId": "dev",
-    "agent": "coordinator",
-    "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:54.850+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 22732,
-   "row": {
-    "sessionId": "dev",
-    "agent": "coordinator",
-    "status": "idle",
-    "updatedAt": "2026-10-25T04:16:54.850+00:00",
-    "fixture": false
-   }
-  },
-  {
-   "table": "agent_status",
-   "offsetMs": 22759,
+   "offsetMs": 16667,
    "row": {
     "sessionId": "dev",
     "agent": "clinical_workflow",
     "status": "speaking",
-    "updatedAt": "2026-10-25T04:16:54.877+00:00",
+    "updatedAt": "2026-10-25T04:23:50.925+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 22760,
+   "offsetMs": 16668,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -3984,42 +3801,75 @@
      "policyId": "optimized_min_cuts",
      "agent": "clinical_workflow",
      "decision": "accept",
-     "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 14 connections cut.",
+     "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 17 connections cut.",
      "constraint": null,
      "reasonSource": "asi1"
     },
-    "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 14 connections cut.",
+    "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 17 connections cut.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:54.878+00:00",
+    "createdAt": "2026-10-25T04:23:50.926+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 22767,
+   "offsetMs": 16680,
    "row": {
     "sessionId": "dev",
-    "agent": "clinical_workflow",
-    "status": "idle",
-    "updatedAt": "2026-10-25T04:16:54.885+00:00",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:23:50.938+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 22767,
+   "offsetMs": 16680,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:23:50.938+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 16680,
+   "row": {
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:23:50.938+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 16697,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:23:50.955+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 16697,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "thinking",
-    "updatedAt": "2026-10-25T04:16:54.885+00:00",
+    "updatedAt": "2026-10-25T04:23:50.955+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 23761,
+   "offsetMs": 17483,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -4029,7 +3879,7 @@
     "payload": {
      "policy": {
       "strategy": "least_disruption",
-      "name": "Optimized: fewest cuts that keep every attack in its department",
+      "name": "Optimized: fewest cuts that keep every attack in its segment",
       "rules": [
        {
         "id": "r_it_core",
@@ -4340,42 +4190,6 @@
        {
         "id": "r_17",
         "from": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care may reach critical care over SMB (445)."
-       },
-       {
-        "id": "r_18",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": null,
-         "role": null,
-         "vlan": null
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards may reach the wards over SMB (445)."
-       },
-       {
-        "id": "r_19",
-        "from": {
          "zone": "business",
          "deviceType": null,
          "role": null,
@@ -4390,9 +4204,27 @@
         "protocol": "smb",
         "port": 445,
         "plain": "Admin may reach admin over SMB (445)."
+       },
+       {
+        "id": "r_18",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "to": {
+         "zone": "critical_care",
+         "deviceType": "nurse_station",
+         "role": null,
+         "vlan": 10
+        },
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
        }
       ],
-      "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
+      "rationale": "The fewest file-sharing and remote-desktop links to cut between the functional networks (core servers, imaging and PACS, bedside monitoring, clinical workstations, business) so an attack from any workstation stays in its own segment; DICOM to PACS, HL7 vitals and ADT, charts over HTTPS and common time still cross. Average over 16 attack starts: 2.6 devices infected (vs 10.1 without segmentation).",
       "tradeoff": "Chosen by an optimizer over every starting point, not just this one."
      },
      "testResult": {
@@ -4448,7 +4280,10 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_81"
+       "fl_75",
+       "fl_77",
+       "fl_81",
+       "fl_86"
       ]
      },
      "verdicts": [
@@ -4458,7 +4293,7 @@
        "policyId": "optimized_min_cuts",
        "agent": "inventory",
        "decision": "accept",
-       "reason": "I accept this: the optimized_min_cuts plan reduces patients with care delayed or disrupted from 90 to 26, prevents 4 infections, and keeps services offline down to 1 instead of 4.",
+       "reason": "I accept this: the optimized_min_cuts plan reduces infected devices from 9 to 5 and cuts patients with care delayed or disrupted from 90 to 26.",
        "constraint": null,
        "reasonSource": "asi1"
       },
@@ -4468,12 +4303,12 @@
        "policyId": "optimized_min_cuts",
        "agent": "clinical_workflow",
        "decision": "accept",
-       "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 14 connections cut.",
+       "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 17 connections cut.",
        "constraint": null,
        "reasonSource": "asi1"
       }
      ],
-     "explanation": "The plan limits infections to 5 by cutting 14 links, sparing 64 patients from disruption. Security, Clinical engineering, and Operations must sign off.",
+     "explanation": "The plan limits infections to 5 devices and spares 64 patients from disruption by cutting 17 links. Security, Clinical engineering, and Operations must sign off; agent agreement is not approval.",
      "requiredRoles": [
       "security",
       "clinical_engineering",
@@ -4482,16 +4317,16 @@
      "explanationSource": "asi1",
      "option": 1
     },
-    "reason": "The plan limits infections to 5 by cutting 14 links, sparing 64 patients from disruption. Security, Clinical engineering, and Operations must sign off.",
+    "reason": "The plan limits infections to 5 devices and spares 64 patients from disruption by cutting 17 links. Security, Clinical engineering, and Operations must sign off; agent agreement is not approval.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T04:16:55.879+00:00",
+    "createdAt": "2026-10-25T04:23:51.741+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 23762,
+   "offsetMs": 17491,
    "row": {
     "sessionId": "dev",
     "round": 2,
@@ -4506,19 +4341,19 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T04:16:55.880+00:00",
+    "createdAt": "2026-10-25T04:23:51.749+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_status",
-   "offsetMs": 23762,
+   "offsetMs": 17492,
    "row": {
     "sessionId": "dev",
     "agent": "coordinator",
     "status": "idle",
-    "updatedAt": "2026-10-25T04:16:55.880+00:00",
+    "updatedAt": "2026-10-25T04:23:51.750+00:00",
     "fixture": false
    }
   }

@@ -18,6 +18,7 @@ them, and the constraint it adds is respected from then on).
 from protocol import Candidate, Constraint, Policy, PolicyRule, RunResult, Selector
 
 from .hospital import HospitalIndex, Row
+from .segments import segment_name, segment_of
 
 MAX_RULES = 40  # protocol.Policy.rules
 LATERAL = ("smb", "rdp")  # file sharing and remote desktop: how ransomware moves between machines
@@ -59,17 +60,23 @@ def cross_zone(h: HospitalIndex, f: Row) -> bool:
     return h.zone(f["from"]) != h.zone(f["to"])
 
 
+def cross_segment(h: HospitalIndex, f: Row) -> bool:
+    """Between two functional segments (logic.segments): the wall a plan builds."""
+    return segment_of(h, f["from"]) != segment_of(h, f["to"])
+
+
 def boundary(h: HospitalIndex, f: Row) -> bool:
-    """A connection that crosses a segment wall: between departments (zones, the server room
-    included). Links inside a department stay, a medical console's included: staff share files
-    with the PC next to them, the scanner's console with the tech's workstation, and cutting
-    those makes islands of uselessness. So a plan holds an attack to the department it starts
-    in; it does not promise that nothing beside patient zero is touched."""
-    return cross_zone(h, f)
+    """A connection that crosses a segment wall: between functional networks (core servers,
+    imaging and PACS, bedside monitoring, clinical workstations, business), wherever the
+    two machines stand. Links inside a segment stay: a scanner's console with the tech's
+    workstation, a nurse station with its monitors, and cutting those makes islands of
+    uselessness. So a plan holds an attack to the segment it starts in; it does not promise
+    that nothing beside patient zero is touched."""
+    return cross_segment(h, f)
 
 
 def zone_wall(h: HospitalIndex, zone: str) -> set[str]:
-    return {f["id"] for f in active_flows(h) if cross_zone(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"]))}
+    return {f["id"] for f in active_flows(h) if cross_segment(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"]))}
 
 
 def admin_from_it_only(h: HospitalIndex) -> set[str]:
@@ -88,14 +95,14 @@ def quarantine(h: HospitalIndex, zone: str) -> set[str]:
     """The zone keeps only clinical traffic to and from other zones."""
     return {
         f["id"] for f in active_flows(h)
-        if cross_zone(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"])) and f["protocol"] not in CLINICAL}
+        if cross_segment(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"])) and f["protocol"] not in CLINICAL}
 
 
 def holes(h: HospitalIndex, cut: set[str]) -> str:
     """The traffic a segmented device class still exchanges with the rest of the hospital, in words."""
     kinds = set()
     for f in active_flows(h):
-        if f["id"] in cut or not cross_zone(h, f) and not any(h.devices[d]["type"] in MEDICAL_TYPES for d in (f["from"], f["to"])):
+        if f["id"] in cut or not cross_segment(h, f):
             continue
         if any(h.devices[d]["type"] in MEDICAL_TYPES for d in (f["from"], f["to"])) or "ADT" in f.get("purpose", "") or f["port"] == 123:
             kinds.add({"dicom": "DICOM to PACS", "hl7": "HL7 vitals and ADT", "other": "common time (NTP)"}.get(f["protocol"], f["protocol"].upper()))
@@ -103,7 +110,7 @@ def holes(h: HospitalIndex, cut: set[str]) -> str:
 
 
 def lateral(h: HospitalIndex) -> set[str]:
-    return {f["id"] for f in active_flows(h) if cross_zone(h, f) and f["protocol"] in LATERAL}
+    return {f["id"] for f in active_flows(h) if cross_segment(h, f) and f["protocol"] in LATERAL}
 
 
 def lateral_route(h: HospitalIndex, path: set[str]) -> set[str]:
@@ -138,13 +145,13 @@ def reach(h: HospitalIndex, start: str, open_links: list[Row]) -> set[str]:
 
 
 def optimized_cuts(h: HospitalIndex, starts: list[str], keep: set[str], limit: int = 3) -> set[str]:
-    """Greedy: while an attack from some start can reach a machine outside its own department, cut
+    """Greedy: while an attack from some start can reach a machine outside its own segment, cut
     the boundary link whose removal most reduces the total reach over every start. Links inside a
-    department and links in `keep` are never cut. The engine's test run then judges the result."""
+    segment and links in `keep` are never cut. The engine's test run then judges the result."""
     links = [f for f in active_flows(h) if f["protocol"] in LATERAL]
     cut: set[str] = set()
     total = lambda open_: sum(len(reach(h, s, open_)) for s in starts)
-    escapes = lambda open_: any(h.zone(d) != h.zone(s) for s in starts for d in reach(h, s, open_))
+    escapes = lambda open_: any(segment_of(h, d) != segment_of(h, s) for s in starts for d in reach(h, s, open_))
     while True:
         open_ = [f for f in links if f["id"] not in cut]
         if not escapes(open_):
@@ -254,7 +261,8 @@ def proposal_facts(h: HospitalIndex, baseline: RunResult, patient_zero: str, con
     keep = kept_by_constraints(constraints)
     name = lambda d: h.devices[d]["name"]
     return {
-        "attackStartsAt": f"{name(patient_zero)} ({zone_name(h.zone(patient_zero))})",
+        "attackStartsAt": f"{name(patient_zero)} ({zone_name(h.zone(patient_zero))}, {segment_name(segment_of(h, patient_zero))} segment)",
+        "segments": {segment_name(k): sorted(name(d) for d in h.devices if segment_of(h, d) == k) for k in ("core", "imaging", "monitoring", "clinical", "business")},
         "attackReached": [f"{name(d.id)} ({zone_name(h.zone(d.id))}) at step {d.tick}" for d in baseline.infectedDevices],
         "connections": [
             {"id": f["id"], "from": f"{name(f['from'])} [{h.devices[f['from']]['type']}, {zone_name(h.zone(f['from']))}]",
@@ -281,9 +289,11 @@ def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constrain
     """The algorithmic candidate: the optimizer over every start. (The other plans come from the model.)"""
     keep = kept_by_constraints(constraints)
     out = [
-        candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that keep every attack in its department",
+        candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that keep every attack in its segment",
                   optimized_cuts(h, starts or [patient_zero], keep), keep,
-                  "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department.",
+                  "The fewest file-sharing and remote-desktop links to cut between the functional networks (core servers, imaging and PACS, "
+                  "bedside monitoring, clinical workstations, business) so an attack from any workstation stays in its own segment; "
+                  "DICOM to PACS, HL7 vitals and ADT, charts over HTTPS and common time still cross.",
                   "Chosen by an optimizer over every starting point, not just this one.", rule_limit(constraints)),
     ]
     return [c for c in out if c is not None]
