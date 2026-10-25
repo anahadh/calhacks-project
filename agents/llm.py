@@ -1,4 +1,4 @@
-"""A model writes the words; code has already decided (AGENTS.md rule 7).
+"""A model writes the words; code has already decided (AGENTS.md rule 8).
 
 explain(kind, facts) and question_text(facts) return (text, source). The facts come
 from code (facts.py). Claude's answer must be JSON {"text": ...} and pass three
@@ -8,7 +8,7 @@ errors listed. If that fails too, or the API errors or times out, or there is no
 key, explain() raises LlmError: there is no fallback text. The agent's step fails and
 the error is shown (rule 14).
 
-The writer is ASI:One (asi1-mini, OpenAI-style API at api.asi1.ai) when ASI1_API_KEY is
+The writer is ASI:One (asi1, OpenAI-style API at api.asi1.ai; ASI1_MODEL overrides) when ASI1_API_KEY is
 set, else Claude when ANTHROPIC_API_KEY is set; source names which one wrote the text.
 
 with_text() puts the text on a message and refuses to change anything else.
@@ -30,7 +30,7 @@ from protocol import Alternative, Proposal, Question, Recommendation, Revision, 
 log = logging.getLogger("llm")
 
 DEFAULT_MODEL = "claude-haiku-5-5"
-ASI1_DEFAULT_MODEL = "asi1-mini"
+ASI1_DEFAULT_MODEL = "asi1"
 ASI1_URL = os.environ.get("ASI1_BASE_URL", "https://api.asi1.ai/v1").rstrip("/") + "/chat/completions"
 MAX_TOKENS = 200
 TIMEOUT_S = 20.0
