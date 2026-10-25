@@ -122,7 +122,9 @@ export function PlanScene({
   }, [segments, device, room, floorLevel]);
 
   const infectionPath = devices.filter((d) => d.infected && d.infectedBy && shown(d.deviceId) && shown(d.infectedBy));
-  const flowShown = (f: Flow) => shown(f.from) && shown(f.to);
+  // Only links ransomware can travel over (file sharing, remote desktop) are drawn; clinical traffic is left out.
+  const lateral = (f: Flow) => f.protocol === "smb" || f.protocol === "rdp";
+  const flowShown = (f: Flow) => lateral(f) && shown(f.from) && shown(f.to);
   const controls = useRef<OrbitControlsImpl | null>(null);
   const publish = () => {
     if (!controls.current) return;
