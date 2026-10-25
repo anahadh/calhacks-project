@@ -390,3 +390,24 @@ def roster_card(lines: list[str], chart: str | None, bubble: str) -> ChatMessage
             secondary_text=(last[:180] + "…") if len(last) > 180 else (last or None),
             primary_cta=CtaAction(label=f"Ask {name}", selection={"action": "ask", "source": SOURCE, "agent": agent, "about": ""})))
     return _card(bubble, CarouselCardPayload(title="The agents behind this plan", subtitle="Tap one to ask it why", items=items))
+
+
+
+def progress_card(lines: list[str], round: int, device_label: str, baseline_infected: int | None) -> ChatMessage:
+    """While the round runs: one compact carousel, a card per specialist with its state and
+    its latest move. The bubble is only the newest move, so the thread doesn't repeat itself."""
+    from uagents_core.contrib.protocols.chat.cards import CarouselBadge, CarouselCardPayload, CarouselItem, CtaAction
+    from runtime import PROFILES
+    import narrate
+    items = []
+    for agent, name in ASK_AGENTS:
+        handle = "@" + PROFILES[agent].handle
+        label, variant = agent_state(lines, handle)
+        last = next((TAG.match(l).group("rest") for l in reversed(lines) if TAG.match(l) and TAG.match(l).group("handle") == handle[1:]), "")
+        items.append(CarouselItem(id=agent, title=name, subtitle=handle, badges=[CarouselBadge(label=label, variant=variant)],
+                                  secondary_text=((last[:200] + "…") if len(last) > 200 else last) or "waiting for its turn",
+                                  primary_cta=CtaAction(label=f"Ask {name}", selection={"action": "ask", "source": SOURCE, "agent": agent, "about": ""})))
+    sub = f"Attack from {device_label}" + (f" · {baseline_infected} devices infected with no plan" if baseline_infected is not None else "")
+    agent_lines = [l for l in lines if TAG.match(l) and TAG.match(l).group("handle") != "hippocratech-coordinator"]
+    newest = narrate.pretty(agent_lines[-1]) if agent_lines else narrate.pretty(lines[-1]) if lines else "Starting…"
+    return _card(newest, CarouselCardPayload(title=f"Round {round} · the agents are negotiating", subtitle=sub, items=items))

@@ -155,10 +155,6 @@ def test_brain_error_is_sent_as_the_reply(coord, monkeypatch):
 def test_summary_is_sent_once(coord, monkeypatch):
     c, sent = coord
 
-    async def fake_respond(*a, **k):
-        return turn("Done.")
-
-    monkeypatch.setattr(c.brain, "respond", fake_respond)
     c.chats["s"] = c.ChatRound(sender="agent1qs", device_name="MRI 2")
     rnd = type("R", (), {"state": "done", "round": 2, "sessionId": "s", "recommendation": None, "baseline": None})()
 
@@ -169,7 +165,7 @@ def test_summary_is_sent_once(coord, monkeypatch):
         await asyncio.sleep(1.0)
 
     run(twice())
-    assert sum(1 for s in sent if s[3] == "Done.") == 1
+    assert sum(1 for s in sent if s[3] and "couldn't agree" in s[3]) == 1
 
 
 def test_chat_turn_reports_any_failure_as_the_reply(coord, monkeypatch):
@@ -186,20 +182,21 @@ def test_chat_turn_reports_any_failure_as_the_reply(coord, monkeypatch):
 def test_summary_failure_reaches_the_thread(coord, monkeypatch):
     c, sent = coord
 
-    async def boom(*a, **k):
-        raise RuntimeError("model down")
+    def boom(*a, **k):
+        raise RuntimeError("card down")
 
-    monkeypatch.setattr(c.brain, "respond", boom)
+    monkeypatch.setattr(c.cards, "result_card", boom)
     c.chats["s"] = c.ChatRound(sender="agent1qs", device_name="MRI 2")
-    rnd = type("R", (), {"state": "done", "round": 2, "sessionId": "s", "recommendation": None, "baseline": None})()
+    rec = type("Rec", (), {"policy": type("P", (), {"name": "X"})(), "testResult": type("T", (), {"infectedCount": 1})()})()
+    rnd = type("R", (), {"state": "done", "round": 2, "sessionId": "s", "recommendation": rec, "baseline": None})()
 
     async def go():
         await c.notify_chat(c.ctx_stub(), rnd)
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.3)
 
+    monkeypatch.setattr(c, "NARRATE_INTERVAL_S", 0.01)
     run(go())
-    assert any(s[3] and "model down" in s[3] for s in sent)
-
+    assert any(s[3] and "card down" in s[3] for s in sent)
 
 def test_on_chat_does_not_block_the_message_queue(coord, monkeypatch):
     c, _ = coord
@@ -282,9 +279,9 @@ def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, mo
         await asyncio.sleep(1.0)  # the summary turn lists the MCP tools first
 
     run(go())
-    summary = next(x for x in sent if x[3] and x[3].endswith("The agents agree."))
-    assert summary[3].startswith("[ a ] one\n\n[ b ] two\n\n")
-    assert summary[4] is not None and policy.name in json.dumps(summary[4])
+    summary = next(x for x in sent if x[3] and "agents agree on" in x[3])
+    assert policy.name in summary[3] and f"{base.infectedCount} → {res.infectedCount}" in summary[3]
+    assert summary[4] is not None and summary[4]["title"] == policy.name
     roster = sent[-1]
     assert roster[3].startswith("Here are the agents") and len(roster[4]["items"]) == 4
 

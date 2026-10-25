@@ -121,9 +121,9 @@ def test_narration_accumulates_into_one_message_with_a_trace_card(monkeypatch, t
     assert len(ctx.sent) == 1, "two lines within the interval coalesce into one send"
     session, kw = ctx.sent[0]
     assert session == chat_session
-    assert body_text(kw) == "[ a ] first\n\n[ b ] second" and has_card(kw)
+    assert body_text(kw) == "[ b ] second" and has_card(kw)  # the newest move; the card holds the rest
     rows = chat_rows(tmp_path / "s1.jsonl")
-    assert len(rows) == 1 and rows[0]["payload"]["text"] == "[ a ] first\n\n[ b ] second" and rows[0]["payload"]["card"]
+    assert len(rows) == 1 and rows[0]["payload"]["text"] == "[ b ] second" and rows[0]["payload"]["card"]
     assert coordinator.chats["s1"].trace == ["[ a ] first", "[ b ] second"]
     assert not (tmp_path / "nochat.jsonl").exists()
 
@@ -147,7 +147,7 @@ def test_narration_after_the_interval_sends_again_with_the_full_trace(monkeypatc
         loop.run_until_complete(go())
     finally:
         loop.close()
-    assert [body_text(kw) for _, kw in ctx.sent] == ["one", "one\n\ntwo"]
+    assert [body_text(kw) for _, kw in ctx.sent] == ["one", "two"]
 
 
 def test_chat_send_retries_a_failed_delivery(monkeypatch, tmp_path):

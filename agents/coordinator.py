@@ -302,8 +302,8 @@ async def _flush_trace(ctx: Context, session_id: str, wait: float) -> None:
         return
     c.last_sent = time.monotonic()
     rnd = rounds.get(session_id)
-    msg = cards.trace_card(H, session_id, c.device_name, list(c.trace), rnd.round if rnd else 1,
-                           rnd.state if rnd else "starting", room_url(session_id), map_src=c.map_image, infected=c.infected)
+    msg = cards.progress_card(list(c.trace), rnd.round if rnd else 1, c.device_name,
+                              len(c.infected) if c.infected is not None else None)
     await reply_card(ctx, c.sender, msg, session_id)
 
 
@@ -335,14 +335,21 @@ async def _summary(ctx: Context, rnd: Round) -> None:
     ctx = _with_session(ctx, c.session)
     if c.flush is not None and not c.flush.done():
         c.flush.cancel()  # the summary message carries the whole trace itself
-    prefix = narrate.render(c.trace) + "\n\n" if c.trace else ""
+    rec = rnd.recommendation
     try:
-        await chat_turn(ctx, c.sender, "The round just ended; summarise it for me, naming each agent by handle and ending "
-                                       "with who must sign off.", session_id=rnd.sessionId, relay_in=False, prefix=prefix,
-                        default_card=f"recommendation:{rnd.sessionId}" if rnd.recommendation is not None else None)
+        if rec is not None:
+            before = rnd.baseline.infectedCount if rnd.baseline else None
+            rounds_n = rnd.round
+            text = (f"✅ After {rounds_n} round{'s' if rounds_n != 1 else ''} the agents agree on **{rec.policy.name}**"
+                    + (f": {before} → {rec.testResult.infectedCount} devices infected." if before is not None else ".")
+                    + " It's a recommendation, not a decision: the people listed must sign off.")
+            await reply_card(ctx, c.sender, cards.result_card(H, rec, rnd.baseline, None, text), rnd.sessionId)
+        else:
+            await reply(ctx, c.sender, f"The agents couldn't agree on a plan after {rnd.round} rounds, so there is no recommendation.",
+                        rnd.sessionId)
     except Exception as e:  # rule 14: a failed summary is shown, never swallowed by the task
         ctx.logger.error(f"summary failed: {e!r}")
-        await reply(ctx, c.sender, f"{prefix}I couldn't write the summary: {e.__class__.__name__}: {e}", rnd.sessionId)
+        await reply(ctx, c.sender, f"I couldn't send the result: {e.__class__.__name__}: {e}", rnd.sessionId)
     c.summary_sent = True
     # Then the agents themselves, as a carousel (spaced out: ASI:One rate-limits bursts).
     await asyncio.sleep(NARRATE_INTERVAL_S)

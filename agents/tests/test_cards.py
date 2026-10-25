@@ -68,7 +68,7 @@ def test_recommendation_card_without_a_baseline_shows_after_only():
 
 
 def test_deleted_cards_are_gone():
-    for name in ("help_card", "devices_card", "protected_card", "device_card", "started_card", "progress_card",
+    for name in ("help_card", "devices_card", "protected_card", "device_card", "started_card",
                  "summary_card", "lanes", "lanes_list", "plan_block", "traffic_line"):
         assert not hasattr(cards, name), name
 
@@ -206,3 +206,15 @@ def test_roster_is_a_carousel_of_the_four_agents():
     flow = p["items"][0]
     assert flow["title"] == "Flow" and flow["image"] == "https://img/chart.png" and flow["primary_cta"]["selection"]["agent"] == "flow"
     assert p["items"][2]["badges"][0]["label"] == "accepted"
+
+
+def test_progress_card_is_compact_one_row_per_agent_with_its_latest_move():
+    lines = ['[ @hippocratech-flow · round 2 ] revised the plan, now "X": I cut SMB. 5 devices infected with it, 9 without.',
+             "[ @hippocratech-inventory · round 2 ] rejected: too many rules. Needs: fewer rules.",
+             "[ @hippocratech-clinical-workflow · round 2 ] accepted."]
+    m = cards.progress_card(lines, 2, "MRI 2", 9)
+    meta = next(c.metadata for c in m.content if c.type == "metadata")
+    p = json.loads(meta["card_payload"])
+    assert meta["card_kind"] == "carousel" and [i["title"] for i in p["items"]] == ["Flow", "Inventory", "Clinical Workflow"]
+    assert p["items"][1]["badges"][0]["label"] == "rejected" and "too many rules" in p["items"][1]["secondary_text"]
+    assert "Round 2" in p["title"] and len(m.text()) < 400
