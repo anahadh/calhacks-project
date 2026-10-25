@@ -38,7 +38,12 @@ export function Conclusion({
     () => session.messages.filter((m) => (rec ? m.round <= rec.round : true) && m.type !== "chat" && m.type !== "request"),
     [session.messages, rec],
   );
-  const name = (id: string) => session.hospital.devices.find((d) => d.id === id)?.name ?? session.hospital.services.find((s) => s.id === id)?.name ?? id;
+  const name = (id: string) => {
+    const dev = (x: string) => session.hospital.devices.find((d) => d.id === x)?.name ?? x;
+    const f = session.hospital.flows.find((x) => x.id === id);
+    if (f) return f.purpose ?? `${dev(f.from)} → ${dev(f.to)}`;
+    return session.hospital.devices.find((d) => d.id === id)?.name ?? session.hospital.services.find((s) => s.id === id)?.name ?? id;
+  };
   const concessions = useMemo(() => concessionsOf(messages, rec?.round ?? 0, name), [messages, rec?.round]); // eslint-disable-line react-hooks/exhaustive-deps
   const infectedSeg = segments.find((s) => s.infected > 0);
 
@@ -145,10 +150,10 @@ function DecisionCard({ rec, saved, me, onApprove }: { rec: RecommendationRow; s
 function Method({ rec, messages, segments, name }: { rec: RecommendationRow; messages: readonly AgentMessageRow[]; segments: readonly Segment[]; name: (id: string) => string }) {
   const proposals = messages.filter((m) => m.from === "flow" && (m.type === "proposal" || m.type === "revision"));
   const rejections = messages.filter((m) => m.type === "reject" && m.constraint);
-  const few = (ids: string[], n = 3) => (ids.length <= n ? ids.map(name).join(", ") : `${ids.slice(0, n).map(name).join(", ")} +${ids.length - n}`);
+  const few = (ids: string[], n = 2) => (ids.length <= n ? ids.map(name).join(", ") : `${ids.slice(0, n).map(name).join(", ")} +${ids.length - n}`);
   const what = (m: AgentMessageRow) => {
     const c = m.constraint!;
-    if (c.kind === "keep_flow") return `reopen ${few(c.targetIds)}`;
+    if (c.kind === "keep_flow") return `keep ${few(c.targetIds)}`;
     if (c.kind === "keep_service") return `keep ${few(c.targetIds)} running`;
     if (c.kind === "confirm_device") return `wait for a person to name ${few(c.targetIds)}`;
     return "fold the rules to fit the switches";
@@ -156,45 +161,40 @@ function Method({ rec, messages, segments, name }: { rec: RecommendationRow; mes
   const steps: { title: string; body: React.ReactNode }[] = [
     {
       title: "The objective",
-      body: (
-        <>Cut the fewest file-sharing and remote-desktop links between the {segments.length || 5} functional networks so that an attack from <em>any</em> workstation stays inside its own network. Clinical traffic (DICOM, HL7, HTTPS, NTP) is never the target of a cut.</>
-      ),
+      body: <>Fewest file-sharing and remote-desktop cuts between the {segments.length || 5} networks so an attack from <em>any</em> desk stays in its own. Clinical traffic is never cut.</>,
     },
     {
-      title: "The method is deterministic",
-      body: (
-        <>The Flow Agent's optimizer is greedy and has no randomness: while some start can still reach outside its network, it cuts the wall link that lowers total reach the most. Every candidate is then run through the same simulation engine as the two replays above, which has no random numbers and no clock, so the same hospital and the same plan always give the same result.</>
-      ),
+      title: "Deterministic",
+      body: <>A greedy optimizer with no randomness, checked by a simulation engine with no randomness. Same hospital, same plan, same result, every time.</>,
     },
     {
-      title: "Tested from every possible start, not only this one",
-      body: rec.evidence && rec.evidence.length > 0 ? <Proof evidence={rec.evidence} /> : <span className="text-ink-faint">This plan's per-start results were not published with it.</span>,
+      title: "Tested from every possible start",
+      body: rec.evidence && rec.evidence.length > 0 ? <Proof evidence={rec.evidence} /> : <span className="text-ink-faint">Not published with this plan.</span>,
     },
     {
-      title: `Reviewed in ${rec.round} ${rec.round === 1 ? "round" : "rounds"}`,
+      title: `${rec.round} ${rec.round === 1 ? "round" : "rounds"} of review`,
       body: (
         <>
-          Flow proposed {proposals.length} {proposals.length === 1 ? "version" : "versions"}. The reviewers decide in code: Clinical rejects any plan that breaks a protected clinical link or keeps a critical service down; Inventory rejects any plan that touches a machine nobody can name or needs more rules than the switches carry. The language model only words the reasons.
+          Reviewers decide in code; the model only words the reasons.
           {rejections.length > 0 && (
-            <ol className="m-0 mt-2 flex list-none flex-col gap-1 p-0">
-              {rejections.map((m) => (
+            <ul className="m-0 mt-1.5 flex list-none flex-col gap-1 p-0">
+              {rejections.slice(0, 5).map((m) => (
                 <li key={`${m.round}:${m.seq}`} className="num text-[12px] text-ink-muted">
-                  <span className="text-ink-faint">Round {m.round} · </span>
+                  <span className="text-ink-faint">R{m.round} · </span>
                   <span style={{ color: SPEAKER_COLOR[m.from] }}>{SPEAKER_LABEL[m.from].replace(" Agent", "")}</span>
-                  <span className="text-ink-faint"> made Flow </span>
+                  <span className="text-ink-faint">: </span>
                   {what(m)}
                 </li>
               ))}
-            </ol>
+              {rejections.length > 5 && <li className="num text-[12px] text-ink-faint">+{rejections.length - 5} more</li>}
+            </ul>
           )}
         </>
       ),
     },
     {
-      title: "The result, verified on screen",
-      body: (
-        <>“{rec.name}”: {rec.rules.length} allow rules, {rec.verified.removedFlows.length} links cut, {rec.verified.protectedBroken.length} protected clinical links broken. The two replays above are this plan and no plan, run through the same engine on the same attack; their numbers are the plan's numbers.</>
-      ),
+      title: "Verified on screen",
+      body: <>“{rec.name}”: {rec.rules.length} rules, {rec.verified.removedFlows.length} links cut, {rec.verified.protectedBroken.length} protected links broken. The two replays above are this plan and no plan through the same engine.</>,
     },
   ];
   return (
@@ -203,13 +203,13 @@ function Method({ rec, messages, segments, name }: { rec: RecommendationRow; mes
         <span className="eyebrow">How the agents got here</span>
         <h2 id="method" className="m-0 mt-1 text-[22px] leading-7 text-ink">Chosen by an optimizer, checked by the engine, argued by the reviewers</h2>
       </div>
-      <ol className="m-0 flex list-none flex-col gap-4 p-0">
+      <ol className="m-0 grid list-none gap-x-8 gap-y-4 p-0 lg:grid-cols-2">
         {steps.map((st, i) => (
-          <li key={st.title} className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-3">
+          <li key={st.title} className={`grid grid-cols-[28px_minmax(0,1fr)] gap-x-3 ${i === 2 ? "lg:col-span-2" : ""}`}>
             <span className="num grid h-7 w-7 place-items-center rounded-full border border-line2 text-[12px] text-ink-muted">{i + 1}</span>
-            <div className="flex min-w-0 flex-col gap-1.5">
+            <div className="flex min-w-0 flex-col gap-1">
               <span className="text-[15px] font-medium text-ink">{st.title}</span>
-              <div className="text-[14px] leading-6 text-ink-muted">{st.body}</div>
+              <div className="text-[13px] leading-5 text-ink-muted">{st.body}</div>
             </div>
           </li>
         ))}
@@ -229,14 +229,14 @@ function Proof({ evidence }: { evidence: NonNullable<RecommendationRow["evidence
   const avg = (k: "baseline" | "plan") => rows.reduce((a, r) => a + r[k], 0) / rows.length;
   const held = rows.filter((r) => r.plan <= Math.max(3, Math.floor(r.baseline / 4))).length;
   return (
-    <section aria-labelledby="proof" className="flex flex-col gap-3 rounded-panel border border-line bg-panel2 p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 id="proof" className="eyebrow m-0">Tested from every possible start · {rows.length}</h3>
-        <span className="num text-[12px] text-ink-muted">
-          average <span className="text-ink-faint line-through">{avg("baseline").toFixed(1)}</span> → <span className="text-ink">{avg("plan").toFixed(1)}</span> machines · holds {held} of {rows.length}
-        </span>
+    <section aria-labelledby="proof" className="flex flex-col gap-2 rounded-panel border border-line bg-panel2 px-4 py-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="readout text-readout-m text-ink">{avg("plan").toFixed(1)}</span>
+        <span className="num text-[12px] text-ink-muted">machines on average across {rows.length} starts, <span className="line-through">{avg("baseline").toFixed(1)}</span> with no plan · held in its network from {held} of {rows.length}</span>
       </div>
-      <ul className="m-0 grid list-none gap-x-6 gap-y-1.5 p-0 sm:grid-cols-2" role="list">
+      <details className="num text-[12px] text-ink-faint">
+      <summary id="proof" className="cursor-pointer">Every start</summary>
+      <ul className="m-0 mt-2 grid list-none gap-x-6 gap-y-1.5 p-0 sm:grid-cols-2" role="list">
         {rows.map((r) => (
           <li key={r.start} className="grid grid-cols-[108px_minmax(0,1fr)_44px] items-center gap-2" title={`${r.name}: ${r.baseline} machines without the plan, ${r.plan} with it`}>
             <span className="num truncate text-[11px] text-ink-muted">{r.name}</span>
@@ -248,7 +248,8 @@ function Proof({ evidence }: { evidence: NonNullable<RecommendationRow["evidence
           </li>
         ))}
       </ul>
-      <span className="num text-[11px] text-ink-faint">Grey: machines the attack reaches with no plan. Blue: with this plan. Same engine as the two replays above.</span>
+      <span className="num mt-2 block text-[11px] text-ink-faint">Grey: machines the attack reaches with no plan. Blue: with this plan.</span>
+      </details>
     </section>
   );
 }
