@@ -52,7 +52,6 @@ export function DemoRoom({ onClose, options, status, chat }: { onClose?: () => v
     <NegotiationRoom
       events={script.slice(0, shown)}
       done={done}
-      subtitle={`Round ${script[Math.max(0, shown - 1)]?.round ?? 1} of 3 · ${done ? "agreed" : "negotiating"}`}
       controls={
         <>
           {!done && <button type="button" onClick={() => setPlaying((p) => !p)} className="ctl h-9 px-3 text-[13px]">{playing ? "Pause" : "Play"}</button>}
@@ -106,7 +105,6 @@ export function LiveNegotiationRoom({ messages, roundState, names, onClose, opti
       events={events}
       done={done}
       reopened={reopened}
-      subtitle={`Round ${Math.max(1, round)} of ${roundState.maxRounds} · ${done ? (roundState.detail?.startsWith("No agreement") ? "no agreement" : "agreed") : roundState.state === "waiting_for_human" && !revealing ? "waiting for a human" : roundState.state === "idle" && !messages.length ? "idle" : "negotiating"}`}
       badge={roundState.detail?.startsWith("Cached run") ? "Cached run" : undefined}
       controls={revealing ? <button type="button" onClick={skip} className="ctl h-9 px-3 text-[13px]">Skip to result</button> : null}
       onClose={onClose}
@@ -117,13 +115,12 @@ export function LiveNegotiationRoom({ messages, roundState, names, onClose, opti
   );
 }
 
-function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, onClose, options, status, chat }: {
+function NegotiationRoom({ events, done, reopened, badge, controls, onClose, options, status, chat }: {
   events: DemoEvent[];
   done: boolean;
   reopened?: string[];
   /** Live only: the real rows behind the cards, for the Full chat tab. */
   chat?: { rows: readonly AgentMessageRow[]; names: Names };
-  subtitle: string;
   badge?: string;
   controls?: ReactNode;
   onClose?: () => void;
@@ -143,7 +140,6 @@ function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, on
       <header className="flex min-h-[72px] shrink-0 flex-wrap items-center justify-between gap-4 border-b border-line px-6 py-3">
         <div>
           <h1 className="m-0 text-[24px] font-normal tracking-[-0.01em] text-ink">Agents negotiating the plan</h1>
-          <div className="num mt-0.5 text-[12px] text-ink-faint">{subtitle}</div>
         </div>
         <div className="flex items-center gap-2">
           {badge && (
