@@ -10,7 +10,7 @@
 
 import { t } from "spacetimedb/server";
 
-import { ANNOTATING_ROLES, NOTE_MAX, ROLES, SPEEDS } from "./constants";
+import { ANNOTATING_ROLES, NOTE_MAX, ROLES, SPEEDS, TIMELINE_NOTE_MAX, TIMELINE_TICK_MAX } from "./constants";
 import { hospitalOf, validateHospital } from "./hospital";
 import spacetimedb, {
   BEFORE_FRAME_0, deleteRunRows, fail, getSession, isServer, keyRefusal, readRun, requirePresenter, requireServer, roundOpen,
@@ -225,6 +225,27 @@ export const annotation_add = spacetimedb.reducer(
     ctx.db.annotation.insert({
       id: 0n, session_id, run_id: s.active_run_id, kind: "focus", target_id, note: note.trim(),
       author: ctx.sender, author_name: p.name, role: p.role, active: true, created_at: ctx.timestamp, cleared_by: "",
+    });
+  },
+);
+
+/** A note at a tick on the active run's timeline, written by anyone who has joined. */
+export const annotation_add_note = spacetimedb.reducer(
+  { session_id: t.string(), tick: t.u32(), note: t.string() },
+  (ctx, { session_id, tick, note }) => {
+    const s = getSession(ctx, session_id);
+    const p = ctx.db.presence.identity.find(ctx.sender);
+    if (!p || p.session_id !== session_id) fail("Join the session before adding a note.");
+    if (!(ANNOTATING_ROLES as readonly string[]).includes(p.role)) fail("Observers can see notes but can't add them.");
+    if (!s.active_run_id) fail("Run the attack first. Notes mark a moment in a run.");
+    if (tick > TIMELINE_TICK_MAX) fail(`Notes can mark ticks 0 to ${TIMELINE_TICK_MAX}.`);
+    const text = note.trim();
+    if (!text) fail("Write something in the note.");
+    if (text.length > TIMELINE_NOTE_MAX) fail(`Notes are at most ${TIMELINE_NOTE_MAX} characters.`);
+    ctx.db.annotation.insert({
+      id: 0n, session_id, run_id: s.active_run_id, kind: "note", target_id: "", note: text,
+      author: ctx.sender, author_name: p.name, role: p.role, active: true, created_at: ctx.timestamp, cleared_by: "",
+      tick,
     });
   },
 );

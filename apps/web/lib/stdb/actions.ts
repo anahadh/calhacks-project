@@ -9,7 +9,7 @@ import type { RunRow, SessionActions, Speed } from "./types";
 export type SessionReducers = Pick<
   DbConnection["reducers"],
   | "runStart" | "runResume" | "runPause" | "runStep" | "runReset" | "runSetSpeed" | "presenceJoin" | "annotationAdd"
-  | "annotationClear" | "defendRequest" | "questionAnswer" | "solutionStart" | "solutionClose"
+  | "annotationAddNote" | "annotationClear" | "defendRequest" | "questionAnswer" | "solutionStart" | "solutionClose"
 >;
 
 /** Accepted and ignored: the engine has no RNG. Kept for the run_start contract. */
@@ -54,6 +54,7 @@ export function sessionActions(
     join: async (name, role) => need().presenceJoin({ sessionId, name, role }),
     addFocus: async (deviceId, note = "") => need().annotationAdd({ sessionId, targetId: deviceId, note }),
     clearFocus: async (id) => need().annotationClear({ annotationId: BigInt(id) }),
+    addNote: async (tick, note) => need().annotationAddNote({ sessionId, tick, note }),
     defend: async () => { console.log(`[plan] calling defend_request for ${sessionId}`); return need().defendRequest({ sessionId }); },
     answerQuestion: async (questionId, choice) => need().questionAnswer({ sessionId, questionId, choice }),
     showSolution: async (recommendationId, speed?: Speed, patientZero = "") =>
@@ -69,6 +70,6 @@ export function refusingActions(reason: string): SessionActions {
   };
   return {
     startRun: no, play: no, pause: no, step: no, reset: no, setSpeed: no, join: no, addFocus: no, clearFocus: no,
-    defend: no, answerQuestion: no, showSolution: no, closeSolution: no,
+    addNote: no, defend: no, answerQuestion: no, showSolution: no, closeSolution: no,
   };
 }

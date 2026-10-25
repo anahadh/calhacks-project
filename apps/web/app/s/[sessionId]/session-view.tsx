@@ -158,7 +158,11 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                 <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
                   {picking
                     ? session.isPresenter
-                      ? pickError ?? "Click a device to start the attack from it"
+                      ? pickError ??
+                        (session.entryPoints.length
+                          ? "Click a device to start the attack from it"
+                          // The run watcher fills these from the engine; without it no device can be picked (rule 14).
+                          : "No device can start an attack yet: the run watcher hasn't listed them from the engine. Is it running?")
                       : `Waiting for ${session.presenterName || "the presenter"} to pick patient zero`
                     : "Drag to rotate · scroll to zoom · hover a device"}
                 </span>
@@ -199,6 +203,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                 ) : (
                 <DemoRoom
                   onClose={() => setView("simulation")}
+                  chat={{ rows: session.messages, names: index }}
                   status={session.roundState.state === "running" ? "The agents are finalizing the plan behind the scenes…" : session.roundState.state === "idle" && !session.messages.length ? "Press Create segmentation plan to wake the agents." : undefined}
                   options={
                     session.recommendations.length ? (

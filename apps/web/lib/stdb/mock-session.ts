@@ -187,7 +187,7 @@ const refuse = (): SessionActions => {
   };
   return {
     startRun: no, play: no, pause: no, step: no, reset: no, setSpeed: no, join: no, addFocus: no, clearFocus: no,
-    defend: no, answerQuestion: no, showSolution: no, closeSolution: no,
+    addNote: no, defend: no, answerQuestion: no, showSolution: no, closeSolution: no,
   };
 };
 
@@ -299,7 +299,7 @@ export const mockSession: SessionSnapshot = {
     },
   ],
   annotations: [
-    { id: "1", targetId: "srv_file", note: "This file server is feeding the ER", authorName: "Dev", role: "clinical_engineering", active: true, mine: false },
+    { id: "1", kind: "focus", runId: baseline.id, targetId: "srv_file", note: "This file server is feeding the ER", authorName: "Dev", role: "clinical_engineering", active: true, mine: false },
   ],
   questions: [],
   recommendations: [

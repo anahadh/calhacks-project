@@ -78,7 +78,7 @@ describe("snapshotOf", () => {
     const asPresenter = snapshotOf(SESSION, tables(), PRESENTER);
     expect(asPresenter).toMatchObject({ isPresenter: true, presenterName: "Ana", me: { name: "Ana", role: "security" } });
     expect(asPresenter.annotations).toEqual([
-      { id: "9", targetId: "srv_file", note: "Feeds the ER", authorName: "Kai", role: "operations", active: true, mine: false },
+      { id: "9", kind: "focus", runId: BASE, targetId: "srv_file", note: "Feeds the ER", authorName: "Kai", role: "operations", active: true, mine: false },
     ]);
 
     const asViewer = snapshotOf(SESSION, tables(), VIEWER);

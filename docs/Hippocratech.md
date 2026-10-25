@@ -171,7 +171,7 @@ What judges see each tick (one tick is 15 simulated minutes; at 1× a tick lasts
 | Side column | Devices infected as the headline number (`/ 48`, share, bar), services offline with one pip per service, then **Relevant systems down**, newest first: each down service with the devices behind it, what stops working, and how many patients depend on it; ER diversion too |
 | Timeline | The selected run's clock as time since it started (`T+1:15`), a scrubber with event markers ("PACS falls") and note markers (▼), a segmented heat strip showing infected count over time, and the end label "Settles T+4:30" once the run has settled |
 
-Playback controls, per run: back to start, play/pause, forward 15 minutes, speed (0.5×, 1×, 2×, 4×), and **Add note**. The presenter and the person who started a run control that run; everyone else watches it. Presence avatars sit at the end of the rail (`+N` past three).
+Playback controls, per run: back to start, play/pause, forward 15 minutes, speed (0.5×, 1×, 2×, 4×), and **Add note**. The presenter and the person who started a run control that run; everyone else watches it. Presence avatars sit in the header beside Invite (`+N` past three), so they show before any run.
 
 ### 7.4 Create a segmentation plan (agents talk)
 
