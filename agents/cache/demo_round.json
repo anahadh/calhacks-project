@@ -1,80 +1,102 @@
 {
  "format": 1,
  "label": "Cached run",
- "recordedAt": "2026-10-25T02:58:11+00:00",
- "sourceSessionId": "s-jkaexgmz6s",
- "patientZero": "ws_img_2",
- "engine": "hippo-sim (recorded from the live session's SpacetimeDB rows)",
+ "recordedAt": "2026-10-25T04:17:05+00:00",
+ "sourceSessionId": "dev",
+ "patientZero": "mri_2",
+ "engine": "hippo-sim (hippo-sim)",
  "modelSources": [
   "asi1"
  ],
- "gitCommit": "75b92505c3e22296438d2a2c5301ae8ece8ec5b7",
- "rowCount": 17,
+ "gitCommit": "dc5e42a443cdaf9f4bd825ba3cef70cc1ed930ff",
+ "rowCount": 55,
  "rows": [
   {
-   "table": "agent_message",
+   "table": "agent_status",
    "offsetMs": 0,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:32.118+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 46,
+   "row": {
+    "sessionId": "dev",
     "round": 1,
     "from": "coordinator",
     "to": "relay",
     "type": "round_state",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
      "state": "running",
      "detail": null
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T02:46:53.462+00:00",
+    "createdAt": "2026-10-25T04:16:32.164+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 55,
+   "table": "agent_status",
+   "offsetMs": 46,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:32.164+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 46,
+   "row": {
+    "sessionId": "dev",
     "round": 1,
     "from": "coordinator",
     "to": "flow",
     "type": "proposal_request",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
-     "runId": "run_mvn888lw",
-     "patientZero": "ws_img_2",
+     "runId": "run_dev",
+     "patientZero": "mri_2",
      "seed": 1337,
      "challenges": [],
      "baseline": {
-      "ticks": 10,
-      "infectedCount": 10,
+      "ticks": 9,
+      "infectedCount": 9,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
        },
        {
-        "id": "srv_file",
+        "id": "ws_img_1",
         "tick": 1
        },
        {
-        "id": "ws_img_1",
+        "id": "srv_file",
         "tick": 2
        },
        {
-        "id": "srv_ehr",
+        "id": "ws_img_2",
         "tick": 3
        },
        {
-        "id": "ws_lab",
+        "id": "srv_ehr",
         "tick": 4
        },
        {
-        "id": "ws_pharm",
+        "id": "ws_lab",
         "tick": 5
        },
        {
@@ -86,33 +108,29 @@
         "tick": 7
        },
        {
-        "id": "ws_rad_3",
+        "id": "ws_pharm",
         "tick": 8
-       },
-       {
-        "id": "mri_2",
-        "tick": 9
        }
       ],
       "servicesDown": [
        {
         "id": "svc_ehr",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_lab",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_mri",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_pharm",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        }
       ],
@@ -130,53 +148,53 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T02:46:53.517+00:00",
+    "createdAt": "2026-10-25T04:16:32.164+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 117,
+   "offsetMs": 54,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
     "round": 1,
     "from": "coordinator",
     "to": "inventory",
     "type": "proposal_request",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
-     "runId": "run_mvn888lw",
-     "patientZero": "ws_img_2",
+     "runId": "run_dev",
+     "patientZero": "mri_2",
      "seed": 1337,
      "challenges": [],
      "baseline": {
-      "ticks": 10,
-      "infectedCount": 10,
+      "ticks": 9,
+      "infectedCount": 9,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
        },
        {
-        "id": "srv_file",
+        "id": "ws_img_1",
         "tick": 1
        },
        {
-        "id": "ws_img_1",
+        "id": "srv_file",
         "tick": 2
        },
        {
-        "id": "srv_ehr",
+        "id": "ws_img_2",
         "tick": 3
        },
        {
-        "id": "ws_lab",
+        "id": "srv_ehr",
         "tick": 4
        },
        {
-        "id": "ws_pharm",
+        "id": "ws_lab",
         "tick": 5
        },
        {
@@ -188,33 +206,29 @@
         "tick": 7
        },
        {
-        "id": "ws_rad_3",
+        "id": "ws_pharm",
         "tick": 8
-       },
-       {
-        "id": "mri_2",
-        "tick": 9
        }
       ],
       "servicesDown": [
        {
         "id": "svc_ehr",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_lab",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_mri",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_pharm",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        }
       ],
@@ -232,22 +246,77 @@
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T02:46:53.579+00:00",
+    "createdAt": "2026-10-25T04:16:32.172+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 9253,
+   "table": "agent_status",
+   "offsetMs": 57,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "flow",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:32.175+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 65,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:32.183+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 66,
+   "row": {
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:32.184+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 66,
+   "row": {
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:32.184+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 11232,
+   "row": {
+    "sessionId": "dev",
+    "agent": "flow",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:43.350+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 11233,
+   "row": {
+    "sessionId": "dev",
     "round": 1,
     "from": "flow",
     "to": "coordinator",
     "type": "proposal",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
      "policyId": "optimized_min_cuts",
      "strategy": "least_disruption",
@@ -616,60 +685,6 @@
       {
        "id": "r_20",
        "from": {
-        "zone": "business",
-        "deviceType": "hvac",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "business",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Admin hvacs may reach admin workstations over HTTP (80)."
-      },
-      {
-       "id": "r_21",
-       "from": {
-        "zone": "public",
-        "deviceType": "badge_reader",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "it_core",
-        "deviceType": "server_rack",
-        "role": "domain_controller",
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Public areas badge readers may reach the server room domain controllers over HTTP (80)."
-      },
-      {
-       "id": "r_22",
-       "from": {
-        "zone": "business",
-        "deviceType": "badge_reader",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "it_core",
-        "deviceType": "server_rack",
-        "role": "domain_controller",
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Admin badge readers may reach the server room domain controllers over HTTP (80)."
-      },
-      {
-       "id": "r_23",
-       "from": {
         "zone": "imaging",
         "deviceType": "workstation",
         "role": null,
@@ -686,7 +701,7 @@
        "plain": "Imaging workstations may reach imaging workstations over SMB (445)."
       },
       {
-       "id": "r_24",
+       "id": "r_21",
        "from": {
         "zone": "critical_care",
         "deviceType": "workstation",
@@ -704,7 +719,7 @@
        "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
       },
       {
-       "id": "r_25",
+       "id": "r_22",
        "from": {
         "zone": "inpatient",
         "deviceType": "nurse_station",
@@ -722,7 +737,7 @@
        "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
       },
       {
-       "id": "r_26",
+       "id": "r_23",
        "from": {
         "zone": "business",
         "deviceType": "workstation",
@@ -740,7 +755,25 @@
        "plain": "Admin workstations may reach admin workstations over SMB (445)."
       },
       {
-       "id": "r_27",
+       "id": "r_24",
+       "from": {
+        "zone": "imaging",
+        "deviceType": "workstation",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "imaging",
+        "deviceType": "mri",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Imaging workstations may reach imaging mris over SMB (445)."
+      },
+      {
+       "id": "r_25",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -756,41 +789,92 @@
        "protocol": "smb",
        "port": 445,
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
+      },
+      {
+       "id": "r_26",
+       "from": {
+        "zone": "critical_care",
+        "deviceType": "nurse_station",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "critical_care",
+        "deviceType": "nurse_station",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
+      },
+      {
+       "id": "r_27",
+       "from": {
+        "zone": "clinical_support",
+        "deviceType": "workstation",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "clinical_support",
+        "deviceType": "pharmacy_cabinet",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Lab and pharmacy workstations may reach lab and pharmacy pharmacy cabinets over SMB (445)."
       }
      ],
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 18 attack starts: 1.5 devices infected (vs 11.2 without segmentation).",
+     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
      "tradeoff": "Chosen by an optimizer over every starting point, not just this one.",
      "testResult": {
-      "ticks": 1,
-      "infectedCount": 1,
+      "ticks": 5,
+      "infectedCount": 5,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
+       },
+       {
+        "id": "ws_img_1",
+        "tick": 1
+       },
+       {
+        "id": "ws_img_2",
+        "tick": 2
+       },
+       {
+        "id": "ws_rad_1",
+        "tick": 3
+       },
+       {
+        "id": "ws_rad_2",
+        "tick": 4
        }
       ],
-      "servicesDown": [],
+      "servicesDown": [
+       {
+        "id": "svc_mri",
+        "downSinceTick": 5,
+        "ticksDown": 1
+       }
+      ],
       "patientCounts": {
-       "ok": 112,
+       "ok": 86,
        "delayed": 0,
-       "disrupted": 0,
+       "disrupted": 26,
        "diverted": 0
       },
-      "protectedBroken": [
-       "fl_21",
-       "fl_25"
-      ],
+      "protectedBroken": [],
       "removedFlows": [
-       "fl_8",
        "fl_9",
        "fl_10",
-       "fl_21",
        "fl_22",
        "fl_23",
        "fl_24",
-       "fl_25",
        "fl_26",
-       "fl_27",
        "fl_52",
        "fl_57",
        "fl_58",
@@ -798,32 +882,64 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_63",
        "fl_81"
       ]
      },
-     "reason": "I chose this plan to keep every attack in its own department. It limits infected devices to 1, compared to 10 without it, and spares 90 patients from care disruption.",
+     "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I chose this plan to keep every attack in its own department. It limits infected devices to 1, compared to 10 without it, and spares 90 patients from care disruption.",
+    "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:02.715+00:00",
+    "createdAt": "2026-10-25T04:16:43.351+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 9380,
+   "table": "agent_status",
+   "offsetMs": 11242,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "flow",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:43.360+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 11246,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:43.364+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 11246,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:43.364+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 11246,
+   "row": {
+    "sessionId": "dev",
     "round": 1,
     "from": "coordinator",
     "to": "inventory",
     "type": "proposal",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
      "policyId": "optimized_min_cuts",
      "strategy": "least_disruption",
@@ -1192,60 +1308,6 @@
       {
        "id": "r_20",
        "from": {
-        "zone": "business",
-        "deviceType": "hvac",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "business",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Admin hvacs may reach admin workstations over HTTP (80)."
-      },
-      {
-       "id": "r_21",
-       "from": {
-        "zone": "public",
-        "deviceType": "badge_reader",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "it_core",
-        "deviceType": "server_rack",
-        "role": "domain_controller",
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Public areas badge readers may reach the server room domain controllers over HTTP (80)."
-      },
-      {
-       "id": "r_22",
-       "from": {
-        "zone": "business",
-        "deviceType": "badge_reader",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "it_core",
-        "deviceType": "server_rack",
-        "role": "domain_controller",
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Admin badge readers may reach the server room domain controllers over HTTP (80)."
-      },
-      {
-       "id": "r_23",
-       "from": {
         "zone": "imaging",
         "deviceType": "workstation",
         "role": null,
@@ -1262,7 +1324,7 @@
        "plain": "Imaging workstations may reach imaging workstations over SMB (445)."
       },
       {
-       "id": "r_24",
+       "id": "r_21",
        "from": {
         "zone": "critical_care",
         "deviceType": "workstation",
@@ -1280,7 +1342,7 @@
        "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
       },
       {
-       "id": "r_25",
+       "id": "r_22",
        "from": {
         "zone": "inpatient",
         "deviceType": "nurse_station",
@@ -1298,7 +1360,7 @@
        "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
       },
       {
-       "id": "r_26",
+       "id": "r_23",
        "from": {
         "zone": "business",
         "deviceType": "workstation",
@@ -1316,7 +1378,25 @@
        "plain": "Admin workstations may reach admin workstations over SMB (445)."
       },
       {
-       "id": "r_27",
+       "id": "r_24",
+       "from": {
+        "zone": "imaging",
+        "deviceType": "workstation",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "imaging",
+        "deviceType": "mri",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Imaging workstations may reach imaging mris over SMB (445)."
+      },
+      {
+       "id": "r_25",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -1332,41 +1412,92 @@
        "protocol": "smb",
        "port": 445,
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
+      },
+      {
+       "id": "r_26",
+       "from": {
+        "zone": "critical_care",
+        "deviceType": "nurse_station",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "critical_care",
+        "deviceType": "nurse_station",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
+      },
+      {
+       "id": "r_27",
+       "from": {
+        "zone": "clinical_support",
+        "deviceType": "workstation",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "clinical_support",
+        "deviceType": "pharmacy_cabinet",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Lab and pharmacy workstations may reach lab and pharmacy pharmacy cabinets over SMB (445)."
       }
      ],
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 18 attack starts: 1.5 devices infected (vs 11.2 without segmentation).",
+     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
      "tradeoff": "Chosen by an optimizer over every starting point, not just this one.",
      "testResult": {
-      "ticks": 1,
-      "infectedCount": 1,
+      "ticks": 5,
+      "infectedCount": 5,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
+       },
+       {
+        "id": "ws_img_1",
+        "tick": 1
+       },
+       {
+        "id": "ws_img_2",
+        "tick": 2
+       },
+       {
+        "id": "ws_rad_1",
+        "tick": 3
+       },
+       {
+        "id": "ws_rad_2",
+        "tick": 4
        }
       ],
-      "servicesDown": [],
+      "servicesDown": [
+       {
+        "id": "svc_mri",
+        "downSinceTick": 5,
+        "ticksDown": 1
+       }
+      ],
       "patientCounts": {
-       "ok": 112,
+       "ok": 86,
        "delayed": 0,
-       "disrupted": 0,
+       "disrupted": 26,
        "diverted": 0
       },
-      "protectedBroken": [
-       "fl_21",
-       "fl_25"
-      ],
+      "protectedBroken": [],
       "removedFlows": [
-       "fl_8",
        "fl_9",
        "fl_10",
-       "fl_21",
        "fl_22",
        "fl_23",
        "fl_24",
-       "fl_25",
        "fl_26",
-       "fl_27",
        "fl_52",
        "fl_57",
        "fl_58",
@@ -1374,32 +1505,31 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_63",
        "fl_81"
       ]
      },
-     "reason": "I chose this plan to keep every attack in its own department. It limits infected devices to 1, compared to 10 without it, and spares 90 patients from care disruption.",
+     "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I chose this plan to keep every attack in its own department. It limits infected devices to 1, compared to 10 without it, and spares 90 patients from care disruption.",
+    "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:02.842+00:00",
+    "createdAt": "2026-10-25T04:16:43.364+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 9449,
+   "offsetMs": 11254,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
     "round": 1,
     "from": "coordinator",
     "to": "clinical_workflow",
     "type": "proposal",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
      "policyId": "optimized_min_cuts",
      "strategy": "least_disruption",
@@ -1768,60 +1898,6 @@
       {
        "id": "r_20",
        "from": {
-        "zone": "business",
-        "deviceType": "hvac",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "business",
-        "deviceType": "workstation",
-        "role": null,
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Admin hvacs may reach admin workstations over HTTP (80)."
-      },
-      {
-       "id": "r_21",
-       "from": {
-        "zone": "public",
-        "deviceType": "badge_reader",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "it_core",
-        "deviceType": "server_rack",
-        "role": "domain_controller",
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Public areas badge readers may reach the server room domain controllers over HTTP (80)."
-      },
-      {
-       "id": "r_22",
-       "from": {
-        "zone": "business",
-        "deviceType": "badge_reader",
-        "role": null,
-        "vlan": 10
-       },
-       "to": {
-        "zone": "it_core",
-        "deviceType": "server_rack",
-        "role": "domain_controller",
-        "vlan": 10
-       },
-       "protocol": "http",
-       "port": 80,
-       "plain": "Admin badge readers may reach the server room domain controllers over HTTP (80)."
-      },
-      {
-       "id": "r_23",
-       "from": {
         "zone": "imaging",
         "deviceType": "workstation",
         "role": null,
@@ -1838,7 +1914,7 @@
        "plain": "Imaging workstations may reach imaging workstations over SMB (445)."
       },
       {
-       "id": "r_24",
+       "id": "r_21",
        "from": {
         "zone": "critical_care",
         "deviceType": "workstation",
@@ -1856,7 +1932,7 @@
        "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
       },
       {
-       "id": "r_25",
+       "id": "r_22",
        "from": {
         "zone": "inpatient",
         "deviceType": "nurse_station",
@@ -1874,7 +1950,7 @@
        "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
       },
       {
-       "id": "r_26",
+       "id": "r_23",
        "from": {
         "zone": "business",
         "deviceType": "workstation",
@@ -1892,7 +1968,25 @@
        "plain": "Admin workstations may reach admin workstations over SMB (445)."
       },
       {
-       "id": "r_27",
+       "id": "r_24",
+       "from": {
+        "zone": "imaging",
+        "deviceType": "workstation",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "imaging",
+        "deviceType": "mri",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Imaging workstations may reach imaging mris over SMB (445)."
+      },
+      {
+       "id": "r_25",
        "from": {
         "zone": "clinical_support",
         "deviceType": "workstation",
@@ -1908,41 +2002,92 @@
        "protocol": "smb",
        "port": 445,
        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
+      },
+      {
+       "id": "r_26",
+       "from": {
+        "zone": "critical_care",
+        "deviceType": "nurse_station",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "critical_care",
+        "deviceType": "nurse_station",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Critical care nurse stations may reach critical care nurse stations over SMB (445)."
+      },
+      {
+       "id": "r_27",
+       "from": {
+        "zone": "clinical_support",
+        "deviceType": "workstation",
+        "role": null,
+        "vlan": 10
+       },
+       "to": {
+        "zone": "clinical_support",
+        "deviceType": "pharmacy_cabinet",
+        "role": null,
+        "vlan": 10
+       },
+       "protocol": "smb",
+       "port": 445,
+       "plain": "Lab and pharmacy workstations may reach lab and pharmacy pharmacy cabinets over SMB (445)."
       }
      ],
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 18 attack starts: 1.5 devices infected (vs 11.2 without segmentation).",
+     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
      "tradeoff": "Chosen by an optimizer over every starting point, not just this one.",
      "testResult": {
-      "ticks": 1,
-      "infectedCount": 1,
+      "ticks": 5,
+      "infectedCount": 5,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
+       },
+       {
+        "id": "ws_img_1",
+        "tick": 1
+       },
+       {
+        "id": "ws_img_2",
+        "tick": 2
+       },
+       {
+        "id": "ws_rad_1",
+        "tick": 3
+       },
+       {
+        "id": "ws_rad_2",
+        "tick": 4
        }
       ],
-      "servicesDown": [],
+      "servicesDown": [
+       {
+        "id": "svc_mri",
+        "downSinceTick": 5,
+        "ticksDown": 1
+       }
+      ],
       "patientCounts": {
-       "ok": 112,
+       "ok": 86,
        "delayed": 0,
-       "disrupted": 0,
+       "disrupted": 26,
        "diverted": 0
       },
-      "protectedBroken": [
-       "fl_21",
-       "fl_25"
-      ],
+      "protectedBroken": [],
       "removedFlows": [
-       "fl_8",
        "fl_9",
        "fl_10",
-       "fl_21",
        "fl_22",
        "fl_23",
        "fl_24",
-       "fl_25",
        "fl_26",
-       "fl_27",
        "fl_52",
        "fl_57",
        "fl_58",
@@ -1950,144 +2095,261 @@
        "fl_60",
        "fl_61",
        "fl_62",
-       "fl_63",
        "fl_81"
       ]
      },
-     "reason": "I chose this plan to keep every attack in its own department. It limits infected devices to 1, compared to 10 without it, and spares 90 patients from care disruption.",
+     "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I chose this plan to keep every attack in its own department. It limits infected devices to 1, compared to 10 without it, and spares 90 patients from care disruption.",
+    "reason": "I chose this plan to keep attacks within departments, limiting infections to 5 devices instead of 9. This prevents care disruption for 64 patients, reducing those affected from 90 to 26.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:02.911+00:00",
+    "createdAt": "2026-10-25T04:16:43.372+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 10788,
+   "table": "agent_status",
+   "offsetMs": 11256,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:43.374+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 11264,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:43.382+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 11276,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:43.394+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 12436,
+   "row": {
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:44.554+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 12436,
+   "row": {
+    "sessionId": "dev",
     "round": 1,
     "from": "inventory",
     "to": "coordinator",
     "type": "verdict",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
      "policyId": "optimized_min_cuts",
      "agent": "inventory",
-     "decision": "accept",
-     "reason": "I accept this: the plan prevents 9 infections and spares 90 patients from care delays or disruptions by cutting only 19 connections, compared to 10 infected devices and 90 disrupted patients without it.",
-     "constraint": null,
+     "decision": "reject",
+     "reason": "I can't accept this: the plan uses 28 rules, but the switches carry at most 24 allow rules as ACLs. I need at most 24 rules.",
+     "constraint": {
+      "kind": "max_rules",
+      "targetIds": [],
+      "limit": 24
+     },
      "reasonSource": "asi1"
     },
-    "reason": "I accept this: the plan prevents 9 infections and spares 90 patients from care delays or disruptions by cutting only 19 connections, compared to 10 infected devices and 90 disrupted patients without it.",
+    "reason": "I can't accept this: the plan uses 28 rules, but the switches carry at most 24 allow rules as ACLs. I need at most 24 rules.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:04.250+00:00",
+    "createdAt": "2026-10-25T04:16:44.554+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 10792,
+   "table": "agent_status",
+   "offsetMs": 12443,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:44.561+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 12443,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:44.561+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 12443,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:44.561+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 12520,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:44.638+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 12521,
+   "row": {
+    "sessionId": "dev",
     "round": 1,
     "from": "clinical_workflow",
     "to": "coordinator",
     "type": "verdict",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 1,
      "policyId": "optimized_min_cuts",
      "agent": "clinical_workflow",
-     "decision": "reject",
-     "reason": "I can't accept this: the plan breaks ER WS 1 to File server for intake forms and Pharmacy WS to File server for order sheets.",
-     "constraint": {
-      "kind": "keep_flow",
-      "targetIds": [
-       "fl_21",
-       "fl_25"
-      ],
-      "limit": null
-     },
+     "decision": "accept",
+     "reason": "I accept this: the optimized plan uses 14 cuts to keep every attack in its department, affecting 26 patients with care delayed or disrupted and leaving 1 service offline.",
+     "constraint": null,
      "reasonSource": "asi1"
     },
-    "reason": "I can't accept this: the plan breaks ER WS 1 to File server for intake forms and Pharmacy WS to File server for order sheets.",
+    "reason": "I accept this: the optimized plan uses 14 cuts to keep every attack in its department, affecting 26 patients with care delayed or disrupted and leaving 1 service offline.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:04.254+00:00",
+    "createdAt": "2026-10-25T04:16:44.639+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 11002,
+   "table": "agent_status",
+   "offsetMs": 12531,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:44.649+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 12532,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:44.650+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 12532,
+   "row": {
+    "sessionId": "dev",
     "round": 2,
     "from": "coordinator",
     "to": "relay",
     "type": "round_state",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 2,
      "state": "running",
      "detail": null
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T02:47:04.464+00:00",
+    "createdAt": "2026-10-25T04:16:44.650+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 11083,
+   "table": "agent_status",
+   "offsetMs": 12532,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:44.650+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 12532,
+   "row": {
+    "sessionId": "dev",
     "round": 2,
     "from": "coordinator",
     "to": "flow",
     "type": "proposal_request",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 2,
-     "runId": "run_mvn888lw",
-     "patientZero": "ws_img_2",
+     "runId": "run_dev",
+     "patientZero": "mri_2",
      "seed": 1337,
      "challenges": [],
      "baseline": {
-      "ticks": 10,
-      "infectedCount": 10,
+      "ticks": 9,
+      "infectedCount": 9,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
        },
        {
-        "id": "srv_file",
+        "id": "ws_img_1",
         "tick": 1
        },
        {
-        "id": "ws_img_1",
+        "id": "srv_file",
         "tick": 2
        },
        {
-        "id": "srv_ehr",
+        "id": "ws_img_2",
         "tick": 3
        },
        {
-        "id": "ws_lab",
+        "id": "srv_ehr",
         "tick": 4
        },
        {
-        "id": "ws_pharm",
+        "id": "ws_lab",
         "tick": 5
        },
        {
@@ -2099,33 +2361,29 @@
         "tick": 7
        },
        {
-        "id": "ws_rad_3",
+        "id": "ws_pharm",
         "tick": 8
-       },
-       {
-        "id": "mri_2",
-        "tick": 9
        }
       ],
       "servicesDown": [
        {
         "id": "svc_ehr",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_lab",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_mri",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        },
        {
         "id": "svc_pharm",
-        "downSinceTick": 10,
+        "downSinceTick": 9,
         "ticksDown": 1
        }
       ],
@@ -2140,454 +2398,413 @@
      },
      "constraints": [
       {
-       "kind": "keep_flow",
-       "targetIds": [
-        "fl_21",
-        "fl_25"
-       ],
-       "limit": null
+       "kind": "max_rules",
+       "targetIds": [],
+       "limit": 24
       }
      ],
      "revise": "optimized_min_cuts"
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T02:47:04.545+00:00",
+    "createdAt": "2026-10-25T04:16:44.650+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 22226,
+   "table": "agent_status",
+   "offsetMs": 12538,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:44.656+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 12539,
+   "row": {
+    "sessionId": "dev",
+    "agent": "flow",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:44.657+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 21838,
+   "row": {
+    "sessionId": "dev",
+    "agent": "flow",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:53.956+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 21839,
+   "row": {
+    "sessionId": "dev",
     "round": 2,
     "from": "flow",
     "to": "coordinator",
     "type": "revision",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 2,
      "policyId": "optimized_min_cuts",
      "diff": {
       "added": [
        {
-        "id": "r_7",
+        "id": "r_1",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach the server room file servers over SMB (445)."
+        "protocol": "dicom",
+        "port": 104,
+        "plain": "Imaging may reach the server room over DICOM (104)."
+       },
+       {
+        "id": "r_2",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Critical care may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_3",
+        "from": {
+         "zone": "public",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Public areas may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_4",
+        "from": {
+         "zone": "inpatient",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "The wards may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_5",
+        "from": {
+         "zone": "clinical_support",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Lab and pharmacy may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_6",
+        "from": {
+         "zone": "business",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Admin may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_7",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "Critical care may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_8",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach the server room file servers over SMB (445)."
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "The wards may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_9",
         "from": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "Critical care may reach critical care over HL7 (2575)."
        },
        {
         "id": "r_10",
         "from": {
          "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "inpatient",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "The wards may reach the wards over HL7 (2575)."
        },
        {
         "id": "r_11",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Critical care patient monitors may reach critical care nurse stations over HL7 (2575)."
+        "protocol": "other",
+        "port": 5000,
+        "plain": "Critical care may reach critical care over OTHER (5000)."
        },
        {
         "id": "r_12",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care infusion pumps may reach critical care nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach lab and pharmacy over HL7 (2575)."
        },
        {
         "id": "r_13",
         "from": {
          "zone": "imaging",
-         "deviceType": "ct",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "dicom",
-        "port": 104,
-        "plain": "Imaging cts may reach the server room pacss over DICOM (104)."
+        "protocol": "https",
+        "port": 443,
+        "plain": "Imaging may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_14",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "patient_monitor",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "it_core",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards patient monitors may reach the wards nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_15",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "The wards infusion pumps may reach the wards nurse stations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Lab and pharmacy may reach lab and pharmacy over SMB (445)."
        },
        {
         "id": "r_16",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "anesthesia_machine",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care anesthesia machines may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Imaging may reach imaging over SMB (445)."
        },
        {
         "id": "r_17",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care patient monitors may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care may reach critical care over SMB (445)."
        },
        {
         "id": "r_18",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "lab_analyzer",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy lab analyzers may reach lab and pharmacy workstations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "The wards may reach the wards over SMB (445)."
        },
        {
         "id": "r_19",
         "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
-        },
-        "protocol": "https",
-        "port": 443,
-        "plain": "Imaging workstations may reach the server room pacss over HTTPS (443)."
-       },
-       {
-        "id": "r_20",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
-        },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy workstations may reach the server room ehr engines over HL7 (2575)."
-       },
-       {
-        "id": "r_21",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "pharmacy_cabinet",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy pharmacy cabinets may reach lab and pharmacy workstations over SMB (445)."
-       },
-       {
-        "id": "r_22",
-        "from": {
          "zone": "business",
-         "deviceType": "hvac",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "business",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin hvacs may reach admin workstations over HTTP (80)."
-       },
-       {
-        "id": "r_23",
-        "from": {
-         "zone": "public",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Public areas badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_24",
-        "from": {
-         "zone": "business",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_25",
-        "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "smb",
         "port": 445,
-        "plain": "Imaging workstations may reach imaging workstations over SMB (445)."
-       },
-       {
-        "id": "r_26",
-        "from": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
-       },
-       {
-        "id": "r_27",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
-       },
-       {
-        "id": "r_28",
-        "from": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Admin workstations may reach admin workstations over SMB (445)."
-       },
-       {
-        "id": "r_29",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
+        "plain": "Admin may reach admin over SMB (445)."
        }
       ],
       "removed": [
+       "r_1",
        "r_10",
        "r_11",
        "r_12",
@@ -2598,6 +2815,7 @@
        "r_17",
        "r_18",
        "r_19",
+       "r_2",
        "r_20",
        "r_21",
        "r_22",
@@ -2606,6 +2824,10 @@
        "r_25",
        "r_26",
        "r_27",
+       "r_3",
+       "r_4",
+       "r_5",
+       "r_6",
        "r_7",
        "r_8",
        "r_9"
@@ -2613,485 +2835,468 @@
      },
      "strategy": null,
      "name": null,
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 18 attack starts: 2.1 devices infected (vs 11.2 without segmentation).",
+     "rationale": null,
      "tradeoff": null,
      "testResult": {
-      "ticks": 1,
-      "infectedCount": 1,
+      "ticks": 5,
+      "infectedCount": 5,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
+       },
+       {
+        "id": "ws_img_1",
+        "tick": 1
+       },
+       {
+        "id": "ws_img_2",
+        "tick": 2
+       },
+       {
+        "id": "ws_rad_1",
+        "tick": 3
+       },
+       {
+        "id": "ws_rad_2",
+        "tick": 4
        }
       ],
-      "servicesDown": [],
+      "servicesDown": [
+       {
+        "id": "svc_mri",
+        "downSinceTick": 5,
+        "ticksDown": 1
+       }
+      ],
       "patientCounts": {
-       "ok": 112,
+       "ok": 86,
        "delayed": 0,
-       "disrupted": 0,
+       "disrupted": 26,
        "diverted": 0
       },
       "protectedBroken": [],
       "removedFlows": [
-       "fl_8",
        "fl_9",
        "fl_10",
        "fl_22",
        "fl_23",
+       "fl_24",
        "fl_26",
-       "fl_27",
        "fl_52",
        "fl_57",
        "fl_58",
        "fl_59",
+       "fl_60",
        "fl_61",
        "fl_62",
-       "fl_63",
        "fl_81"
       ]
      },
-     "reason": "I cut 15 connections to stop attacks from spreading. This keeps ER intake forms and pharmacy order sheets accessible, sparing 90 patients from care disruption.",
+     "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I cut 15 connections to stop attacks from spreading. This keeps ER intake forms and pharmacy order sheets accessible, sparing 90 patients from care disruption.",
+    "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:15.688+00:00",
+    "createdAt": "2026-10-25T04:16:53.957+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 22344,
+   "table": "agent_status",
+   "offsetMs": 21847,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "flow",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:53.965+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 21848,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:53.966+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 21850,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:53.968+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 21850,
+   "row": {
+    "sessionId": "dev",
     "round": 2,
     "from": "coordinator",
     "to": "inventory",
     "type": "revision",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 2,
      "policyId": "optimized_min_cuts",
      "diff": {
       "added": [
        {
-        "id": "r_7",
+        "id": "r_1",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach the server room file servers over SMB (445)."
+        "protocol": "dicom",
+        "port": 104,
+        "plain": "Imaging may reach the server room over DICOM (104)."
+       },
+       {
+        "id": "r_2",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Critical care may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_3",
+        "from": {
+         "zone": "public",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Public areas may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_4",
+        "from": {
+         "zone": "inpatient",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "The wards may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_5",
+        "from": {
+         "zone": "clinical_support",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Lab and pharmacy may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_6",
+        "from": {
+         "zone": "business",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Admin may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_7",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "Critical care may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_8",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach the server room file servers over SMB (445)."
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "The wards may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_9",
         "from": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "Critical care may reach critical care over HL7 (2575)."
        },
        {
         "id": "r_10",
         "from": {
          "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "inpatient",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "The wards may reach the wards over HL7 (2575)."
        },
        {
         "id": "r_11",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Critical care patient monitors may reach critical care nurse stations over HL7 (2575)."
+        "protocol": "other",
+        "port": 5000,
+        "plain": "Critical care may reach critical care over OTHER (5000)."
        },
        {
         "id": "r_12",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care infusion pumps may reach critical care nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach lab and pharmacy over HL7 (2575)."
        },
        {
         "id": "r_13",
         "from": {
          "zone": "imaging",
-         "deviceType": "ct",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "dicom",
-        "port": 104,
-        "plain": "Imaging cts may reach the server room pacss over DICOM (104)."
+        "protocol": "https",
+        "port": 443,
+        "plain": "Imaging may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_14",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "patient_monitor",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "it_core",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards patient monitors may reach the wards nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_15",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "The wards infusion pumps may reach the wards nurse stations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Lab and pharmacy may reach lab and pharmacy over SMB (445)."
        },
        {
         "id": "r_16",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "anesthesia_machine",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care anesthesia machines may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Imaging may reach imaging over SMB (445)."
        },
        {
         "id": "r_17",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care patient monitors may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care may reach critical care over SMB (445)."
        },
        {
         "id": "r_18",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "lab_analyzer",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy lab analyzers may reach lab and pharmacy workstations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "The wards may reach the wards over SMB (445)."
        },
        {
         "id": "r_19",
         "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
-        },
-        "protocol": "https",
-        "port": 443,
-        "plain": "Imaging workstations may reach the server room pacss over HTTPS (443)."
-       },
-       {
-        "id": "r_20",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
-        },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy workstations may reach the server room ehr engines over HL7 (2575)."
-       },
-       {
-        "id": "r_21",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "pharmacy_cabinet",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy pharmacy cabinets may reach lab and pharmacy workstations over SMB (445)."
-       },
-       {
-        "id": "r_22",
-        "from": {
          "zone": "business",
-         "deviceType": "hvac",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "business",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin hvacs may reach admin workstations over HTTP (80)."
-       },
-       {
-        "id": "r_23",
-        "from": {
-         "zone": "public",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Public areas badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_24",
-        "from": {
-         "zone": "business",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_25",
-        "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "smb",
         "port": 445,
-        "plain": "Imaging workstations may reach imaging workstations over SMB (445)."
-       },
-       {
-        "id": "r_26",
-        "from": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
-       },
-       {
-        "id": "r_27",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
-       },
-       {
-        "id": "r_28",
-        "from": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Admin workstations may reach admin workstations over SMB (445)."
-       },
-       {
-        "id": "r_29",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
+        "plain": "Admin may reach admin over SMB (445)."
        }
       ],
       "removed": [
+       "r_1",
        "r_10",
        "r_11",
        "r_12",
@@ -3102,6 +3307,7 @@
        "r_17",
        "r_18",
        "r_19",
+       "r_2",
        "r_20",
        "r_21",
        "r_22",
@@ -3110,6 +3316,10 @@
        "r_25",
        "r_26",
        "r_27",
+       "r_3",
+       "r_4",
+       "r_5",
+       "r_6",
        "r_7",
        "r_8",
        "r_9"
@@ -3117,485 +3327,435 @@
      },
      "strategy": null,
      "name": null,
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 18 attack starts: 2.1 devices infected (vs 11.2 without segmentation).",
+     "rationale": null,
      "tradeoff": null,
      "testResult": {
-      "ticks": 1,
-      "infectedCount": 1,
+      "ticks": 5,
+      "infectedCount": 5,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
+       },
+       {
+        "id": "ws_img_1",
+        "tick": 1
+       },
+       {
+        "id": "ws_img_2",
+        "tick": 2
+       },
+       {
+        "id": "ws_rad_1",
+        "tick": 3
+       },
+       {
+        "id": "ws_rad_2",
+        "tick": 4
        }
       ],
-      "servicesDown": [],
+      "servicesDown": [
+       {
+        "id": "svc_mri",
+        "downSinceTick": 5,
+        "ticksDown": 1
+       }
+      ],
       "patientCounts": {
-       "ok": 112,
+       "ok": 86,
        "delayed": 0,
-       "disrupted": 0,
+       "disrupted": 26,
        "diverted": 0
       },
       "protectedBroken": [],
       "removedFlows": [
-       "fl_8",
        "fl_9",
        "fl_10",
        "fl_22",
        "fl_23",
+       "fl_24",
        "fl_26",
-       "fl_27",
        "fl_52",
        "fl_57",
        "fl_58",
        "fl_59",
+       "fl_60",
        "fl_61",
        "fl_62",
-       "fl_63",
        "fl_81"
       ]
      },
-     "reason": "I cut 15 connections to stop attacks from spreading. This keeps ER intake forms and pharmacy order sheets accessible, sparing 90 patients from care disruption.",
+     "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I cut 15 connections to stop attacks from spreading. This keeps ER intake forms and pharmacy order sheets accessible, sparing 90 patients from care disruption.",
+    "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:15.806+00:00",
+    "createdAt": "2026-10-25T04:16:53.968+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 22500,
+   "offsetMs": 21857,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
     "round": 2,
     "from": "coordinator",
     "to": "clinical_workflow",
     "type": "revision",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 2,
      "policyId": "optimized_min_cuts",
      "diff": {
       "added": [
        {
-        "id": "r_7",
+        "id": "r_1",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach the server room file servers over SMB (445)."
+        "protocol": "dicom",
+        "port": 104,
+        "plain": "Imaging may reach the server room over DICOM (104)."
+       },
+       {
+        "id": "r_2",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Critical care may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_3",
+        "from": {
+         "zone": "public",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Public areas may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_4",
+        "from": {
+         "zone": "inpatient",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "The wards may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_5",
+        "from": {
+         "zone": "clinical_support",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Lab and pharmacy may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_6",
+        "from": {
+         "zone": "business",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "https",
+        "port": 443,
+        "plain": "Admin may reach the server room over HTTPS (443)."
+       },
+       {
+        "id": "r_7",
+        "from": {
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "to": {
+         "zone": "it_core",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
+        },
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "Critical care may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_8",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach the server room file servers over SMB (445)."
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "The wards may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_9",
         "from": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "Critical care may reach critical care over HL7 (2575)."
        },
        {
         "id": "r_10",
         "from": {
          "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "inpatient",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "The wards may reach the wards over HL7 (2575)."
        },
        {
         "id": "r_11",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Critical care patient monitors may reach critical care nurse stations over HL7 (2575)."
+        "protocol": "other",
+        "port": 5000,
+        "plain": "Critical care may reach critical care over OTHER (5000)."
        },
        {
         "id": "r_12",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care infusion pumps may reach critical care nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach lab and pharmacy over HL7 (2575)."
        },
        {
         "id": "r_13",
         "from": {
          "zone": "imaging",
-         "deviceType": "ct",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "dicom",
-        "port": 104,
-        "plain": "Imaging cts may reach the server room pacss over DICOM (104)."
+        "protocol": "https",
+        "port": 443,
+        "plain": "Imaging may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_14",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "patient_monitor",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "it_core",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards patient monitors may reach the wards nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_15",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "The wards infusion pumps may reach the wards nurse stations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Lab and pharmacy may reach lab and pharmacy over SMB (445)."
        },
        {
         "id": "r_16",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "anesthesia_machine",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care anesthesia machines may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Imaging may reach imaging over SMB (445)."
        },
        {
         "id": "r_17",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care patient monitors may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care may reach critical care over SMB (445)."
        },
        {
         "id": "r_18",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "lab_analyzer",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy lab analyzers may reach lab and pharmacy workstations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "The wards may reach the wards over SMB (445)."
        },
        {
         "id": "r_19",
         "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
-        },
-        "protocol": "https",
-        "port": 443,
-        "plain": "Imaging workstations may reach the server room pacss over HTTPS (443)."
-       },
-       {
-        "id": "r_20",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
-        },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy workstations may reach the server room ehr engines over HL7 (2575)."
-       },
-       {
-        "id": "r_21",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "pharmacy_cabinet",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy pharmacy cabinets may reach lab and pharmacy workstations over SMB (445)."
-       },
-       {
-        "id": "r_22",
-        "from": {
          "zone": "business",
-         "deviceType": "hvac",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "business",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin hvacs may reach admin workstations over HTTP (80)."
-       },
-       {
-        "id": "r_23",
-        "from": {
-         "zone": "public",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Public areas badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_24",
-        "from": {
-         "zone": "business",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_25",
-        "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "smb",
         "port": 445,
-        "plain": "Imaging workstations may reach imaging workstations over SMB (445)."
-       },
-       {
-        "id": "r_26",
-        "from": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
-       },
-       {
-        "id": "r_27",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
-       },
-       {
-        "id": "r_28",
-        "from": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Admin workstations may reach admin workstations over SMB (445)."
-       },
-       {
-        "id": "r_29",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
+        "plain": "Admin may reach admin over SMB (445)."
        }
       ],
       "removed": [
+       "r_1",
        "r_10",
        "r_11",
        "r_12",
@@ -3606,6 +3766,7 @@
        "r_17",
        "r_18",
        "r_19",
+       "r_2",
        "r_20",
        "r_21",
        "r_22",
@@ -3614,6 +3775,10 @@
        "r_25",
        "r_26",
        "r_27",
+       "r_3",
+       "r_4",
+       "r_5",
+       "r_6",
        "r_7",
        "r_8",
        "r_9"
@@ -3621,111 +3786,242 @@
      },
      "strategy": null,
      "name": null,
-     "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 18 attack starts: 2.1 devices infected (vs 11.2 without segmentation).",
+     "rationale": null,
      "tradeoff": null,
      "testResult": {
-      "ticks": 1,
-      "infectedCount": 1,
+      "ticks": 5,
+      "infectedCount": 5,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
+       },
+       {
+        "id": "ws_img_1",
+        "tick": 1
+       },
+       {
+        "id": "ws_img_2",
+        "tick": 2
+       },
+       {
+        "id": "ws_rad_1",
+        "tick": 3
+       },
+       {
+        "id": "ws_rad_2",
+        "tick": 4
        }
       ],
-      "servicesDown": [],
+      "servicesDown": [
+       {
+        "id": "svc_mri",
+        "downSinceTick": 5,
+        "ticksDown": 1
+       }
+      ],
       "patientCounts": {
-       "ok": 112,
+       "ok": 86,
        "delayed": 0,
-       "disrupted": 0,
+       "disrupted": 26,
        "diverted": 0
       },
       "protectedBroken": [],
       "removedFlows": [
-       "fl_8",
        "fl_9",
        "fl_10",
        "fl_22",
        "fl_23",
+       "fl_24",
        "fl_26",
-       "fl_27",
        "fl_52",
        "fl_57",
        "fl_58",
        "fl_59",
+       "fl_60",
        "fl_61",
        "fl_62",
-       "fl_63",
        "fl_81"
       ]
      },
-     "reason": "I cut 15 connections to stop attacks from spreading. This keeps ER intake forms and pharmacy order sheets accessible, sparing 90 patients from care disruption.",
+     "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
      "reasonSource": "asi1",
      "alternatives": []
     },
-    "reason": "I cut 15 connections to stop attacks from spreading. This keeps ER intake forms and pharmacy order sheets accessible, sparing 90 patients from care disruption.",
+    "reason": "I cut 14 connections to keep attacks in their departments, meeting the at most 24 rules constraint. This prevents 4 infections and spares 64 patients from care delays or disruptions.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:15.962+00:00",
+    "createdAt": "2026-10-25T04:16:53.975+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 24819,
+   "table": "agent_status",
+   "offsetMs": 21858,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
-    "round": 2,
-    "from": "clinical_workflow",
-    "to": "coordinator",
-    "type": "verdict",
-    "payload": {
-     "sessionId": "s-jkaexgmz6s",
-     "round": 2,
-     "policyId": "optimized_min_cuts",
-     "agent": "clinical_workflow",
-     "decision": "accept",
-     "reason": "I accept this: the optimized_min_cuts plan in round 2 involves 15 connections cut, with only 1 infected device and no patients with care delayed or disrupted, ensuring services remain online.",
-     "constraint": null,
-     "reasonSource": "asi1"
-    },
-    "reason": "I accept this: the optimized_min_cuts plan in round 2 involves 15 connections cut, with only 1 infected device and no patients with care delayed or disrupted, ensuring services remain online.",
-    "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:18.281+00:00",
-    "direction": "sent",
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:53.976+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 21863,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:53.981+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 21865,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:53.983+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 22723,
+   "row": {
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:54.841+00:00",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 24824,
+   "offsetMs": 22723,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
     "round": 2,
     "from": "inventory",
     "to": "coordinator",
     "type": "verdict",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 2,
      "policyId": "optimized_min_cuts",
      "agent": "inventory",
      "decision": "accept",
-     "reason": "I accept this: the plan prevents 9 infections and spares 90 patients from care delays or disruptions, compared to having no plan.",
+     "reason": "I accept this: the optimized_min_cuts plan reduces patients with care delayed or disrupted from 90 to 26, prevents 4 infections, and keeps services offline down to 1 instead of 4.",
      "constraint": null,
      "reasonSource": "asi1"
     },
-    "reason": "I accept this: the plan prevents 9 infections and spares 90 patients from care delays or disruptions, compared to having no plan.",
+    "reason": "I accept this: the optimized_min_cuts plan reduces patients with care delayed or disrupted from 90 to 26, prevents 4 infections, and keeps services offline down to 1 instead of 4.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:18.286+00:00",
+    "createdAt": "2026-10-25T04:16:54.841+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
-   "table": "agent_message",
-   "offsetMs": 25965,
+   "table": "agent_status",
+   "offsetMs": 22731,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
+    "agent": "inventory",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:54.849+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 22732,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:54.850+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 22732,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:54.850+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 22759,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "speaking",
+    "updatedAt": "2026-10-25T04:16:54.877+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 22760,
+   "row": {
+    "sessionId": "dev",
+    "round": 2,
+    "from": "clinical_workflow",
+    "to": "coordinator",
+    "type": "verdict",
+    "payload": {
+     "sessionId": "dev",
+     "round": 2,
+     "policyId": "optimized_min_cuts",
+     "agent": "clinical_workflow",
+     "decision": "accept",
+     "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 14 connections cut.",
+     "constraint": null,
+     "reasonSource": "asi1"
+    },
+    "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 14 connections cut.",
+    "reasonSource": "asi1",
+    "createdAt": "2026-10-25T04:16:54.878+00:00",
+    "direction": "sent",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 22767,
+   "row": {
+    "sessionId": "dev",
+    "agent": "clinical_workflow",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:54.885+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 22767,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "thinking",
+    "updatedAt": "2026-10-25T04:16:54.885+00:00",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_message",
+   "offsetMs": 23761,
+   "row": {
+    "sessionId": "dev",
     "round": 2,
     "from": "coordinator",
     "to": "relay",
@@ -3757,586 +4053,427 @@
         "id": "r_1",
         "from": {
          "zone": "imaging",
-         "deviceType": "mri",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "dicom",
         "port": 104,
-        "plain": "Imaging mris may reach the server room pacss over DICOM (104)."
+        "plain": "Imaging may reach the server room over DICOM (104)."
        },
        {
         "id": "r_2",
         "from": {
          "zone": "critical_care",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "https",
         "port": 443,
-        "plain": "Critical care workstations may reach the server room ehr engines over HTTPS (443)."
+        "plain": "Critical care may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_3",
         "from": {
          "zone": "public",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "https",
         "port": 443,
-        "plain": "Public areas workstations may reach the server room ehr engines over HTTPS (443)."
+        "plain": "Public areas may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_4",
         "from": {
          "zone": "inpatient",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "https",
         "port": 443,
-        "plain": "The wards workstations may reach the server room ehr engines over HTTPS (443)."
+        "plain": "The wards may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_5",
         "from": {
          "zone": "clinical_support",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "https",
         "port": 443,
-        "plain": "Lab and pharmacy workstations may reach the server room ehr engines over HTTPS (443)."
+        "plain": "Lab and pharmacy may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_6",
         "from": {
          "zone": "business",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "https",
         "port": 443,
-        "plain": "Admin workstations may reach the server room ehr engines over HTTPS (443)."
+        "plain": "Admin may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_7",
         "from": {
          "zone": "critical_care",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach the server room file servers over SMB (445)."
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "Critical care may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_8",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "file_server",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach the server room file servers over SMB (445)."
+        "protocol": "hl7",
+        "port": 2575,
+        "plain": "The wards may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_9",
         "from": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "critical_care",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "Critical care may reach critical care over HL7 (2575)."
        },
        {
         "id": "r_10",
         "from": {
          "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
+         "zone": "inpatient",
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards nurse stations may reach the server room ehr engines over HL7 (2575)."
+        "plain": "The wards may reach the wards over HL7 (2575)."
        },
        {
         "id": "r_11",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Critical care patient monitors may reach critical care nurse stations over HL7 (2575)."
+        "protocol": "other",
+        "port": 5000,
+        "plain": "Critical care may reach critical care over OTHER (5000)."
        },
        {
         "id": "r_12",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "Critical care infusion pumps may reach critical care nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach lab and pharmacy over HL7 (2575)."
        },
        {
         "id": "r_13",
         "from": {
          "zone": "imaging",
-         "deviceType": "ct",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
+         "deviceType": null,
+         "role": null,
+         "vlan": null
         },
-        "protocol": "dicom",
-        "port": 104,
-        "plain": "Imaging cts may reach the server room pacss over DICOM (104)."
+        "protocol": "https",
+        "port": 443,
+        "plain": "Imaging may reach the server room over HTTPS (443)."
        },
        {
         "id": "r_14",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "patient_monitor",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "it_core",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "hl7",
         "port": 2575,
-        "plain": "The wards patient monitors may reach the wards nurse stations over HL7 (2575)."
+        "plain": "Lab and pharmacy may reach the server room over HL7 (2575)."
        },
        {
         "id": "r_15",
         "from": {
-         "zone": "inpatient",
-         "deviceType": "infusion_pump",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
+         "zone": "clinical_support",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "The wards infusion pumps may reach the wards nurse stations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Lab and pharmacy may reach lab and pharmacy over SMB (445)."
        },
        {
         "id": "r_16",
         "from": {
-         "zone": "critical_care",
-         "deviceType": "anesthesia_machine",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
+         "zone": "imaging",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care anesthesia machines may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Imaging may reach imaging over SMB (445)."
        },
        {
         "id": "r_17",
         "from": {
          "zone": "critical_care",
-         "deviceType": "patient_monitor",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "critical_care",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "other",
-        "port": 5000,
-        "plain": "Critical care patient monitors may reach critical care workstations over OTHER (5000)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "Critical care may reach critical care over SMB (445)."
        },
        {
         "id": "r_18",
         "from": {
-         "zone": "clinical_support",
-         "deviceType": "lab_analyzer",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
+         "zone": "inpatient",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy lab analyzers may reach lab and pharmacy workstations over HL7 (2575)."
+        "protocol": "smb",
+        "port": 445,
+        "plain": "The wards may reach the wards over SMB (445)."
        },
        {
         "id": "r_19",
         "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "pacs",
-         "vlan": 10
-        },
-        "protocol": "https",
-        "port": 443,
-        "plain": "Imaging workstations may reach the server room pacss over HTTPS (443)."
-       },
-       {
-        "id": "r_20",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "ehr_engine",
-         "vlan": 10
-        },
-        "protocol": "hl7",
-        "port": 2575,
-        "plain": "Lab and pharmacy workstations may reach the server room ehr engines over HL7 (2575)."
-       },
-       {
-        "id": "r_21",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "pharmacy_cabinet",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy pharmacy cabinets may reach lab and pharmacy workstations over SMB (445)."
-       },
-       {
-        "id": "r_22",
-        "from": {
          "zone": "business",
-         "deviceType": "hvac",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "to": {
          "zone": "business",
-         "deviceType": "workstation",
+         "deviceType": null,
          "role": null,
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin hvacs may reach admin workstations over HTTP (80)."
-       },
-       {
-        "id": "r_23",
-        "from": {
-         "zone": "public",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Public areas badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_24",
-        "from": {
-         "zone": "business",
-         "deviceType": "badge_reader",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "it_core",
-         "deviceType": "server_rack",
-         "role": "domain_controller",
-         "vlan": 10
-        },
-        "protocol": "http",
-        "port": 80,
-        "plain": "Admin badge readers may reach the server room domain controllers over HTTP (80)."
-       },
-       {
-        "id": "r_25",
-        "from": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "imaging",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
+         "vlan": null
         },
         "protocol": "smb",
         "port": 445,
-        "plain": "Imaging workstations may reach imaging workstations over SMB (445)."
-       },
-       {
-        "id": "r_26",
-        "from": {
-         "zone": "critical_care",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "critical_care",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Critical care workstations may reach critical care nurse stations over SMB (445)."
-       },
-       {
-        "id": "r_27",
-        "from": {
-         "zone": "inpatient",
-         "deviceType": "nurse_station",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "inpatient",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "The wards nurse stations may reach the wards workstations over SMB (445)."
-       },
-       {
-        "id": "r_28",
-        "from": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "business",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Admin workstations may reach admin workstations over SMB (445)."
-       },
-       {
-        "id": "r_29",
-        "from": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "to": {
-         "zone": "clinical_support",
-         "deviceType": "workstation",
-         "role": null,
-         "vlan": 10
-        },
-        "protocol": "smb",
-        "port": 445,
-        "plain": "Lab and pharmacy workstations may reach lab and pharmacy workstations over SMB (445)."
+        "plain": "Admin may reach admin over SMB (445)."
        }
       ],
-      "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 18 attack starts: 2.1 devices infected (vs 11.2 without segmentation).",
+      "rationale": "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department. Average over 16 attack starts: 3.3 devices infected (vs 10.1 without segmentation).",
       "tradeoff": "Chosen by an optimizer over every starting point, not just this one."
      },
      "testResult": {
-      "ticks": 1,
-      "infectedCount": 1,
+      "ticks": 5,
+      "infectedCount": 5,
       "infectedDevices": [
        {
-        "id": "ws_img_2",
+        "id": "mri_2",
         "tick": 0
+       },
+       {
+        "id": "ws_img_1",
+        "tick": 1
+       },
+       {
+        "id": "ws_img_2",
+        "tick": 2
+       },
+       {
+        "id": "ws_rad_1",
+        "tick": 3
+       },
+       {
+        "id": "ws_rad_2",
+        "tick": 4
        }
       ],
-      "servicesDown": [],
+      "servicesDown": [
+       {
+        "id": "svc_mri",
+        "downSinceTick": 5,
+        "ticksDown": 1
+       }
+      ],
       "patientCounts": {
-       "ok": 112,
+       "ok": 86,
        "delayed": 0,
-       "disrupted": 0,
+       "disrupted": 26,
        "diverted": 0
       },
       "protectedBroken": [],
       "removedFlows": [
-       "fl_8",
        "fl_9",
        "fl_10",
        "fl_22",
        "fl_23",
+       "fl_24",
        "fl_26",
-       "fl_27",
        "fl_52",
        "fl_57",
        "fl_58",
        "fl_59",
+       "fl_60",
        "fl_61",
        "fl_62",
-       "fl_63",
        "fl_81"
       ]
      },
      "verdicts": [
       {
-       "sessionId": "s-jkaexgmz6s",
+       "sessionId": "dev",
        "round": 2,
        "policyId": "optimized_min_cuts",
        "agent": "inventory",
        "decision": "accept",
-       "reason": "I accept this: the plan prevents 9 infections and spares 90 patients from care delays or disruptions, compared to having no plan.",
+       "reason": "I accept this: the optimized_min_cuts plan reduces patients with care delayed or disrupted from 90 to 26, prevents 4 infections, and keeps services offline down to 1 instead of 4.",
        "constraint": null,
        "reasonSource": "asi1"
       },
       {
-       "sessionId": "s-jkaexgmz6s",
+       "sessionId": "dev",
        "round": 2,
        "policyId": "optimized_min_cuts",
        "agent": "clinical_workflow",
        "decision": "accept",
-       "reason": "I accept this: the optimized_min_cuts plan in round 2 involves 15 connections cut, with only 1 infected device and no patients with care delayed or disrupted, ensuring services remain online.",
+       "reason": "I accept this: the plan optimizes cuts, keeping protected flows broken at 0 and critical services down for no time. It results in 26 patients with care delayed or disrupted, 5 infected devices, 1 offline service, and 14 connections cut.",
        "constraint": null,
        "reasonSource": "asi1"
       }
      ],
-     "explanation": "The plan limits infections to 1 device, sparing 90 patients from care disruption. Security, Clinical engineering, and Operations must sign off.",
+     "explanation": "The plan limits infections to 5 by cutting 14 links, sparing 64 patients from disruption. Security, Clinical engineering, and Operations must sign off.",
      "requiredRoles": [
       "security",
       "clinical_engineering",
@@ -4345,32 +4482,43 @@
      "explanationSource": "asi1",
      "option": 1
     },
-    "reason": "The plan limits infections to 1 device, sparing 90 patients from care disruption. Security, Clinical engineering, and Operations must sign off.",
+    "reason": "The plan limits infections to 5 by cutting 14 links, sparing 64 patients from disruption. Security, Clinical engineering, and Operations must sign off.",
     "reasonSource": "asi1",
-    "createdAt": "2026-10-25T02:47:19.427+00:00",
+    "createdAt": "2026-10-25T04:16:55.879+00:00",
     "direction": "sent",
     "fixture": false
    }
   },
   {
    "table": "agent_message",
-   "offsetMs": 25991,
+   "offsetMs": 23762,
    "row": {
-    "sessionId": "s-jkaexgmz6s",
+    "sessionId": "dev",
     "round": 2,
     "from": "coordinator",
     "to": "relay",
     "type": "round_state",
     "payload": {
-     "sessionId": "s-jkaexgmz6s",
+     "sessionId": "dev",
      "round": 2,
      "state": "done",
      "detail": null
     },
     "reason": null,
     "reasonSource": null,
-    "createdAt": "2026-10-25T02:47:19.453+00:00",
+    "createdAt": "2026-10-25T04:16:55.880+00:00",
     "direction": "sent",
+    "fixture": false
+   }
+  },
+  {
+   "table": "agent_status",
+   "offsetMs": 23762,
+   "row": {
+    "sessionId": "dev",
+    "agent": "coordinator",
+    "status": "idle",
+    "updatedAt": "2026-10-25T04:16:55.880+00:00",
     "fixture": false
    }
   }
