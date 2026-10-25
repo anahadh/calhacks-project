@@ -13,7 +13,17 @@ import type { SessionSnapshot } from "@/lib/stdb/types";
 const SPEEDS = [0.5, 1, 2, 4] as const;
 const MIN_SPAN = 16; // 4 simulated hours, until the run settles
 
-export function Timeline({ session }: { session: SessionSnapshot }) {
+export function Timeline({
+  session,
+  viewTick,
+  onScrub,
+}: {
+  session: SessionSnapshot;
+  /** This tab's own step when it is looking back; null follows the live run. */
+  viewTick: number | null;
+  /** Scrubbing is per tab: it moves only this viewer's step, never the run (null = back to live). */
+  onScrub: (tick: number | null) => void;
+}) {
   const run = session.runs.find((r) => r.id === session.activeRunId) ?? session.runs[0];
   const [err, setErr] = useState<string>();
   const [annotating, setAnnotating] = useState(false);
@@ -95,8 +105,13 @@ export function Timeline({ session }: { session: SessionSnapshot }) {
         </div>
 
         <span className="readout text-[36px] leading-none tracking-[-0.02em]" aria-live="off">
-          {tickClock(run.tick)}
+          {tickClock(viewTick ?? run.tick)}
         </span>
+        {viewTick !== null && (
+          <button type="button" onClick={() => onScrub(null)} className="ctl h-9 px-3 text-[13px]" title="Only your view moved; the run kept going">
+            Back to live · {tickClock(run.tick)}
+          </button>
+        )}
 
         <div className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-3">
           <div role="group" aria-label="Simulation speed" className="flex gap-0.5 rounded-ctl border border-line2 p-[3px]">
@@ -140,6 +155,31 @@ export function Timeline({ session }: { session: SessionSnapshot }) {
             <div className="relative h-4">
               <span className="absolute inset-x-0 top-[7px] h-px bg-line2" />
               <span className="absolute left-0 top-[7px] h-px bg-ink-faint" style={{ width: pct(run.tick) }} />
+              {viewTick !== null && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute top-[2px] z-[1] h-3 w-3 -translate-x-1/2 rounded-full border-2 border-bg bg-ink shadow-[0_0_0_1px_#E9ECEE]"
+                  style={{ left: pct(viewTick) }}
+                />
+              )}
+              {run.tick > 0 && !annotating && (
+                <input
+                  type="range"
+                  min={0}
+                  max={run.tick}
+                  step={1}
+                  value={viewTick ?? run.tick}
+                  onChange={(e) => {
+                    const t = Number(e.target.value);
+                    onScrub(t >= run.tick ? null : t);
+                  }}
+                  aria-label="Scrub your view of the run"
+                  aria-valuetext={tickClock(viewTick ?? run.tick)}
+                  title="Scrub through the steps so far. Only your view moves."
+                  className="absolute inset-y-[-4px] left-0 z-[2] m-0 cursor-pointer opacity-0"
+                  style={{ width: pct(run.tick) }}
+                />
+              )}
               <span
                 className={`absolute right-0 top-0 h-[15px] w-[15px] translate-x-1/2 rounded-full border-2 ${
                   settled ? "border-ink bg-bg shadow-[inset_0_0_0_3px_#0D0F10,inset_0_0_0_8px_#E9ECEE]" : "border-line2 bg-bg"

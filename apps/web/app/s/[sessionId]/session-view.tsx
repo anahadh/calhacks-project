@@ -18,6 +18,7 @@ import { defendBlocker } from "@/features/agents/defend-button";
 import { QuestionBanner } from "@/features/agents/question-card";
 import { JoinModal } from "@/features/review/join-modal";
 import { useRoleView } from "@/lib/role-views";
+import { atTick } from "@/lib/stdb/at-tick";
 import { useSession, useSessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
@@ -30,7 +31,16 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   // Picking patient zero: before the first attack. The building itself is the
   // picker — the presenter clicks a device to start.
   const picking = !session.activeRun;
-  const shown = session;
+  // This tab's own place on the timeline: null follows the live run. Scrubbing filters the rows this tab
+  // already has (atTick) and writes nothing, so nobody else's view moves.
+  const [viewTick, setViewTick] = useState<number | null>(null);
+  const liveTick = session.activeRun?.tick ?? 0;
+  const runId = session.activeRun?.id;
+  useEffect(() => setViewTick(null), [runId]);
+  useEffect(() => {
+    if (viewTick !== null && viewTick >= liveTick) setViewTick(null);
+  }, [viewTick, liveTick]);
+  const shown = viewTick === null ? session : atTick(session, viewTick);
   const index = useSessionIndex(shown);
   const roleView = useRoleView(shown);
   const canPick = picking && session.isPresenter && session.source === "live";
@@ -97,7 +107,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       {view === "simulation" ? (
         <main className="flex flex-grow flex-col gap-6 p-4 md:p-6 lg:min-h-0 lg:flex-row">
           <section aria-label="Simulation" className="panel flex min-w-0 flex-col overflow-hidden lg:min-h-0 lg:flex-1">
-            <Timeline session={session} />
+            <Timeline session={session} viewTick={viewTick} onScrub={setViewTick} />
 
             <div className="flex min-h-0 flex-grow flex-col bg-scene-ground">
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 p-4">
@@ -143,7 +153,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                 </div>
                 {hovered && (
                   <div className="pointer-events-none absolute right-4 top-4 z-10">
-                    <DeviceCard session={session} index={index} deviceId={hovered} view={roleView} />
+                    <DeviceCard session={shown} index={index} deviceId={hovered} view={roleView} />
                   </div>
                 )}
                 <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
@@ -155,7 +165,9 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                           // The run watcher fills these from the engine; without it no device can be picked (rule 14).
                           : "No device can start an attack yet: the run watcher hasn't listed them from the engine. Is it running?")
                       : `Waiting for ${session.presenterName || "the presenter"} to pick patient zero`
-                    : "Drag to rotate · scroll to zoom · hover a device"}
+                    : viewTick !== null
+                      ? "Only you see this earlier step · patient states show at the live step"
+                      : "Drag to rotate · scroll to zoom · hover a device"}
                 </span>
               </div>
             </div>
@@ -163,8 +175,8 @@ export function SessionView({ sessionId }: { sessionId: string }) {
 
           <aside aria-label="Infection statistics" className="flex min-w-0 flex-col gap-4 lg:min-h-0 lg:w-[400px] lg:flex-none">
             <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
-              <SpreadStats session={session} index={index} />
-              <SystemsDown session={session} index={index} />
+              <SpreadStats session={shown} index={index} />
+              <SystemsDown session={shown} index={index} />
             </div>
             <div className="shrink-0">
               <PlanButton session={session} onAgents={() => setView("agents")} />

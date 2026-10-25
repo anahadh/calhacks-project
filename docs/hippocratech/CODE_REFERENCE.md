@@ -91,6 +91,7 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `spacetime/src/memo.ts` (planned) | F3 | `memo_save_draft` (server identity), `memo_approve` |
 | `apps/web/lib/stdb/module_bindings/` | Base | Generated with `npm run generate -w hippocratech-module`. Never edit by hand |
 | `apps/web/lib/stdb/connection.ts`, `live-session.ts` | Base | The live subscription (session-scoped and run-scoped rows); `useLiveSession` and `useLiveRunRows` (a run's rows by id, e.g. each side of a solution pair) |
+| `apps/web/lib/stdb/at-tick.ts` | Base | `atTick(session, tick)`: one tab's own scrub, the rows it has cut back to an earlier step by their tick columns (filtering only, writes nothing; patient rows have no step, so none) |
 | `apps/web/lib/stdb/snapshot.ts`, `run-status.ts`, `actions.ts` | Base | `snapshotOf(rows)`/`runViewOf` map the generated bindings onto the UI row shapes (no computation); run status helpers; the reducer-calling `SessionActions` |
 | `apps/web/lib/stdb/use-session.ts` | Base | `useSession(id)`/`useRunRows(id)`: live rows when `NEXT_PUBLIC_STDB_URI` is set; the explicit mock only with `NEXT_PUBLIC_MOCK=1`; otherwise `source:'error'` ("Not connected"). No silent fallback (rule 14) |
 | `apps/web/lib/stdb/agent-rows.ts` | Base | Reshapes `agent_message`, `agent_status`, `question`, `recommendation` and the session's round state for the Agent Room (sender's copy of each message, plus humans' answers; ASI:One chat rows as messages to/from `asi1`). For rounds with no session row, the round state and recommendation come from their relayed messages |
@@ -189,7 +190,7 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `apps/web/components/panel/counters.tsx` | Base | Counter strip on the Agents tab |
 | `apps/web/components/scene/*` | Base | Floors, rooms, device boxes, patients, arcs, subscribed to live state |
 | `apps/web/components/scene/scene-boundary.tsx` | Base | WebGL error boundary: falls back to the 2D plan when the 3D scene can't render |
-| `apps/web/components/timeline.tsx` | Base | Timeline rail: playback, speed, follow, scrubber with event markers and heat strip, current beat (reads `tick_snapshot`, `sim_event`) |
+| `apps/web/components/timeline.tsx` | Base | Timeline rail: playback, speed, a per-tab scrubber (only that viewer's step moves), event markers and heat strip, current beat (reads `tick_snapshot`, `sim_event`) |
 | `apps/web/features/scene/spread-fx.tsx` | F4 | Pulses and fizzles from `spread_attempt`, device flashes, room tints |
 | `apps/web/features/scene/service-icons.tsx` | F4 | Service icons, "down" badges, event toasts from `sim_event` |
 | `apps/web/features/scene/patients-fx.tsx` | F4 | Patient badges, ambulance diversion |
