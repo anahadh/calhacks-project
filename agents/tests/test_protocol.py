@@ -39,6 +39,16 @@ VERDICT = {
     "reason": "This cuts MRI 2 to PACS, which carries scans to radiologists.",
     "constraint": CONSTRAINT,
 }
+SCORE_CANDIDATE = {
+    "policyId": "pol_1", "name": "Critical care first", "round": 1, "ruleCount": 1, "testResult": RUN_RESULT,
+    "inventory": {**VERDICT, "agent": "inventory", "decision": "accept", "constraint": None},
+    "clinicalWorkflow": VERDICT,
+}
+BROKEN = {"agent": "clinical_workflow", "kind": "keep_flow", "targetIds": ["fl_2"], "targetNames": ["MRI 2 → PACS"]}
+SCORE_ROW = {
+    "rank": 1, "policyId": "pol_1", "name": "Critical care first", "round": 1, "devicesInfected": 3, "servicesDownTooLong": 0,
+    "patientsAffected": 26, "ruleCount": 1, "inventory": "accept", "clinicalWorkflow": "reject", "broken": [BROKEN],
+}
 
 SAMPLES = {
     p.Selector: {"vlan": 10},
@@ -86,6 +96,15 @@ SAMPLES = {
         "author": "Dev", "role": "clinical_engineering",
     },
     p.RestAck: {"ok": True},
+    p.StartEvidence: {"start": "mri_2", "name": "MRI 2", "baseline": 31, "plan": 4},
+    p.ScoreCandidate: SCORE_CANDIDATE,
+    p.ScoreInput: {"sessionId": "demo", "round": 1, "candidates": [SCORE_CANDIDATE]},
+    p.BrokenConstraint: BROKEN,
+    p.ScoreRow: SCORE_ROW,
+    p.Scorecard: {
+        "sessionId": "demo", "round": 1, "rankedBy": ["accepted by both guardians"], "rows": [SCORE_ROW],
+        "why": "Critical care first is the only plan scored so far: rejected by Clinical Workflow, 26 patients affected, 3 devices infected.",
+    },
 }
 
 

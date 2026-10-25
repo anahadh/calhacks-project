@@ -1,6 +1,7 @@
-"""The four agents' addresses (derived from their seeds) and how they reach each other.
+"""The agents' addresses (derived from their seeds) and how they reach each other: the
+four, plus the Scorekeeper (port 8005) with SCOREKEEPER=1.
 
-With LOCAL_RESOLVE=1 the four agents reach each other directly at
+With LOCAL_RESOLVE=1 the agents reach each other directly at
 http://127.0.0.1:<port>/submit, never through the Almanac or Agentverse. In mailbox
 mode, anyone else (an ASI:One user, say) is still looked up the normal way, so the
 Coordinator can reply to them. See AGENT_NOTES.md, "Local resolution" and "Modes".
@@ -11,7 +12,7 @@ from functools import cache
 from uagents.crypto import Identity
 from uagents.resolver import GlobalResolver, Resolver, RulesBasedResolver
 
-from config import AGENTS, PORTS, seed, settings
+from config import PORTS, agents, seed, settings
 
 
 @cache
@@ -24,12 +25,13 @@ def endpoint(agent: str) -> str:
 
 
 def all_addresses() -> dict[str, str]:
-    return {agent: address(agent) for agent in AGENTS}
+    return {agent: address(agent) for agent in agents()}
 
 
 def local_rules() -> dict[str, str]:
-    """Our four agents, plus any LOCAL_PEERS (a test's fake chat sender, for instance)."""
-    return {**{address(a): endpoint(a) for a in AGENTS}, **settings().local_peers}
+    """Our agents (127.0.0.1:8001-8004, and :8005 for the Scorekeeper with SCOREKEEPER=1),
+    plus any LOCAL_PEERS (a test's fake chat sender, for instance)."""
+    return {**{address(a): endpoint(a) for a in agents()}, **settings().local_peers}
 
 
 class LocalFirstResolver(Resolver):

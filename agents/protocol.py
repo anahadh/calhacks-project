@@ -1,4 +1,4 @@
-"""Message models for the four uAgents (spec: The Agents), plus Policy and
+"""Message models for the uAgents (four, plus the Scorekeeper with SCOREKEEPER=1) (spec: The Agents), plus Policy and
 RunResult (HOSPITAL_SCHEMA.md) and the Coordinator's REST request models.
 
 uagents.Model is a pydantic v1 BaseModel (pydantic.v1), so strictness is set
@@ -19,7 +19,11 @@ from uagents import Model
 
 # --- Shared enums ---
 
-AgentName = Literal["inventory", "flow", "clinical_workflow", "coordinator"]
+# The agents that negotiate. Verdict and Question use this one, so the Scorekeeper can never
+# send either, and their schemas (and the protocol digest) are the same with SCOREKEEPER off.
+NegotiatingAgent = Literal["inventory", "flow", "clinical_workflow", "coordinator"]
+# Every agent, the Scorekeeper included (SCOREKEEPER=1).
+AgentName = Literal["inventory", "flow", "clinical_workflow", "coordinator", "scorekeeper"]
 # Roles that can be required to sign off or allowed to answer a question.
 # Observers can do neither.
 ReviewRole = Literal["security", "clinical_engineering", "operations"]
@@ -203,7 +207,7 @@ class Verdict(Strict):
     sessionId: NonEmptyStr
     round: conint(ge=1)
     policyId: NonEmptyStr
-    agent: AgentName
+    agent: NegotiatingAgent
     decision: Literal["accept", "reject"]
     reason: str  # Claude-written; the decision itself comes from code
     constraint: Constraint | None = None  # set on a rejection
@@ -237,7 +241,7 @@ class Question(Strict):
     sessionId: NonEmptyStr
     id: NonEmptyStr  # Answer.questionId refers to this
     round: conint(ge=1)
-    agent: AgentName
+    agent: NegotiatingAgent
     targetId: NonEmptyStr  # device or flow id
     text: NonEmptyStr
     choices: conlist(NonEmptyStr, min_items=2)
@@ -321,3 +325,69 @@ class RestAck(Strict):
 
     ok: bool
     detail: str | None = None
+
+
+# --- Coordinator ⇄ Scorekeeper (SCOREKEEPER=1; explains the ranking, decides nothing) ---
+
+
+class ScoreCandidate(Strict):
+    """One plan of a round as both guardians judged it, with the engine's RunResult."""
+
+    policyId: NonEmptyStr
+    name: NonEmptyStr
+    round: conint(ge=1)
+    ruleCount: NonNegInt
+    testResult: RunResult
+    inventory: Verdict
+    clinicalWorkflow: Verdict
+
+    @root_validator(skip_on_failure=True)
+    def _verdicts_are_the_guardians(cls, values):
+        if values["inventory"].agent != "inventory" or values["clinicalWorkflow"].agent != "clinical_workflow":
+            raise ValueError("inventory and clinicalWorkflow must be those agents' verdicts")
+        return values
+
+
+class ScoreInput(Strict):
+    """Coordinator → Scorekeeper: a copy of every plan judged so far in the negotiation, sent
+    when `round`'s plans have all been judged. Fire-and-forget: the Coordinator never waits
+    on the reply, and the reply never reaches a round decision."""
+
+    sessionId: NonEmptyStr
+    round: conint(ge=1)
+    candidates: conlist(ScoreCandidate, min_items=1)
+
+
+class BrokenConstraint(Strict):
+    """What a rejection said the plan broke, with the targets in human names."""
+
+    agent: Literal["inventory", "clinical_workflow"]
+    kind: Literal["keep_flow", "keep_service", "confirm_device", "max_rules"]
+    targetIds: list[str]
+    targetNames: list[str]
+
+
+class ScoreRow(Strict):
+    rank: conint(ge=1)
+    policyId: NonEmptyStr
+    name: NonEmptyStr
+    round: conint(ge=1)
+    devicesInfected: NonNegInt
+    servicesDownTooLong: NonNegInt
+    patientsAffected: NonNegInt
+    ruleCount: NonNegInt
+    inventory: Literal["accept", "reject"]
+    clinicalWorkflow: Literal["accept", "reject"]
+    broken: list[BrokenConstraint] = []
+
+
+class Scorecard(Strict):
+    """Scorekeeper → Coordinator: every plan seen so far in the session's round, ranked by
+    logic.scorekeeper.RANKING, with a one-line templated `why`. No model writes any of it."""
+
+    sessionId: NonEmptyStr
+    round: conint(ge=1)
+    rankedBy: list[str]
+    rows: conlist(ScoreRow, min_items=1)
+    why: NonEmptyStr
+    whySource: Literal["template"] = "template"

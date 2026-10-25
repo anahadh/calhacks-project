@@ -10,13 +10,14 @@ from dotenv import load_dotenv
 AGENTS_DIR = Path(__file__).parent
 load_dotenv(AGENTS_DIR / ".env", override=False)
 
-AGENTS = ("inventory", "flow", "clinical_workflow", "coordinator")
-PORTS = {"inventory": 8001, "flow": 8002, "clinical_workflow": 8003, "coordinator": 8004}
+CORE_AGENTS = ("inventory", "flow", "clinical_workflow", "coordinator")
+PORTS = {"inventory": 8001, "flow": 8002, "clinical_workflow": 8003, "coordinator": 8004, "scorekeeper": 8005}
 SEED_VARS = {
     "inventory": "INVENTORY_AGENT_SEED",
     "flow": "FLOW_AGENT_SEED",
     "clinical_workflow": "CLINICAL_WORKFLOW_AGENT_SEED",
     "coordinator": "COORDINATOR_AGENT_SEED",
+    "scorekeeper": "SCOREKEEPER_AGENT_SEED",
 }
 
 
@@ -36,6 +37,20 @@ def _flag(name: str, default: bool) -> bool:
     if value not in ("0", "1"):
         raise ConfigError(f"{name} must be 0 or 1, not {value!r}")
     return value == "1"
+
+
+def scorekeeper_enabled() -> bool:
+    """SCOREKEEPER=1: run the fifth agent, which explains how the plans rank and decides nothing.
+    Off by default; with it off, everything runs exactly as with four agents."""
+    return _flag("SCOREKEEPER", False)
+
+
+def agents() -> tuple[str, ...]:
+    """The agents that run: the four, plus the Scorekeeper with SCOREKEEPER=1. Read each call."""
+    return CORE_AGENTS + (("scorekeeper",) if scorekeeper_enabled() else ())
+
+
+AGENTS = agents()  # as this process started; tests that flip the flag call agents()
 
 
 @dataclass(frozen=True)
