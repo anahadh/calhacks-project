@@ -6,9 +6,9 @@ import type { AgentMessageRow, AgentStatusRow, RecommendationRow, RoundState, Se
 import { RecommendationCard } from "@/features/policy/card-body";
 import { showBlocker } from "@/features/solution/pair";
 import { AgentGlyph } from "./agent-icon";
-import { SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
+import { SCOREKEEPER_LABEL, SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
 import { DefendButton } from "./defend-button";
-import { coordinatorStamp, lanesOf, needsLabel, negotiationOf, REVIEWERS, type ConstraintChip, type Lane, type Names, type PlanColumn, type Stamp } from "./negotiation";
+import { coordinatorStamp, hasScorekeeper, lanesOf, latestScorecard, needsLabel, negotiationOf, REVIEWERS, type ConstraintChip, type Lane, type Names, type PlanColumn, type Stamp } from "./negotiation";
 import { RevealClock } from "./reveal";
 import { createdMs, elapsedLabel, entryOf, statusLine, type TimedMessage } from "./transcript";
 
@@ -95,6 +95,9 @@ export function AgentRoomFrame(props: {
   const options = new Map(shown.filter((m) => m.type === "recommendation").map((m) => [`${m.round}:${m.name}`, m.option ?? 1]));
   const optionOf = (p: PlanColumn) => options.get(`${p.round}:${p.name}`);
   const viaAsi1 = messages.some((m) => m.type === "chat");
+  // The Scorekeeper (SCOREKEEPER=1) shows only once it has a row; without it the room is unchanged.
+  const scorekeeper = hasScorekeeper(messages, props.agentStatus);
+  const scorecard = latestScorecard(shown);
   const [tab, setTab] = useState<"table" | "transcript">("table");
 
   useEffect(() => {
@@ -139,7 +142,7 @@ export function AgentRoomFrame(props: {
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(340px,5fr)_minmax(0,8fr)]">
         <section aria-label="Who is talking" className="flex min-h-0 flex-col border-b border-line lg:border-b-0 lg:border-r">
           <div className="relative h-[300px] shrink-0 lg:h-[46%]">
-            <Graph newest={newest} speaking={speaking} asi1={viaAsi1} />
+            <Graph newest={newest} speaking={speaking} asi1={viaAsi1} scorekeeper={scorekeeper} />
           </div>
           <div className="flex min-h-[44px] flex-wrap items-center gap-3 border-t border-line px-5 py-3">
             <span className="eyebrow">Latest</span>
@@ -157,6 +160,7 @@ export function AgentRoomFrame(props: {
             )}
           </div>
           <ConstraintRail constraints={constraints} />
+          {scorecard && <ScorecardPanel card={scorecard} />}
         </section>
 
         <section aria-label="Negotiation" className="flex min-h-0 flex-col p-5">
@@ -273,18 +277,20 @@ const NODE: Record<Speaker, { x: number; y: number; r: number }> = {
   coordinator: { x: 320, y: 270, r: 42 },
   humans: { x: 544, y: 336, r: 32 },
   asi1: { x: 96, y: 336, r: 32 },
+  scorekeeper: { x: 544, y: 56, r: 28 }, // drawn only when it runs (SCOREKEEPER=1)
 };
 const SPOKES: Speaker[] = ["flow", "inventory", "clinical_workflow", "humans", "asi1"];
 
-function Graph({ newest, speaking, asi1 }: { newest: AgentMessageRow | undefined; speaking: Set<Speaker>; asi1: boolean }) {
+function Graph({ newest, speaking, asi1, scorekeeper }: { newest: AgentMessageRow | undefined; speaking: Set<Speaker>; asi1: boolean; scorekeeper: boolean }) {
   const from = newest?.from;
   const bubble = newest ? VERB[newest.type] : undefined;
+  const spokes: Speaker[] = scorekeeper ? [...SPOKES, "scorekeeper"] : SPOKES;
   return (
     <svg viewBox="0 0 640 400" className="absolute inset-0 h-full w-full" role="img" aria-label="The orchestrator and the agents it calls">
-      {SPOKES.map((s) => (
+      {spokes.map((s) => (
         <Edge key={s} a="coordinator" b={s} lit={false} color={SPEAKER_COLOR.coordinator} faint={s === "asi1" && !asi1} />
       ))}
-      {(Object.keys(NODE) as Speaker[]).map((who) => (
+      {(Object.keys(NODE) as Speaker[]).filter((who) => who !== "scorekeeper" || scorekeeper).map((who) => (
         <Node key={who} who={who} glow={speaking.has(who)} dim={who === "asi1" && !asi1} />
       ))}
       {/* What the newest message is, said by its sender: a bubble beside the node, restarted by the row's seq. */}
@@ -307,6 +313,11 @@ function Graph({ newest, speaking, asi1 }: { newest: AgentMessageRow | undefined
       <text x={NODE.humans.x} y={NODE.humans.y + NODE.humans.r + 18} textAnchor="middle" className="fill-[#7D858B] font-mono text-[12px]">
         HUMANS
       </text>
+      {scorekeeper && (
+        <text x={NODE.scorekeeper.x} y={NODE.scorekeeper.y + NODE.scorekeeper.r + 16} textAnchor="middle" className="fill-[#7D858B] font-mono text-[11px]">
+          SCOREKEEPER · NO VOTE
+        </text>
+      )}
     </svg>
   );
 }
@@ -322,6 +333,7 @@ const VERB: Record<AgentMessageRow["type"], string> = {
   answer: "answers",
   recommendation: "recommends",
   chat: "chats",
+  scorecard: "ranks the plans",
 };
 
 /**
@@ -354,6 +366,10 @@ function saidOf(m: AgentMessageRow, names: Names): string {
       return `recommended ${m.name ? `“${m.name}”` : "the plan"} to the humans${m.option && m.option > 1 ? ` as option ${m.option}` : ""}`;
     case "chat":
       return m.from === "asi1" ? "asked on ASI:One" : "replied on ASI:One";
+    case "scorecard": {
+      const n = m.scorecard?.length ?? 0;
+      return `ranked ${n} ${n === 1 ? "plan" : "plans"} · explains, does not vote`;
+    }
   }
 }
 
@@ -393,7 +409,7 @@ function Node({ who, glow, dim }: { who: Speaker; glow: boolean; dim?: boolean }
   );
 }
 
-// --- The four agents, as lanes: a live badge and what each has done, counted from the rows. ---
+// --- The agents, as lanes: a live badge and what each has done, counted from the rows. ---
 
 const CHIP = {
   info: "border-line2 text-ink-muted",
@@ -407,7 +423,10 @@ function Chip({ tone, title, children }: { tone: keyof typeof CHIP; title?: stri
 
 function LanesStrip({ lanes }: { lanes: Lane[] }) {
   return (
-    <ul aria-label="The four agents" className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2 xl:grid-cols-4">
+    <ul
+      aria-label={lanes.length > 4 ? "The five agents" : "The four agents"}
+      className={`m-0 grid list-none gap-2 p-0 ${lanes.length > 4 ? "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5" : "sm:grid-cols-2 xl:grid-cols-4"}`}
+    >
       {lanes.map((l) => {
         const live = l.status === "thinking" || l.status === "speaking";
         return (
@@ -424,6 +443,75 @@ function LanesStrip({ lanes }: { lanes: Lane[] }) {
         );
       })}
     </ul>
+  );
+}
+
+// --- The Scorekeeper's table (SCOREKEEPER=1): the newest Scorecard row, as relayed. It explains; it never votes. ---
+
+// Blue and orange, never red and green, and never color alone: each mark has a glyph and a word.
+const VERDICT_MARK = {
+  accept: { glyph: "●", word: "accepts", color: "#4DB0FF" },
+  reject: { glyph: "✕", word: "rejects", color: "#FF9F43" },
+} as const;
+
+function Mark({ who, short, decision }: { who: string; short: string; decision: "accept" | "reject" }) {
+  const m = VERDICT_MARK[decision];
+  return (
+    <span title={`${who} ${m.word}`} className="whitespace-nowrap" style={{ color: m.color }}>
+      {short} {m.glyph}
+      <span className="sr-only"> {who} {m.word}</span>
+    </span>
+  );
+}
+
+function ScorecardPanel({ card }: { card: AgentMessageRow }) {
+  const rows = card.scorecard ?? [];
+  return (
+    <section aria-label={SCOREKEEPER_LABEL} className="max-h-[260px] shrink-0 overflow-y-auto border-t border-line px-5 py-3">
+      <div className="flex items-center gap-2 text-[13px]" style={{ color: SPEAKER_COLOR.scorekeeper }}>
+        <AgentGlyph who="scorekeeper" size={14} />
+        <span>{SCOREKEEPER_LABEL}</span>
+        <span className="num ml-auto text-[11px] text-ink-faint">after round {card.round} · template text</span>
+      </div>
+      <table className="num mt-2 w-full border-collapse text-[12px]">
+        <caption className="sr-only">
+          Plans best first: accepted by both guardians, then fewest patients affected, devices infected, services down too long and rules.
+        </caption>
+        <thead>
+          <tr className="text-left text-ink-faint">
+            <th scope="col" className="w-6 pb-1 font-normal">#</th>
+            <th scope="col" className="pb-1 font-normal">Plan</th>
+            <th scope="col" className="pb-1 font-normal">Guardians</th>
+            <th scope="col" className="pb-1 text-right font-normal" title="Patients affected">Patients</th>
+            <th scope="col" className="pb-1 text-right font-normal" title="Devices infected">Devices</th>
+            <th scope="col" className="pb-1 text-right font-normal" title="Services down too long">Down</th>
+            <th scope="col" className="pb-1 text-right font-normal">Rules</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={`${r.round}:${r.policyId}`} className="border-t border-line align-top text-ink-muted">
+              <td className="py-1 text-ink">{r.rank}</td>
+              <td className="max-w-0 py-1 pr-2">
+                <span className="block truncate text-ink" title={r.name}>{r.name}</span>
+                <span className="block truncate text-ink-faint" title={r.broken.map((b) => b.targetNames.join(", ")).join("; ")}>
+                  round {r.round}
+                  {r.broken.map((b) => ` · needs ${b.kind.replace("_", " ")}${b.targetNames.length ? `: ${b.targetNames.join(", ")}` : ""}`).join("")}
+                </span>
+              </td>
+              <td className="py-1 pr-2">
+                <Mark who="Inventory" short="Inv" decision={r.inventory} /> <Mark who="Clinical Workflow" short="Clin" decision={r.clinicalWorkflow} />
+              </td>
+              <td className="py-1 text-right text-ink">{r.patientsAffected}</td>
+              <td className="py-1 text-right">{r.devicesInfected}</td>
+              <td className="py-1 text-right">{r.servicesDownTooLong}</td>
+              <td className="py-1 text-right">{r.ruleCount}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {card.reason && <p className="m-0 mt-2 text-[13px] leading-5 text-ink-muted">{card.reason}</p>}
+    </section>
   );
 }
 

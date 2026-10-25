@@ -7,11 +7,11 @@ import type {
   AgentMessage, AgentStatus, Question, Recommendation, Session,
 } from "./module_bindings/types";
 import type {
-  AgentId, AgentMessageRow, AgentStatusRow, QuestionRow, RecommendationRow, ReviewRole, RoundState, Speaker, TextSource,
+  AgentId, AgentMessageRow, AgentStatusRow, QuestionRow, RecommendationRow, ReviewRole, RoundState, ScorecardRow, Speaker, TextSource,
 } from "./types";
 
 const MAX_ROUNDS = 6; // agents/logic/coordinator.py MAX_ROUNDS
-const AGENTS = new Set<string>(["inventory", "flow", "clinical_workflow", "coordinator"]);
+const AGENTS = new Set<string>(["inventory", "flow", "clinical_workflow", "coordinator", "scorekeeper"]);
 
 type Counts = { ok: number; delayed: number; disrupted: number; diverted: number };
 type RunResult = { infectedCount: number; patientCounts: Counts; protectedBroken: string[]; removedFlows: string[] };
@@ -98,6 +98,10 @@ export function messagesOf(rows: Iterable<AgentMessage>): AgentMessageRow[] {
       case "recommendation":
         out.push({ ...base, type: "recommendation", reason: m.reason || p.explanation, option: p.option ?? 1, name: p.policy?.name });
         break;
+      case "scorecard":
+        // The Scorekeeper's ranked table (SCOREKEEPER=1). Its copies in (score_input) are not shown.
+        out.push({ ...base, type: "scorecard", reason: m.reason || p.why || "", scorecard: (p.rows as ScorecardRow[] | undefined) ?? [] });
+        break;
     }
   }
   return out;
@@ -106,7 +110,7 @@ export function messagesOf(rows: Iterable<AgentMessage>): AgentMessageRow[] {
 export function statusOf(rows: Iterable<AgentStatus>): AgentStatusRow[] {
   return [...rows]
     .filter((s) => AGENTS.has(s.agent))
-    .map((s) => ({ agent: s.agent as AgentId, status: s.status as AgentStatusRow["status"] }));
+    .map((s) => ({ agent: s.agent as AgentStatusRow["agent"], status: s.status as AgentStatusRow["status"] }));
 }
 
 export function questionsOf(rows: Iterable<Question>): QuestionRow[] {

@@ -1,7 +1,7 @@
 import type { Speaker } from "@/lib/stdb/types";
 
 // Spec: Inventory = tag, Flow = network, Clinical Workflow = heartbeat line,
-// Coordinator = checklist. Humans get a person; ASI:One a speech bubble.
+// Coordinator = checklist, Scorekeeper = ranked bars. Humans get a person; ASI:One a speech bubble.
 const PATHS: Record<Speaker, React.ReactNode> = {
   inventory: (
     <>
@@ -22,6 +22,12 @@ const PATHS: Record<Speaker, React.ReactNode> = {
     <>
       <path d="M2 4l1.3 1.3L5.5 3M2 9l1.3 1.3L5.5 8" />
       <path d="M8 4.5h6M8 9.5h6M8 13h6" />
+    </>
+  ),
+  scorekeeper: (
+    <>
+      <path d="M2 13.5h12" />
+      <path d="M4 13.5V9M8 13.5V3.5M12 13.5V6.5" />
     </>
   ),
   humans: (

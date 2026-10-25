@@ -256,9 +256,16 @@ export type SessionSnapshot = {
 // --- Agent rows (agent_message, agent_status, session.roundState) ---
 
 export type AgentId = "inventory" | "flow" | "clinical_workflow" | "coordinator";
+/**
+ * The agents with a lane in the Agent Room: the four, plus the Scorekeeper when it runs
+ * (SCOREKEEPER=1). Kept apart from AgentId, which the scripted demo view keys its fixed
+ * four-node layout on.
+ */
+export type RoomAgent = AgentId | "scorekeeper";
 /** "asi1": a person chatting with the orchestrator on ASI:One (chat rows relayed by the Coordinator). */
-export type Speaker = AgentId | "humans" | "asi1";
-export type MessageType = "request" | "proposal" | "accept" | "reject" | "revision" | "question" | "answer" | "recommendation" | "chat";
+export type Speaker = RoomAgent | "humans" | "asi1";
+export type MessageType =
+  | "request" | "proposal" | "accept" | "reject" | "revision" | "question" | "answer" | "recommendation" | "chat" | "scorecard";
 /** Who wrote a message's text (rule 14: a template is never passed off as Claude's). */
 export type TextSource = "claude" | "asi1" | "template";
 export type ReviewRole = "security" | "clinical_engineering" | "operations";
@@ -284,6 +291,8 @@ export type AgentMessageRow = {
   card?: boolean;
   /** The plan a proposal, revision or verdict is about. */
   policyId?: string;
+  /** Scorecards: every plan judged so far, ranked by the Scorekeeper (it explains; it never votes). */
+  scorecard?: ScorecardRow[];
   /** Recommendations: 1 = the negotiated plan, 2-3 = alternatives both guardians accepted. */
   option?: number;
   source?: TextSource;
@@ -293,7 +302,22 @@ export type AgentMessageRow = {
   fixture?: boolean;
 };
 
-export type AgentStatusRow = { agent: AgentId; status: "idle" | "thinking" | "speaking" | "waiting" };
+export type AgentStatusRow = { agent: RoomAgent; status: "idle" | "thinking" | "speaking" | "waiting" };
+
+/** One row of a Scorecard, as agents/protocol.py ScoreRow carries it. */
+export type ScorecardRow = {
+  rank: number;
+  policyId: string;
+  name: string;
+  round: number;
+  devicesInfected: number;
+  servicesDownTooLong: number;
+  patientsAffected: number;
+  ruleCount: number;
+  inventory: "accept" | "reject";
+  clinicalWorkflow: "accept" | "reject";
+  broken: { agent: "inventory" | "clinical_workflow"; kind: string; targetNames: string[] }[];
+};
 
 export type RoundState = {
   state: "idle" | "running" | "waiting_for_human" | "done";

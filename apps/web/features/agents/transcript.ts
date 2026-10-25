@@ -81,6 +81,15 @@ export function entryOf(m: AgentMessageRow, index: { device: Map<string, { name:
       return { subject: "Answer", detail: m.reason, template: false };
     case "recommendation":
       return { subject: "Recommendation, for human review", quote: m.reason, template, asi1 };
+    case "scorecard": {
+      const rows = m.scorecard ?? [];
+      return {
+        subject: `Scorecard · ${rows.length} ${rows.length === 1 ? "plan" : "plans"} ranked · does not vote`,
+        detail: joinDetail(rows.map((r) => `${r.rank}. ${r.name} (round ${r.round}): ${r.patientsAffected} patients affected, ${r.devicesInfected} devices infected`)),
+        quote: m.reason,
+        template,
+      };
+    }
     case "chat":
       return { subject: m.from === "asi1" ? "Asked on ASI:One" : m.card ? "Reply on ASI:One · card" : "Reply on ASI:One", quote: m.reason, template: false };
   }

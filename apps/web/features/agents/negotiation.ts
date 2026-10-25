@@ -3,7 +3,7 @@
 // reviewing agent. Nothing here decides: every stamp is a verdict row the
 // agents relayed (AGENTS.md rules 8, 16).
 
-import type { AgentId, AgentMessageRow } from "@/lib/stdb/types";
+import type { AgentId, AgentMessageRow, RoomAgent } from "@/lib/stdb/types";
 
 export type Stamp = {
   decision: "accept" | "reject" | "question";
@@ -108,10 +108,10 @@ export function negotiationOf(messages: readonly AgentMessageRow[], names: Names
   return { plans, constraints };
 }
 
-// --- The four agents as lanes: what each did this round, as counts, from the same rows ---
+// --- The agents as lanes: what each did this round, as counts, from the same rows ---
 
 export type Lane = {
-  agent: AgentId;
+  agent: RoomAgent;
   /** agent_status row, or idle when there is none. */
   status: "idle" | "thinking" | "speaking" | "waiting";
   /** Badges, in order: what the agent did, counted from its messages. */
@@ -122,16 +122,17 @@ export type Lane = {
  * One lane per agent. The Coordinator counts rounds and messages routed; Flow
  * counts plans tested and revisions; each reviewer counts accepts, rejects and
  * questions. A thinking or speaking agent gets a live badge. Nothing is inferred
- * beyond counting rows.
+ * beyond counting rows. The Scorekeeper (SCOREKEEPER=1) gets a fifth lane only once
+ * it has a row (a message or a status), so without it the room shows the four.
  */
 export function lanesOf(
   messages: readonly AgentMessageRow[],
-  agentStatus: readonly { agent: AgentId; status: Lane["status"] }[],
+  agentStatus: readonly { agent: RoomAgent; status: Lane["status"] }[],
   round: { state: string; round: number },
 ): Lane[] {
   const status = new Map(agentStatus.map((s) => [s.agent, s.status]));
   const live = round.state === "running" || round.state === "waiting_for_human";
-  const liveBadge = (agent: AgentId): Lane["badges"] => {
+  const liveBadge = (agent: RoomAgent): Lane["badges"] => {
     const s = status.get(agent);
     if (s === "thinking") return [{ label: "thinking", tone: "ok" }];
     if (s === "speaking") return [{ label: "speaking", tone: "ok" }];
@@ -180,7 +181,30 @@ export function lanesOf(
       ],
     });
   }
+  if (hasScorekeeper(messages, agentStatus)) {
+    const cards = agentRows.filter((m) => m.type === "scorecard").length;
+    lanes.push({
+      agent: "scorekeeper",
+      status: status.get("scorekeeper") ?? "idle",
+      badges: [
+        ...(cards ? [{ label: `≡ ranked ${cards}×`, tone: "info" as const }] : []),
+        { label: "does not vote", tone: "info" as const },
+        ...liveBadge("scorekeeper"),
+      ],
+    });
+  }
   return lanes;
+}
+
+/** True once the Scorekeeper has any row: a message to or from it, or a status. */
+export function hasScorekeeper(messages: readonly AgentMessageRow[], agentStatus: readonly { agent: RoomAgent }[] = []): boolean {
+  return messages.some((m) => m.from === "scorekeeper" || m.to === "scorekeeper") || agentStatus.some((s) => s.agent === "scorekeeper");
+}
+
+/** The newest Scorecard among the rows, or undefined. */
+export function latestScorecard(messages: readonly AgentMessageRow[]): AgentMessageRow | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) if (messages[i].type === "scorecard") return messages[i];
+  return undefined;
 }
 
 /** What the Coordinator did with each plan: routed it to the reviewers, and later published it as an option. */

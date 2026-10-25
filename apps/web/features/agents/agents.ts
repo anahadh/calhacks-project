@@ -1,10 +1,11 @@
-import type { AgentId, MessageType, Speaker } from "@/lib/stdb/types";
+import type { MessageType, RoomAgent, Speaker } from "@/lib/stdb/types";
 
-export const AGENTS: { id: AgentId; name: string; objective: string }[] = [
+export const AGENTS: { id: RoomAgent; name: string; objective: string }[] = [
   { id: "inventory", name: "Inventory", objective: "Never act on a device nobody can name. Asks a human when unsure." },
   { id: "flow", name: "Flow", objective: "Minimize spread. Proposes cuts and tests each one with the engine." },
   { id: "clinical_workflow", name: "Clinical Workflow", objective: "Keep care running. Rejects anything that breaks a protected flow." },
   { id: "coordinator", name: "Sign-off Coordinator", objective: "Runs rounds and routes the plan to the right humans. Cannot approve." },
+  { id: "scorekeeper", name: "Scorekeeper", objective: "Explains how the plans rank, from the engine's numbers. Does not vote. Only with SCOREKEEPER=1." },
 ];
 
 export const SPEAKER_NAME: Record<Speaker | "all", string> = {
@@ -12,6 +13,7 @@ export const SPEAKER_NAME: Record<Speaker | "all", string> = {
   flow: "Flow",
   clinical_workflow: "Clinical Workflow",
   coordinator: "Coordinator",
+  scorekeeper: "Scorekeeper",
   humans: "Humans",
   asi1: "ASI:One",
   all: "all",
@@ -23,6 +25,7 @@ export const SPEAKER_LABEL: Record<Speaker | "all", string> = {
   flow: "Flow Agent",
   clinical_workflow: "Clinical Workflow Agent",
   coordinator: "Sign-off Coordinator",
+  scorekeeper: "Scorekeeper",
   humans: "Humans",
   asi1: "ASI:One user",
   all: "everyone",
@@ -37,6 +40,7 @@ export const SPEAKER_COLOR: Record<Speaker | "all", string> = {
   flow: "#4DB0FF",
   inventory: "#F2C14E",
   clinical_workflow: "#FF5C5C",
+  scorekeeper: "#8C9EFF",
   humans: "#E9ECEE",
   asi1: "#B79CFF",
   all: "#A1A8AE",
@@ -53,4 +57,8 @@ export const MESSAGE_SHAPE: Record<MessageType, { glyph: string; label: string }
   answer: { glyph: "→", label: "Answer" },
   recommendation: { glyph: "■", label: "Recommendation" },
   chat: { glyph: "✦", label: "ASI:One chat" },
+  scorecard: { glyph: "≡", label: "Scorecard" },
 };
+
+/** The Scorekeeper's label wherever its table shows: it explains, it never decides. */
+export const SCOREKEEPER_LABEL = "Scorekeeper: explains the ranking, does not vote.";
