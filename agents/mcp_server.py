@@ -95,7 +95,7 @@ async def protected_flows() -> str:
 
 
 @mcp.tool()
-async def test_run(patient_zero: str, policy: dict[str, Any] | None = None) -> str:
+async def test_run(patient_zero: str, policy: dict[str, Any] | None = None, challenges: list[str] | None = None) -> str:
     """Run the simulated ransomware attack once and report the outcome.
 
     Call this to compare an attack start, or to test a segmentation policy, without
@@ -117,13 +117,21 @@ async def test_run(patient_zero: str, policy: dict[str, Any] | None = None) -> s
         candidate = None
         if policy is not None:
             candidate = Candidate(id="chat_test", policy=Policy.parse_obj(policy))
-        result = run_sim(candidate, patient_zero, chat.DEMO_SEED, [])
+        result = run_sim(candidate, patient_zero, chat.DEMO_SEED, list(challenges or []))
     except Exception as e:
         return json.dumps({"error": f"{e.__class__.__name__}: {e}"})
     return json.dumps(result.dict())
 
 
 # --- the agents' side: tools listed and called over MCP ---
+
+
+async def call(name: str, args: dict) -> Any:
+    """One tools/call over an in-process MCP client session (used for the round's baseline)."""
+    async with create_connected_server_and_client_session(mcp) as session:
+        res = await session.call_tool(name, args)
+    text = next((c.text for c in res.content if getattr(c, "type", None) == "text"), "")
+    return {"error": text or f"MCP tool {name} failed"} if res.isError else _parse(text)
 
 
 def _parse(text: str) -> Any:

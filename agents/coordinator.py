@@ -41,7 +41,7 @@ import narrate
 from config import AGENTS, settings
 from logic import hospital as hospital_mod
 from logic.coordinator import Action, Round
-from protocol import Answer, Proposal, Question, Reassess, RestAck, Resume, Revision, StartRound, Verdict
+from protocol import RunResult, Answer, Proposal, Question, Reassess, RestAck, Resume, Revision, StartRound, Verdict
 from pathlib import Path
 
 from runtime import PROFILES, fail, make_agent, reason_of, received, send
@@ -71,9 +71,9 @@ class ChatRound:
     summary_sent: bool = False
 
 
-NARRATE_INTERVAL_S = 4.0  # ASI:One rate-limits bursts (429): at most one trace message per interval
+NARRATE_INTERVAL_S = 10.0  # ASI:One rate-limits bursts (429): at most one trace message per interval
 SEND_TRIES = 4
-SEND_BACKOFF_S = 2.0
+SEND_BACKOFF_S = 10.0
 
 
 def _with_session(ctx: Context, session: uuid.UUID | None):
@@ -146,7 +146,13 @@ async def begin(ctx: Context, req: StartRound) -> RestAck:
         try:
             ctx.logger.info(f"[begin] relay={settings().relay_url or 'FILE LOG (WATCHER_RELAY_URL unset)'}; running baseline")
             await relay.status(req.sessionId, NAME, "thinking")
-            baseline = run_sim(None, req.patientZero, req.seed, req.challenges)
+            # The baseline goes through the hospital MCP server (same run_sim behind it), and the call is narrated.
+            got = await mcp_server.call("test_run", {"patient_zero": req.patientZero, "challenges": list(req.challenges)})
+            if "error" in got:
+                raise RuntimeError(got["error"])
+            baseline = RunResult.parse_obj(got)
+            await narrate_chat(ctx, req.sessionId, narrate.mcp("test_run", req.patientZero,
+                               f"{baseline.infectedCount} devices infected over {baseline.ticks} ticks"))
             rnd = Round(req.sessionId, H)
             ctx.logger.info(f"[begin] baseline done: {baseline.infectedCount} infected over {baseline.ticks} ticks")
             await narrate_chat(ctx, req.sessionId, narrate.started(H, baseline))
@@ -253,7 +259,7 @@ async def chat_send(ctx: Context, to: str, message: Model, session_id: str, text
             return
         ctx.logger.error(f"chat reply to {to[:16]}… not delivered (try {attempt}/{SEND_TRIES}): {status.detail}")
         if attempt < SEND_TRIES:
-            await asyncio.sleep(SEND_BACKOFF_S * attempt)  # ASI:One's 429s clear in seconds
+            await asyncio.sleep(SEND_BACKOFF_S * attempt)  # ASI:One's webhook limit is per minute: 10, 20, 30 s
 
 
 async def reply(ctx: Context, to: str, text: str, session_id: str = CHAT_SESSION) -> None:
@@ -530,6 +536,7 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
 async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     await chat_send(ctx, sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id), CHAT_SESSION)
     text = msg.text().strip()
+    ctx.logger.info(f"[chat] from {sender[:14]}…: {text[:160]!r}")
     if not text:
         if not any(isinstance(c, StartSessionContent) for c in msg.content):
             return

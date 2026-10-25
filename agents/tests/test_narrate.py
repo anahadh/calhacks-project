@@ -21,7 +21,7 @@ def proposal():
 
 def test_started_names_flow_and_baseline_numbers():
     s = narrate.started(H, baseline)
-    assert "@hippocratech-flow" in s and str(baseline.infectedCount) in s and str(baseline.ticks) in s
+    assert "@hippocratech-flow" in s and str(baseline.infectedCount) in s and str(baseline.ticks) in s and "Without any segmentation" in s
 
 
 def test_proposal_line_has_handle_round_name_and_both_counts():
@@ -189,3 +189,19 @@ def test_revision_line_says_why_and_the_counts_not_rule_arithmetic():
     assert "rules added" not in s
     unnamed = Revision(sessionId="s", round=3, policyId="p", diff=RuleDiff(added=[], removed=[]), testResult=cand)
     assert narrate.line(H, "revision", unnamed).startswith("[ @hippocratech-flow · round 3 ] revised the plan:")
+
+
+def test_pretty_lines_are_plain_english_with_a_marker_per_agent():
+    s = narrate.pretty('[ @hippocratech-flow · round 1 ] proposed "Wall off imaging": 5 devices infected with it, 9 without.')
+    assert s.startswith("🟦 **Flow** · round 1 —") and "Wall off imaging" in s
+    assert narrate.pretty("[ @hippocratech-clinical-workflow · round 2 ] accepted.").startswith("🟩 **Clinical Workflow** · round 2 —")
+    assert narrate.pretty("[ @hippocratech-inventory · round 1 ] accepted.").startswith("🟨 **Inventory** · round 1 —")
+    assert narrate.pretty("[ a ] first") == "[ a ] first"  # unknown tags pass through
+
+
+def test_bubble_drops_handoffs_but_keeps_mcp_calls():
+    lines = ["[ @hippocratech-coordinator ] asked @hippocratech-flow for a plan (round 1).",
+             "[ @hippocratech-coordinator ] MCP hospital.test_run(mri_2) → 9 devices infected over 9 ticks.",
+             "[ @hippocratech-inventory · round 1 ] accepted."]
+    out = narrate.render(lines)
+    assert "asked @hippocratech-flow" not in out and "🔧 **MCP**" in out and "**Inventory**" in out

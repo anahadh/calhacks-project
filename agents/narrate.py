@@ -5,6 +5,7 @@ round ran. Every number comes from the message (rule 16); agents are named by th
 Agentverse handle so a judge sees who is speaking.
 """
 
+import re
 from logic.hospital import HospitalIndex
 from protocol import Proposal, Question, Recommendation, Revision, RunResult, Verdict
 from runtime import PROFILES
@@ -21,18 +22,42 @@ def _tag(agent: str, round: int | None = None) -> str:
 
 
 def started(h: HospitalIndex, baseline: RunResult) -> str:
-    return (f"Baseline: {baseline.infectedCount} devices infected over {baseline.ticks} ticks. "
+    return (f"Without any segmentation, the attack reaches {baseline.infectedCount} devices in {baseline.ticks} ticks. "
             f"Asking {handle('flow')} for a plan…")
 
 
+MARK = {"hippocratech-flow": ("🟦", "Flow"), "hippocratech-inventory": ("🟨", "Inventory"),
+        "hippocratech-clinical-workflow": ("🟩", "Clinical Workflow"), "hippocratech-coordinator": ("🟪", "Coordinator")}
+_TAG = re.compile(r"^\[ @(?P<h>[a-z-]+)(?: · round (?P<r>\d+))? \] (?P<rest>.*)$")
+
+
+def pretty(line: str) -> str:
+    """A trace line for people: a colored marker and the agent's name in bold, then what it did."""
+    m = _TAG.match(line)
+    if not m or m.group("h") not in MARK:
+        return line
+    if m.group("h") == "hippocratech-coordinator" and m.group("rest").startswith("MCP "):
+        return f"🔧 **MCP** — {m.group('rest')[4:]}"
+    dot, name = MARK[m.group("h")]
+    rnd = f" · round {m.group('r')}" if m.group("r") else ""
+    return f"{dot} **{name}**{rnd} — {m.group('rest')}"
+
+
 def render(lines: list[str]) -> str:
-    """The trace as chat text. ASI:One renders markdown, where one line break folds into
-    the paragraph, so each line gets a blank line after it."""
-    return "\n\n".join(lines)
+    """The trace as chat text: plain-English lines, one paragraph each (ASI:One renders
+    markdown). The Coordinator's handoffs stay on the card only; MCP calls are shown."""
+    keep = [l for l in lines if not (l.startswith("[ @hippocratech-coordinator ]") and " MCP " not in l
+                                     and "agree on" not in l)]
+    return "\n\n".join(pretty(l) for l in keep)
 
 
 def failed(agent: str, error: str) -> str:
     return f"{_tag(agent)} failed: {error}"
+
+
+def mcp(tool: str, arg: str, result: str) -> str:
+    """A visible MCP call the Coordinator made."""
+    return f"{_tag('coordinator')} MCP hospital.{tool}({arg}) → {result}."
 
 
 def handoff(to: str, type: str, round: int) -> str:

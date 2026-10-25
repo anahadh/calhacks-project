@@ -89,7 +89,8 @@ def test_trace_card_shows_each_agent_state_and_the_lines():
     assert "Isolate imaging" in s and "http://x/room/chat-1" not in s
     assert meta["requires_card_interaction"] == "true" and meta["preferred_drawer_width_px"]
     assert cards.depth(root) <= 8 and all(n["type"] in ALLOWED for n in walk(root))
-    assert m.text() == "\n\n".join(lines)
+    import narrate
+    assert m.text() == narrate.render(lines)
     assert [n["value"] for n in walk(root) if n["type"] == "heading" and n["value"].startswith("Round")] == ["Round 1"]
     assert meta["is_terminal"] == "true"
 
