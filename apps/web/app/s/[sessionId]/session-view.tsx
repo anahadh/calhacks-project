@@ -58,12 +58,13 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   };
 
   // ?view=agents opens straight onto the Agents tab; ?demo=1 plays the scripted negotiation there.
-  // The negotiation room runs on the live rows; ?demo=1 plays the scripted version instead; ?demo=0 the classic Agent Room.
-  const [demo, setDemo] = useState<"live" | "script" | "classic">("live");
+  // The scripted negotiation plays by default (the real round runs underneath and its recommendation lands in
+  // the footer); ?demo=live shows the room on the real rows; ?demo=0 the classic Agent Room.
+  const [demo, setDemo] = useState<"live" | "script" | "classic">("script");
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.get("view") === "agents") setView("agents");
-    if (q.get("demo") === "1") setDemo("script");
+    if (q.get("demo") === "live") setDemo("live");
     if (q.get("demo") === "0") setDemo("classic");
   }, []);
 
