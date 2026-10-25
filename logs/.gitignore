@@ -1,0 +1,3 @@
+# demo.py logs (logs/demo/<piece>.log, state.json): local only
+*
+!.gitignore
