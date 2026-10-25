@@ -43,7 +43,6 @@ export function TimelineNotes({
   const layer = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<{ tick: number; text: string } | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [hoverId, setHoverId] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const pct = (tick: number) => `${(Math.min(tick, span) / span) * 100}%`;
@@ -102,7 +101,6 @@ export function TimelineNotes({
   };
 
   const open = notes.find((n) => n.id === openId);
-  const hover = !open && !draft ? notes.find((n) => n.id === hoverId) : undefined;
 
   return (
     <div ref={layer} className="pointer-events-none absolute inset-0 [&>*]:pointer-events-auto">
@@ -123,30 +121,31 @@ export function TimelineNotes({
             setDraft(null);
             setOpenId(openId === n.id ? null : n.id);
           }}
-          onMouseEnter={() => setHoverId(n.id)}
-          onMouseLeave={() => setHoverId(null)}
-          onFocus={() => setHoverId(n.id)}
-          onBlur={() => setHoverId(null)}
           aria-label={`Note at ${tickClock(n.tick!)} by ${n.authorName}: ${n.note}`}
-          className="absolute -top-1.5 z-10 flex h-[22px] w-5 -translate-x-1/2 items-end justify-center"
+          // A 32px hit area around the glyph, above the current-tick marker, so the caret is easy to hover.
+          className="group absolute -top-2.5 z-20 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-ctl hover:bg-select-wash focus-visible:bg-select-wash"
           style={{ left: pct(n.tick!) }}
         >
-          <svg width="10" height="8" viewBox="0 0 10 8" aria-hidden>
-            <path d="M0 0h10L5 8z" fill={openId === n.id ? "#E9ECEE" : "#A1A8AE"} />
+          <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden>
+            <path
+              d="M0 0h14L7 10z"
+              className={openId === n.id ? "fill-select" : "fill-[#A1A8AE] group-hover:fill-select group-focus-visible:fill-select"}
+            />
           </svg>
+          {/* Shown by CSS :hover / :focus-visible, not React mouse state: the browser can fire a
+              leave and re-enter without the pointer moving, which left a state-driven tooltip hidden. */}
+          {!draft && openId !== n.id && (
+            <span
+              role="tooltip"
+              aria-hidden
+              className={`pointer-events-none absolute bottom-full z-30 mb-1 hidden w-[260px] flex-col gap-1.5 rounded-ctl border border-line2 bg-panel2 p-3 text-left group-hover:flex group-focus-visible:flex ${edge(n.tick! / span)}`}
+            >
+              <NoteByline note={n} />
+              <span className="text-sm leading-[21px] text-ink">{n.note}</span>
+            </span>
+          )}
         </button>
       ))}
-
-      {hover && (
-        <div
-          role="tooltip"
-          className="pointer-events-none absolute bottom-5 z-30 flex w-[260px] -translate-x-1/2 flex-col gap-1.5 rounded-ctl border border-line2 bg-panel2 p-3"
-          style={{ left: `clamp(130px, ${pct(hover.tick!)}, calc(100% - 130px))` }}
-        >
-          <NoteByline note={hover} />
-          <span className="text-sm leading-[21px] text-ink">{hover.note}</span>
-        </div>
-      )}
 
       {draft && (
         <Popover tick={draft.tick} pct={pct}>
@@ -208,6 +207,11 @@ export function TimelineNotes({
       )}
     </div>
   );
+}
+
+/** Keeps a 260px tooltip inside the rail: anchored left near the start, right near the end. */
+function edge(frac: number): string {
+  return frac < 0.15 ? "left-0" : frac > 0.85 ? "right-0" : "left-1/2 -translate-x-1/2";
 }
 
 function NoteByline({ note }: { note: AnnotationRow }) {
