@@ -359,3 +359,11 @@ def test_model_claiming_a_round_started_without_starting_one_is_corrected(coord,
     monkeypatch.setattr(c.brain, "respond", liar)
     run(c.chat_turn(c.ctx_stub(), "agent1qs", "do the thing with the scanner"))
     assert "started" not in sent[-1][3].split("(")[0] or "didn't start" in sent[-1][3]
+
+
+def test_hospital_card_and_result_card_carry_the_hosted_floor_image(coord, monkeypatch):
+    import json
+    c, sent = coord
+    monkeypatch.delenv("IMAGE_BASE_URL", raising=False)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "let me view my hospital"))
+    assert "https://hippocratech.vercel.app/api/floor" in json.dumps(sent[-1][4])

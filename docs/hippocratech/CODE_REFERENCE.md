@@ -119,6 +119,7 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 
 | Path | Owner | Role |
 |---|---|---|
+| `apps/web/app/api/floor/route.tsx` | F1 | The hospital floor as a PNG (`next/og` ImageResponse, edge) for ASI:One cards: `?start=&infected=&after=` lights up devices; with `after`, without/with the plan side by side. Drawn from `data/hospitals/demo.json` and the ids in the URL only; the agents link it via `viz.floor_url()` (`IMAGE_BASE_URL`, default `https://hippocratech.vercel.app`) |
 | `agents/protocol.py` | F1 | `Proposal`, `Verdict`, `Constraint`, `Revision`, `Question`, `Answer`, `Recommendation`; `Policy`/`PolicyRule`; draft `RunResult`; `Candidate`; REST requests `StartRound`, `Reassess`, `Resume`; Coordinator messages `ProposalRequest`, `RoundState`. All reject extra fields |
 | `agents/inventory.py` | F1 | Inventory uAgent: preflight on round 1's request, `check` on each candidate (Question before Verdict), applies Answers |
 | `agents/flow.py` | F1 | Flow uAgent: `optimize()` without protected-flow info, `run_sim` per candidate, `logic.flow.choose`; Proposal or Revision. `llm.propose()` fallback later |

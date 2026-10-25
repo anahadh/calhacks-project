@@ -214,7 +214,7 @@ def hospital_card(h: HospitalIndex, on_network: list[str], image_src: str | None
         item([group([badge(h.zone(d).replace("_", " "), "info"), text(device_name(h, d), "body")], direction="row", gap=8)],
              "simulate", device=d) for d in picks]}
     root = section(f"{h.name}" if hasattr(h, "name") else "Your hospital",
-                   image(image_src, "Floor plan of the hospital") + [floor_tiles(h), stats, DIVIDER,
+                   (image(image_src, "Floor plan of the hospital") or [floor_tiles(h)]) + [stats, DIVIDER,
                     text("Tap a device to simulate a ransomware attack starting there:", "muted"), rows],
                    subtitle="Synthetic hospital · simulation only")
     return message(bubble, root, True)

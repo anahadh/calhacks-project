@@ -51,3 +51,13 @@ def test_before_after_fits_in_a_card_with_the_chart():
     pair = viz.before_after(h, "mri_2", {"mri_2", "srv_pacs", "srv_file", "ws_lab_1"}, {"mri_2"})
     chart = viz.negotiation_chart("MRI 2", 9, ROWS)
     assert len(viz.data_uri(pair)) + len(viz.data_uri(chart)) < 60_000
+
+
+def test_floor_urls_point_at_the_hosted_image_route(monkeypatch):
+    monkeypatch.delenv("IMAGE_BASE_URL", raising=False)
+    assert viz.floor_url() == "https://hippocratech.vercel.app/api/floor"
+    u = viz.floor_url(start="mri_2", infected={"srv_pacs", "mri_2"}, after={"mri_2"})
+    assert u.startswith("https://hippocratech.vercel.app/api/floor?") and "start=mri_2" in u
+    assert "infected=mri_2%2Csrv_pacs" in u and "after=mri_2" in u
+    monkeypatch.setenv("IMAGE_BASE_URL", "https://example.dev/")
+    assert viz.floor_url().startswith("https://example.dev/api/floor")

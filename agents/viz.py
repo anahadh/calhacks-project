@@ -5,6 +5,8 @@ Drawn in code from the round's messages (rule 16); a small PNG, inlined as a dat
 
 import base64
 import io
+import os
+from urllib.parse import urlencode
 from dataclasses import dataclass, field
 
 from PIL import Image, ImageDraw, ImageFont
@@ -164,3 +166,20 @@ def before_after(h, patient_zero: str, before: set, after: set) -> bytes:
         d.text((k * w + PAD, 16), f"{label}: {len(infected)} infected", font=_font(22), fill=INK)
         img.paste(_floor(h, w, fh, set(infected), patient_zero, label_rooms=False), (k * w, 60))
     return _png(img)
+
+
+
+def floor_url(start: str | None = None, infected=None, after=None, title: str | None = None) -> str:
+    """The floor plan drawn by the web app's /api/floor route on Vercel (an https image ASI:One
+    can fetch; nothing is uploaded: the device ids are in the URL)."""
+    base = (os.environ.get("IMAGE_BASE_URL", "").strip() or "https://hippocratech.vercel.app").rstrip("/")
+    q = {}
+    if start:
+        q["start"] = start
+    if infected:
+        q["infected"] = ",".join(sorted(infected))
+    if after is not None:
+        q["after"] = ",".join(sorted(after))
+    if title:
+        q["title"] = title
+    return f"{base}/api/floor" + (f"?{urlencode(q)}" if q else "")
