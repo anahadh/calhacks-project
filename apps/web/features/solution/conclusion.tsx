@@ -3,18 +3,18 @@
 import { useMemo, useState } from "react";
 import { SPEAKER_COLOR, SPEAKER_LABEL } from "@/features/agents/agents";
 import { AgentGlyph } from "@/features/agents/agent-icon";
-import { lanesOf } from "@/features/agents/negotiation";
 import { ROLE_LABEL } from "@/lib/format";
-import type { DeviceStateRow, RecommendationRow, RunRow, SessionSnapshot } from "@/lib/stdb/types";
-import { diagramOf, dollars, moneyOf, savedBy, UNIT, type Diagram, type Money, type Saved } from "./estimate";
+import type { AgentId, AgentMessageRow, DeviceStateRow, RecommendationRow, RunRow, SessionSnapshot } from "@/lib/stdb/types";
+import { dollars, moneyOf, savedBy, UNIT, type Money, type Saved } from "./estimate";
 import type { Segment } from "./pair";
 
-// The conclusion under the split screen, as cards: first the decision card
-// (the plan, its numbers, who signs off, and Approve); once a person approves
-// it here, the outcome card: what the plan saved, the money estimate, the
-// segmentation as a diagram, and the four agents' part in it. Approval here is
-// this browser's step through the demo: it writes nothing (AGENTS.md rule 9),
-// and the card says so. Every count is a run row's column or a hospital row.
+// The conclusion under the split screen, as two cards. First the decision card
+// (the plan, two numbers, who signs off, Approve). Once a person approves it
+// here, the outcome card: the money, what the plan spared, the segmentation in
+// words, and what the agents negotiated over, as one bar per agent. Approval
+// here is this browser's step through the demo: it writes nothing (AGENTS.md
+// rule 9), and the card says so. Counts are run rows' columns; the rest is the
+// round's agent_message rows, reshaped.
 
 export function Conclusion({
   session,
@@ -33,13 +33,14 @@ export function Conclusion({
 }) {
   const [approved, setApproved] = useState<{ name: string; role: string } | null>(null);
   const saved = savedBy(session.hospital, none, plan);
-  const diagram = useMemo(() => diagramOf(session.hospital, planDevices, plan?.removedFlows ?? []), [session.hospital, planDevices, plan?.removedFlows]);
   const money = rec && saved ? moneyOf(rec.rules.length, segments.length, saved) : undefined;
-  const roundMessages = useMemo(
-    () => session.messages.filter((m) => (rec ? m.round <= rec.round : true) && m.type !== "chat"),
+  const messages = useMemo(
+    () => session.messages.filter((m) => (rec ? m.round <= rec.round : true) && m.type !== "chat" && m.type !== "request"),
     [session.messages, rec],
   );
-  const lanes = useMemo(() => lanesOf(roundMessages, [], { state: "done", round: rec?.round ?? 0 }), [roundMessages, rec?.round]);
+  const name = (id: string) => session.hospital.devices.find((d) => d.id === id)?.name ?? session.hospital.services.find((s) => s.id === id)?.name ?? id;
+  const concessions = useMemo(() => concessionsOf(messages, rec?.round ?? 0, name), [messages, rec?.round]); // eslint-disable-line react-hooks/exhaustive-deps
+  const infectedSeg = segments.find((s) => s.infected > 0);
 
   if (!rec) return null;
 
@@ -54,13 +55,15 @@ export function Conclusion({
     );
   }
 
+  const crossing = session.hospital.flows.filter((f) => f.protected && f.active !== false && !(plan?.protectedBroken ?? []).includes(f.id)).length;
+
   return (
     <section aria-labelledby="outcome" className="panel flex flex-col gap-6 p-5 md:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <span className="eyebrow">Outcome · {rec.name}</span>
           <h2 id="outcome" className="m-0 mt-1 text-[26px] leading-8 text-ink">
-            {saved ? `${saved.before.devices} → ${saved.after.devices} machines compromised` : "Waiting for both replays to settle"}
+            {infectedSeg ? `The attack stayed inside ${infectedSeg.name}.` : saved ? "The attack went nowhere." : "Waiting for both replays to settle."}
           </h2>
         </div>
         <span className="num inline-flex h-9 items-center gap-2 rounded-ctl border border-line2 px-3 text-[13px] text-ink-muted">
@@ -69,15 +72,12 @@ export function Conclusion({
         </span>
       </div>
 
-      {saved && <SavedTiles saved={saved} />}
-
-      <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
-        <SegmentDiagram diagram={diagram} rules={rec.rules} />
-        <div className="flex flex-col gap-6">
-          {money && <MoneyCard money={money} />}
-          <AgentsStrip lanes={lanes} rec={rec} />
-        </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {money && saved && <MoneyCard money={money} saved={saved} />}
+        <SegmentationCard segments={segments} cuts={plan?.removedFlows.length ?? 0} crossing={crossing} />
       </div>
+
+      <ConcessionsCard rows={concessions} rounds={rec.round} />
 
       <p className="num m-0 text-[11px] text-ink-faint">
         Approval here moves the demo forward and writes nothing: no network changes, and only humans decide what gets deployed. Dollar figures are illustrative estimates over the simulation's counts.
@@ -87,7 +87,6 @@ export function Conclusion({
 }
 
 function DecisionCard({ rec, saved, me, onApprove }: { rec: RecommendationRow; saved?: Saved; me?: SessionSnapshot["me"]; onApprove: () => void }) {
-  const roles = rec.requiredRoles.map((r) => ROLE_LABEL[r]);
   const mine = me && rec.requiredRoles.includes(me.role as (typeof rec.requiredRoles)[number]);
   return (
     <section aria-labelledby="decision" className="panel flex flex-col gap-5 p-5 md:p-6">
@@ -105,18 +104,16 @@ function DecisionCard({ rec, saved, me, onApprove }: { rec: RecommendationRow; s
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line md:grid-cols-4">
-        <Tile label="Machines compromised" value={rec.verified.devicesCompromised} note={saved ? `${saved.before.devices} without the plan` : undefined} />
-        <Tile label="Patients affected" value={rec.verified.patientsAffected} note={saved ? `${saved.before.patients} without the plan` : undefined} />
-        <Tile label="Connections cut" value={rec.verified.removedFlows.length} note={`${rec.rules.length} allow ${rec.rules.length === 1 ? "rule" : "rules"}`} />
-        <Tile label="Protected flows cut" value={rec.verified.protectedBroken.length} note={rec.verified.protectedBroken.length ? undefined : "care keeps flowing"} />
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line">
+        <Tile label="Machines compromised" value={rec.verified.devicesCompromised} note={saved ? `${saved.before.devices} without the plan` : "vs the run on the left"} />
+        <Tile label="Patients affected" value={rec.verified.patientsAffected} note={saved ? `${saved.before.patients} without the plan` : "vs the run on the left"} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="num text-[12px] text-ink-faint">Must sign off:</span>
-          {roles.map((r) => (
-            <Badge key={r} tone="warn">{r}</Badge>
+          {rec.requiredRoles.map((r) => (
+            <Badge key={r} tone="warn">{ROLE_LABEL[r]}</Badge>
           ))}
         </div>
         <button
@@ -134,42 +131,21 @@ function DecisionCard({ rec, saved, me, onApprove }: { rec: RecommendationRow; s
   );
 }
 
-function SavedTiles({ saved }: { saved: Saved }) {
-  const tiles = [
-    { label: "Machines kept clean", value: saved.machines, of: saved.before.devices, bar: "bg-state-healthy" },
-    { label: "Patients kept on normal care", value: saved.patients, of: saved.before.patients, bar: "bg-state-ok" },
-    { label: "Services kept running", value: saved.services, of: saved.before.services, bar: "bg-ink-muted" },
-    { label: "Protected flows intact", value: saved.flowsIntact, of: saved.flowsTotal, bar: "bg-state-zone" },
-  ];
-  return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line md:grid-cols-4">
-      {tiles.map((t) => (
-        <div key={t.label} className="min-w-0 bg-panel px-4 py-3">
-          <div className="eyebrow !tracking-[0.1em]">{t.label}</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="readout text-readout-l text-ink">{t.value}</span>
-            <small className="num text-[13px] text-ink-muted">/ {t.of}</small>
-          </div>
-          <div className="mt-2 h-[3px] overflow-hidden rounded-sm bg-line2">
-            <i className={`block h-full rounded-sm ${t.bar}`} style={{ width: `${t.of ? Math.min(100, (t.value / t.of) * 100) : 0}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MoneyCard({ money }: { money: Money }) {
+/** The money, and in the same card the two things it buys: machines and patients kept out of it. */
+function MoneyCard({ money, saved }: { money: Money; saved: Saved }) {
   const max = Math.max(money.implement, money.avoided, 1);
   const ratio = money.implement ? money.avoided / money.implement : 0;
   return (
-    <section aria-labelledby="money" className="flex flex-col gap-3 rounded-panel border border-line bg-panel2 p-4">
+    <section aria-labelledby="money" className="flex flex-col gap-4 rounded-panel border border-line bg-panel2 p-4">
       <div className="flex items-baseline justify-between">
-        <h3 id="money" className="eyebrow m-0">Estimated cost · this attack</h3>
+        <h3 id="money" className="eyebrow m-0">The money · this attack</h3>
         {ratio >= 1 && <span className="num text-[12px] text-ink-muted">pays back {ratio.toFixed(1)}× in one incident</span>}
       </div>
       <Bar label="To put the plan in place" value={money.implement} max={max} color="#A1A8AE" />
       <Bar label="Avoided in this attack" value={money.avoided} max={max} color="#4DB0FF" />
+      <p className="m-0 text-[15px] leading-6 text-ink">
+        <span className="readout text-readout-m">{saved.machines}</span> machines and <span className="readout text-readout-m">{saved.patients}</span> patients kept out of it.
+      </p>
       <details className="num text-[12px] text-ink-faint">
         <summary className="cursor-pointer">How this is estimated</summary>
         <ul className="m-0 mt-2 flex list-none flex-col gap-1 p-0">
@@ -200,91 +176,109 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
   );
 }
 
-/** The segmentation as a ring of zones: solid lines are connections the plan keeps, dashed red ones it cut. */
-function SegmentDiagram({ diagram, rules }: { diagram: Diagram; rules: string[] }) {
-  const pos = new Map(diagram.nodes.map((n) => [n.zone, n]));
-  const cuts = diagram.edges.reduce((a, e) => a + e.cut, 0);
-  const kept = diagram.edges.reduce((a, e) => a + e.kept, 0);
+/** The segmentation in words: the segments as halo chips, and what crosses between them. */
+function SegmentationCard({ segments, cuts, crossing }: { segments: readonly Segment[]; cuts: number; crossing: number }) {
   return (
-    <section aria-labelledby="diagram" className="flex flex-col gap-3 rounded-panel border border-line bg-panel2 p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 id="diagram" className="eyebrow m-0">The segmentation · {diagram.nodes.length} segments</h3>
-        <span className="num text-[12px] text-ink-muted">{kept} connections kept between segments · {cuts} cut</span>
-      </div>
-      <svg viewBox={`0 0 ${diagram.width} ${diagram.height}`} className="h-auto w-full" role="img" aria-label="Segments and the connections between them">
-        {diagram.edges.map((e) => {
-          const a = pos.get(e.from)!;
-          const b = pos.get(e.to)!;
-          const mx = (a.x + b.x) / 2;
-          const my = (a.y + b.y) / 2;
-          return (
-            <g key={`${e.from}|${e.to}`}>
-              {e.kept > 0 && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={e.protectedKept ? "#4DB0FF" : "#7D858B"} strokeWidth={Math.min(1 + e.kept, 5)} opacity={0.9} />}
-              {e.cut > 0 && e.kept === 0 && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#FF6A2E" strokeWidth={1.4} strokeDasharray="5 5" opacity={0.8} />}
-              {e.cut > 0 && (
-                <g transform={`translate(${mx} ${my})`}>
-                  <circle r={10} fill="#131618" stroke="#FF6A2E" strokeWidth={1.2} />
-                  <text textAnchor="middle" dominantBaseline="central" className="fill-[#FF6A2E] font-mono text-[11px]">{e.cut}✕</text>
-                </g>
-              )}
-            </g>
-          );
-        })}
-        {diagram.nodes.map((n) => (
-          <g key={n.zone} transform={`translate(${n.x} ${n.y})`}>
-            <circle r={30} fill="#131618" stroke={n.color} strokeWidth={n.infected ? 2.5 : 1.5} />
-            <circle r={30} fill={n.color} opacity={n.infected ? 0.22 : 0.1} />
-            <text textAnchor="middle" dominantBaseline="central" y={-4} className="fill-[#E9ECEE] font-mono text-[13px]">
-              {n.infected ? `${n.infected}/${n.devices}` : n.devices}
-            </text>
-            <text textAnchor="middle" dominantBaseline="central" y={11} className="fill-[#7D858B] font-mono text-[9px]">
-              {n.infected ? "infected" : "devices"}
-            </text>
-            <text textAnchor="middle" y={48} className="font-mono text-[11px]" style={{ fill: n.color }}>
-              {n.name.toUpperCase()}
-            </text>
-          </g>
+    <section aria-labelledby="segmentation" className="flex flex-col gap-3 rounded-panel border border-line bg-panel2 p-4">
+      <h3 id="segmentation" className="eyebrow m-0">The segmentation</h3>
+      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+        {segments.map((s) => (
+          <li key={s.zone} className="num inline-flex h-8 items-center gap-2 rounded-ctl border border-line2 px-2.5 text-[12px] text-ink">
+            <span aria-hidden className="h-3.5 w-3.5 rounded-full border-2" style={{ borderColor: s.color, background: s.infected > 0 ? "#FF6A2E44" : "transparent" }} />
+            {s.name}
+            <span className={s.infected > 0 ? "text-state-infected" : "text-ink-faint"}>{s.infected > 0 ? `${s.infected}/${s.total}` : s.total}</span>
+          </li>
         ))}
-      </svg>
-      <ul className="num m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[11px] text-ink-muted">
-        <li><span className="mr-1.5 inline-block h-0.5 w-5 bg-state-healthy align-middle" />protected connection kept</li>
-        <li><span className="mr-1.5 inline-block h-0.5 w-5 bg-ink-faint align-middle" />connection kept</li>
-        <li><span className="mr-1.5 inline-block h-0.5 w-5 border-t border-dashed border-state-infected align-middle" />cut by the plan</li>
       </ul>
-      <div className="flex flex-wrap gap-1.5">
-        {rules.slice(0, 6).map((r, i) => (
-          <Badge key={i} tone="info">{r}</Badge>
-        ))}
-        {rules.length > 6 && <Badge tone="info">+{rules.length - 6} more rules</Badge>}
-      </div>
+      <p className="m-0 text-[14px] leading-6 text-ink-muted">
+        {segments.length} segments, each a group of machines that can still reach each other. File sharing and remote desktop no longer cross between them
+        ({cuts} links cut); scans, vitals and charts still do ({crossing} protected clinical connections kept). An attack fills its own segment and stops at the edge.
+      </p>
     </section>
   );
 }
 
-/** The four agents' part in this plan: their verdicts on it, and their tallies for the round. */
-function AgentsStrip({ lanes, rec }: { lanes: ReturnType<typeof lanesOf>; rec: RecommendationRow }) {
-  const verdict = new Map(rec.verdicts.map((v) => [v.agent, v.decision]));
+// --- What the agents negotiated over: one bar per agent, from the round's rows ---
+
+type ConcessionRow = {
+  agent: AgentId;
+  /** What the agent held out for, in words. */
+  what: string;
+  /** How much it got: targets kept, questions answered, links given back, rounds run. */
+  value: number;
+  unit: string;
+};
+
+/**
+ * Clinical Workflow: the connections and services its rejections made the plan keep.
+ * Inventory: the devices it would not touch until a human named them. Flow: the
+ * links it gave back to care after rejections (the same targets, from its side).
+ * Coordinator: the rounds it ran. Nothing is inferred beyond reading the rows.
+ */
+export function concessionsOf(messages: readonly AgentMessageRow[], rounds: number, name: (id: string) => string): ConcessionRow[] {
+  const by = (agent: AgentId) => messages.filter((m) => m.from === agent);
+  const targets = (agent: AgentId, kinds: string[]) =>
+    [...new Set(by(agent).filter((m) => m.type === "reject" && m.constraint && kinds.includes(m.constraint.kind)).flatMap((m) => m.constraint!.targetIds))];
+  const clinical = targets("clinical_workflow", ["keep_flow", "keep_service"]);
+  const inventory = [...new Set([...targets("inventory", ["confirm_device"]), ...by("inventory").filter((m) => m.type === "question").map((m) => m.reason)])];
+  const questions = by("inventory").filter((m) => m.type === "question").length;
+  const gaveBack = [...new Set([...clinical, ...targets("inventory", ["keep_flow", "keep_service"])])];
+  const revisions = by("flow").filter((m) => m.type === "revision").length;
+  const few = (ids: string[], n = 2) => (ids.length <= n ? ids.map(name).join(", ") : `${ids.slice(0, n).map(name).join(", ")} +${ids.length - n}`);
+  return [
+    {
+      agent: "clinical_workflow",
+      what: clinical.length ? `insisted the plan keep ${few(clinical)}` : "accepted the first plan as it was",
+      value: clinical.length,
+      unit: clinical.length === 1 ? "connection kept" : "connections kept",
+    },
+    {
+      agent: "inventory",
+      what: questions ? `stopped to ask a person about ${few(targets("inventory", ["confirm_device"]))}` : "could name every device the plan touches",
+      value: inventory.length,
+      unit: inventory.length === 1 ? "device confirmed" : "devices confirmed",
+    },
+    {
+      agent: "flow",
+      what: gaveBack.length ? `gave ${gaveBack.length} ${gaveBack.length === 1 ? "link" : "links"} back to care and redrew the plan ${revisions}×` : "kept its first plan",
+      value: gaveBack.length,
+      unit: gaveBack.length === 1 ? "link given back" : "links given back",
+    },
+    {
+      agent: "coordinator",
+      what: `ran ${rounds} ${rounds === 1 ? "round" : "rounds"} and routed every plan to both reviewers`,
+      value: rounds,
+      unit: rounds === 1 ? "round" : "rounds",
+    },
+  ];
+}
+
+function ConcessionsCard({ rows, rounds }: { rows: ConcessionRow[]; rounds: number }) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
   return (
-    <section aria-labelledby="agents" className="flex flex-col gap-2 rounded-panel border border-line bg-panel2 p-4">
-      <h3 id="agents" className="eyebrow m-0">The four agents</h3>
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {lanes.map((l) => {
-          const v = verdict.get(l.agent);
-          return (
-            <li key={l.agent} className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex w-[150px] items-center gap-2 text-[13px]" style={{ color: SPEAKER_COLOR[l.agent] }}>
-                <AgentGlyph who={l.agent} size={14} />
-                {SPEAKER_LABEL[l.agent].replace(" Agent", "")}
+    <section aria-labelledby="negotiated" className="flex flex-col gap-3 rounded-panel border border-line bg-panel2 p-4">
+      <div className="flex items-baseline justify-between">
+        <h3 id="negotiated" className="eyebrow m-0">What they negotiated over</h3>
+        <span className="num text-[12px] text-ink-faint">{rounds} {rounds === 1 ? "round" : "rounds"}</span>
+      </div>
+      <ul className="m-0 flex list-none flex-col gap-3 p-0" role="list">
+        {rows.map((r) => (
+          <li key={r.agent} className="grid grid-cols-[150px_minmax(0,1fr)] items-center gap-x-4 gap-y-1 sm:grid-cols-[170px_minmax(0,1fr)_minmax(0,1.6fr)]">
+            <span className="inline-flex items-center gap-2 text-[13px]" style={{ color: SPEAKER_COLOR[r.agent] }}>
+              <AgentGlyph who={r.agent} size={14} />
+              {SPEAKER_LABEL[r.agent].replace(" Agent", "")}
+            </span>
+            <div className="flex items-center gap-3" title={`${r.value} ${r.unit}`}>
+              <div className="h-3 flex-grow overflow-hidden rounded-[2px] bg-line2">
+                <span className="block h-full rounded-[2px] transition-[width] duration-fade ease-breath" style={{ width: `${(r.value / max) * 100}%`, background: SPEAKER_COLOR[r.agent] }} />
+              </div>
+              <span className="num w-[132px] shrink-0 text-[12px] text-ink">
+                {r.value} {r.unit}
               </span>
-              {l.agent === "flow" && <Badge tone="info">◆ proposed</Badge>}
-              {l.agent === "coordinator" && <Badge tone="info">■ published option {rec.option}</Badge>}
-              {v && <Badge tone={v === "accept" ? "ok" : "warn"}>{v === "accept" ? "● accepted" : "✕ rejected"}</Badge>}
-              {l.badges.filter((b) => !/accepted|rejected/.test(b.label)).map((b) => (
-                <Badge key={b.label} tone={b.tone}>{b.label}</Badge>
-              ))}
-            </li>
-          );
-        })}
+            </div>
+            <p className="col-span-2 m-0 text-[13px] leading-5 text-ink-muted sm:col-span-1">{r.what}</p>
+          </li>
+        ))}
       </ul>
     </section>
   );
@@ -304,9 +298,8 @@ function Tile({ label, value, note }: { label: string; value: number; note?: str
   return (
     <div className="min-w-0 bg-panel px-4 py-3">
       <div className="eyebrow !tracking-[0.1em]">{label}</div>
-      <div className="readout mt-1 text-readout-m text-ink">{value}</div>
+      <div className="readout mt-1 text-readout-l text-ink">{value}</div>
       {note && <div className="num mt-1 text-[12px] text-ink-muted">{note}</div>}
     </div>
   );
 }
-

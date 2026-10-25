@@ -20,6 +20,7 @@ export function PlanArcs({
   stops,
   keptAcross,
   floorId,
+  showArcs = true,
 }: {
   hospital: Hospital;
   /** The flows the plan removed (run.removedFlows). */
@@ -29,6 +30,8 @@ export function PlanArcs({
   /** Kept flows whose two ends are in different segments. */
   keptAcross: readonly Flow[];
   floorId?: string;
+  /** false: only the ✕ marks where the attack met a cut, no arcs (the halo view). */
+  showArcs?: boolean;
 }) {
   const { arcs, marks } = useMemo(() => {
     const device = new Map(hospital.devices.map((d) => [d.id, d]));
@@ -66,7 +69,7 @@ export function PlanArcs({
 
   return (
     <>
-      {arcs.map((a) => (
+      {showArcs && arcs.map((a) => (
         <NetworkArc key={a.key} arc={a} />
       ))}
       {marks.map((m) => (

@@ -18,7 +18,7 @@ import {
 } from "./pair";
 import { Conclusion } from "./conclusion";
 import { PlanArcs } from "./plan-arcs";
-import { SegmentOutlines } from "./segment-outlines";
+import { SegmentHalos } from "./segment-halos";
 
 // The segmentation plan screen (UX.md "Solution view"): the same attack
 // replayed on the clinic with the plan in place, drawn exactly as the
@@ -162,8 +162,8 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     floorId={floor === "all" ? undefined : floor}
                     view={roleView}
                   >
-                    <SegmentOutlines hospital={hospital} segments={segments} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
-                    <PlanArcs hospital={hospital} cut={flows.cut} stops={stops} keptAcross={keptAcross} floorId={floor === "all" ? undefined : floor} />
+                    <SegmentHalos hospital={hospital} segments={segments} devices={rows.devices} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
+                    <PlanArcs hospital={hospital} cut={flows.cut} stops={stops} keptAcross={keptAcross} floorId={floor === "all" ? undefined : floor} showArcs={false} />
                   </HospitalScene>
                 </SceneBoundary>
               </div>
@@ -418,7 +418,7 @@ function Saved({ deltas, pending }: { deltas: Delta[]; pending: string | null })
 function Segments({ segments, hovered, onHover }: { segments: Segment[]; hovered: string | null; onHover: (zone: string | null) => void }) {
   return (
     <section aria-labelledby="segments" className="flex flex-col gap-3">
-      <h2 id="segments" className="eyebrow m-0">Segments the plan makes · {segments.length}</h2>
+      <h2 id="segments" className="eyebrow m-0">Segments the plan makes · {segments.length} · the halos</h2>
       <ul className="m-0 flex list-none flex-col overflow-hidden rounded-panel border border-line p-0" onMouseLeave={() => onHover(null)}>
         {segments.map((s) => {
           const lit = s.infected > 0 || hovered === s.zone;
@@ -430,8 +430,8 @@ function Segments({ segments, hovered, onHover }: { segments: Segment[]; hovered
             >
               <span
                 aria-hidden
-                className="h-3 w-3 shrink-0 rounded-[2px] border-[1.5px]"
-                style={{ borderColor: s.color, background: s.infected > 0 ? `${s.color}33` : "transparent" }}
+                className="h-3.5 w-3.5 shrink-0 rounded-full border-2"
+                style={{ borderColor: s.color, background: s.infected > 0 ? "#FF6A2E44" : "transparent" }}
               />
               <span className="min-w-0 flex-auto truncate text-ink">{s.name}</span>
               <span className="text-ink-muted">{s.floors}</span>
@@ -469,10 +469,8 @@ function Legend() {
         Infection path
       </li>
       <li className="inline-flex items-center gap-2">
-        <svg width="22" height="8" viewBox="0 0 22 8" aria-hidden>
-          <path d="M1 7Q11 -1 21 7" fill="none" stroke="#6B7378" strokeWidth="1.5" strokeDasharray="3 2" />
-        </svg>
-        Cut by the plan
+        <span aria-hidden className="h-3.5 w-3.5 rounded-full border-2" style={{ borderColor: "#B08CFF" }} />
+        Halo: its segment (same color = still connected)
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="font-disp grid h-4 w-4 place-items-center rounded-full border border-state-infected text-[10px] font-bold text-state-infected">✕</span>

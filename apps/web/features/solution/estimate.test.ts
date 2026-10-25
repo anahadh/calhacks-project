@@ -70,3 +70,4 @@ describe("diagramOf", () => {
     expect(d.nodes.every((n) => n.x >= 0 && n.x <= d.width && n.y >= 0 && n.y <= d.height)).toBe(true);
   });
 });
+
