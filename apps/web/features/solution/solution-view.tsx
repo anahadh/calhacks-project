@@ -13,11 +13,10 @@ import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
 import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import {
-  beforeAfter, cutStops, pairClock, pairRefusal, pairTarget, planFlows, planSegmentsOf, sceneOf, stripPending, withoutSegmentation,
+  beforeAfter, pairClock, pairRefusal, pairTarget, planFlows, planSegmentsOf, sceneOf, stripPending, withoutSegmentation,
   type Delta, type Segment,
 } from "./pair";
 import { Conclusion } from "./conclusion";
-import { PlanArcs } from "./plan-arcs";
 import { SegmentHalos } from "./segment-halos";
 
 // The segmentation plan screen (UX.md "Solution view"): the same attack
@@ -55,11 +54,6 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const segments = useMemo(() => planSegmentsOf(hospital, planScene.devices, planRun?.removedFlows ?? []), [hospital, planScene.devices, planRun?.removedFlows]);
   const segmentOf = useMemo(() => new Map(segments.flatMap((s) => s.deviceIds.map((id) => [id, s.zone] as const))), [segments]);
   const hoveredZone = hovered ? segmentOf.get(hovered) ?? null : null;
-  const stops = useMemo(() => cutStops(flows.cut, rows.devices), [flows.cut, rows.devices]);
-  const keptAcross = useMemo(
-    () => flows.kept.filter((f) => segmentOf.get(f.from) !== segmentOf.get(f.to) && (f.protected || f.protocol === "smb" || f.protocol === "rdp")),
-    [flows.kept, segmentOf],
-  );
   const rowsError = base.error ?? rows.error;
   // The side column: this step's count on both sides, and the final numbers once each side is done.
   const infectedNow = planScene.devices.filter((d) => d.infected).length;
@@ -163,7 +157,6 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     view={roleView}
                   >
                     <SegmentHalos hospital={hospital} segments={segments} devices={rows.devices} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
-                    <PlanArcs hospital={hospital} cut={flows.cut} stops={stops} keptAcross={keptAcross} floorId={floor === "all" ? undefined : floor} showArcs={false} />
                   </HospitalScene>
                 </SceneBoundary>
               </div>
@@ -471,10 +464,6 @@ function Legend() {
       <li className="inline-flex items-center gap-2">
         <span aria-hidden className="h-3.5 w-3.5 rounded-full border-2" style={{ borderColor: "#B08CFF" }} />
         Halo: its segment (same color = still connected)
-      </li>
-      <li className="inline-flex items-center gap-2">
-        <span className="font-disp grid h-4 w-4 place-items-center rounded-full border border-state-infected text-[10px] font-bold text-state-infected">✕</span>
-        Stopped at a cut connection
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="h-2 w-2 rounded-full" style={{ background: "#6FCF97" }} />
