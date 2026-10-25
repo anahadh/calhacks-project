@@ -74,7 +74,7 @@ export function AgentRoomFrame(props: {
   onClose?: () => void;
 }) {
   const { variant, messages, roundState, names, onClose } = props;
-  const shown = useRevealed(messages);
+  const { shown, skip } = useRevealed(messages);
   const newest = shown[shown.length - 1];
   // The rows may already say "done" while this tab is still revealing the thread one message at a
   // time (UX rule 5). Until the last row is on screen, the room reads as still negotiating: no
@@ -114,6 +114,12 @@ export function AgentRoomFrame(props: {
           {props.subtitle && <div className="num mt-1 text-[13px] text-ink-faint">{props.subtitle}</div>}
         </div>
         <div className="flex items-center gap-3">
+          {revealing && (
+            <button type="button" onClick={skip} className="num inline-flex h-9 items-center gap-2 rounded-ctl border border-line2 px-3 text-[13px] text-ink-muted hover:text-ink" title="Show every message that has already arrived">
+              Skip to result
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden><path d="M3 3.5 9 8l-6 4.5zM11 3h2v10h-2z" fill="currentColor" /></svg>
+            </button>
+          )}
           <RoundChip round={liveRound} />
           {cached && (
             <span className="num inline-flex h-9 items-center rounded-ctl border border-state-delayed/60 px-3 text-[13px] text-state-delayed" title="A real round recorded earlier, replayed through the relay">
@@ -218,7 +224,7 @@ function Tab({ on, onClick, children }: { on: boolean; onClick: () => void; chil
  * rows one every REVEAL_MS in seq order (UX rule 5). Returns the rows on screen,
  * each with the moment this tab showed it as a fallback clock.
  */
-function useRevealed(messages: readonly AgentMessageRow[]): (TimedMessage & { revealedAt?: number })[] {
+function useRevealed(messages: readonly AgentMessageRow[]): { shown: (TimedMessage & { revealedAt?: number })[]; skip: () => void } {
   const clock = useRef(new RevealClock());
   const [now, setNow] = useState(() => Date.now());
   const seqs = messages.map((m) => m.seq).join(",");
@@ -236,7 +242,7 @@ function useRevealed(messages: readonly AgentMessageRow[]): (TimedMessage & { re
     return () => window.clearTimeout(id);
   }, [now, seqs]);
 
-  return useMemo(
+  const shown = useMemo(
     () =>
       messages
         .filter((m) => clock.current.shown(m.seq, now))
@@ -246,6 +252,13 @@ function useRevealed(messages: readonly AgentMessageRow[]): (TimedMessage & { re
         }),
     [messages, now],
   );
+  // Skip to result: show everything that has already arrived (the reader asked to skip ahead).
+  const skip = () => {
+    const t = Date.now();
+    clock.current.flush(t);
+    setNow(t);
+  };
+  return { shown, skip };
 }
 
 function Party({ who }: { who: Speaker }) {
