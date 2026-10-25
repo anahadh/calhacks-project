@@ -185,7 +185,7 @@ def test_summary_failure_reaches_the_thread(coord, monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("card down")
 
-    monkeypatch.setattr(c.cards, "result_card", boom)
+    monkeypatch.setattr(c.cards, "report_card", boom)
     c.chats["s"] = c.ChatRound(sender="agent1qs", device_name="MRI 2")
     rec = type("Rec", (), {"policy": type("P", (), {"name": "X"})(), "testResult": type("T", (), {"infectedCount": 1})()})()
     rnd = type("R", (), {"state": "done", "round": 2, "sessionId": "s", "recommendation": rec, "baseline": None})()
@@ -281,7 +281,7 @@ def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, mo
     run(go())
     summary = next(x for x in sent if x[3] and "agents agree on" in x[3])
     assert policy.name in summary[3] and f"{base.infectedCount} → {res.infectedCount}" in summary[3]
-    assert summary[4] is not None and summary[4]["title"] == policy.name
+    assert summary[4] is not None and policy.name in summary[4]["root"]["title"] and "/api/floor" in json.dumps(summary[4])
     roster = sent[-1]
     assert roster[3].startswith("Here are the agents") and len(roster[4]["items"]) == 4
 
@@ -367,4 +367,4 @@ def test_hospital_card_and_result_card_carry_the_hosted_floor_image(coord, monke
     monkeypatch.delenv("IMAGE_BASE_URL", raising=False)
     run(c.chat_turn(c.ctx_stub(), "agent1qs", "let me view my hospital"))
     s = json.dumps(sent[-1][4])
-    assert "https://hippocratech.vercel.app/asi1/overview.png" in s or "floor_tiles" not in s
+    assert "hippocratech.vercel.app/asi1/overview.png" in s

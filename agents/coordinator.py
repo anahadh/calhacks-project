@@ -344,8 +344,11 @@ async def _summary(ctx: Context, rnd: Round) -> None:
             text = (f"✅ After {rounds_n} round{'s' if rounds_n != 1 else ''} the agents agree on **{rec.policy.name}**"
                     + (f": {before} → {rec.testResult.infectedCount} devices infected." if before is not None else ".")
                     + " It's a recommendation, not a decision: the people listed must sign off.")
-            hero = viz.scene_url(f"spread-{getattr(rnd, 'patient_zero', '')}")
-            await reply_card(ctx, c.sender, cards.result_card(H, rec, rnd.baseline, hero, text), rnd.sessionId)
+            start = getattr(rnd, "patient_zero", None)
+            before_after = viz.floor_url(start=start, infected={d.id for d in rnd.baseline.infectedDevices},
+                                         after={d.id for d in rec.testResult.infectedDevices}) if rnd.baseline else None
+            await reply_card(ctx, c.sender, cards.report_card(H, rec, rnd.baseline, list(c.trace), rnd.round, before_after,
+                                                              viz.scene_url(f"spread-{start}") if start else None, text), rnd.sessionId)
         else:
             await reply(ctx, c.sender, f"The agents couldn't agree on a plan after {rnd.round} rounds, so there is no recommendation.",
                         rnd.sessionId)

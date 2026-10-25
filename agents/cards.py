@@ -445,3 +445,47 @@ def live_card(lines: list[str], round: int, device_label: str, baseline_infected
     newest = narrate.pretty(agent_lines[-1]) if agent_lines else (narrate.pretty(lines[-1]) if lines else "Starting…")
     root = section(f"Round {round} · the agents are negotiating", children, subtitle=sub)
     return message(newest, root, False)
+
+
+
+def report_card(h: HospitalIndex, rec, baseline, trace: list[str], rounds: int, before_after: str | None,
+                scene: str | None, bubble: str) -> ChatMessage:
+    """The final result, one card: the live without/with-the-plan picture, the numbers, how
+    the agents got there round by round, the MCP calls, the 3D spread with no plan, and who
+    must sign off. Every value from the round's messages and the engine's results."""
+    after = rec.testResult
+    arrow = lambda b, a: f"{b} → {a}" if b is not None else str(a)
+    stat = lambda big, label: group([heading(big, 2), text(label, "muted")], gap=2)
+    mcp_calls = sum(1 for l in trace if " MCP " in l)
+    agent_moves = sum(1 for l in trace if TAG.match(l) and TAG.match(l).group("handle") != "hippocratech-coordinator")
+    stats = group([
+        stat(arrow(baseline.infectedCount if baseline else None, after.infectedCount), "devices infected"),
+        stat(arrow(affected(baseline) if baseline else None, affected(after)), "patients with care disrupted"),
+        stat(str(rounds), "rounds"), stat(str(agent_moves), "agent messages"), stat(str(mcp_calls), "MCP calls"),
+    ], direction="row", gap=20)
+    story: list[Node] = []
+    by_round: dict[int, list[str]] = {}
+    for l in trace:
+        m = TAG.match(l)
+        if m and m.group("round") and m.group("handle") != "hippocratech-coordinator":
+            by_round.setdefault(int(m.group("round")), []).append(l)
+    for r in sorted(by_round):
+        rows = []
+        for l in by_round[r]:
+            m = TAG.match(l)
+            who = SHORT.get(m.group("handle"), m.group("handle")).replace("Clinical", "Clinical Workflow")
+            label, variant = agent_state([l], "@" + m.group("handle"))
+            rest = ROUND_IN_TEXT.sub("", m.group("rest")).strip()
+            rows.append(item([group([badge(f"{who}: {label}", variant), text(rest[:220] + ("…" if len(rest) > 220 else ""), "body")], gap=4)]))
+        story += [heading(f"Round {r}", 3), {"type": "list", "items": rows}]
+    mcp_rows = [item([group([badge("MCP", "info"), text(ROUND_IN_TEXT.sub("", TAG.match(l).group("rest"))[4:].strip(), "muted")],
+                            direction="row", gap=8)]) for l in trace if " MCP " in l]
+    roles = group([badge(ROLE_NAMES[r], "warning") for r in rec.requiredRoles], direction="row", gap=6)
+    children = (image(before_after, "The attack without the plan and with it") + [stats, DIVIDER, heading("How the agents got there", 3)]
+                + story + ([heading("Tools called over MCP", 3), {"type": "list", "items": mcp_rows}] if mcp_rows else [])
+                + image(scene, "The real 3D hospital: where the attack spreads with no plan")
+                + [DIVIDER, text("A recommendation, not a decision. Must sign off in the Hippocra.tech app:", "muted"), roles,
+                   group([button(f"Ask {name} why", "ask", a == "flow", agent=a, about="") for a, name in ASK_AGENTS],
+                         direction="row", gap=8)])
+    root = section(f"Final result · {rec.policy.name}", children, subtitle=f"Ransomware simulation · {rounds} rounds of negotiation")
+    return message(bubble, root, False)

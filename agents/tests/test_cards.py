@@ -232,3 +232,21 @@ def test_live_card_is_a_feed_with_no_buttons_and_the_scene_image():
     assert any(n["type"] == "image" and n["src"].endswith("spread-mri_2.png") for n in walk(root))
     assert "MCP" in s and "Flow → Coordinator" in s and "Coordinator → Flow" in s and "Clinical Workflow → Coordinator" in s
     assert meta["is_terminal"] == "true"
+
+
+def test_final_report_has_pictures_numbers_story_and_signoff():
+    trace = ["[ @hippocratech-coordinator ] MCP hospital.test_run(mri_2) → 9 devices infected over 9 ticks.",
+             '[ @hippocratech-flow · round 1 ] proposed "Wall off imaging": 5 devices infected with it, 9 without.',
+             "[ @hippocratech-inventory · round 1 ] accepted.",
+             "[ @hippocratech-clinical-workflow · round 1 ] rejected: it cuts imaging. Needs: keep MRI 2 → PACS.",
+             '[ @hippocratech-flow · round 2 ] revised the plan, now "Server Room Fortress": keeps imaging. 5 devices infected with it, 9 without.',
+             "[ @hippocratech-inventory · round 2 ] accepted.", "[ @hippocratech-clinical-workflow · round 2 ] accepted."]
+    m = cards.report_card(H, rec, base, trace, 2, "https://x/before-after.png", "https://x/spread.png", "Done.")
+    meta, root = payload(m)
+    s = json.dumps(root, ensure_ascii=False)
+    imgs = [n["src"] for n in walk(root) if n["type"] == "image"]
+    assert imgs == ["https://x/before-after.png", "https://x/spread.png"]
+    assert f"{base.infectedCount} → {res.infectedCount}" in s and "Round 1" in s and "Round 2" in s
+    assert "rejected" in s and "MCP" in s and "Security" in s and rec.policy.name in s
+    assert cards.depth(root) <= 8 and len(meta["card_payload"]) < 64 * 1024
+    cards.validate(root)
