@@ -299,7 +299,7 @@ async def _flush_trace(ctx: Context, session_id: str, wait: float) -> None:
     c.last_sent = time.monotonic()
     rnd = rounds.get(session_id)
     msg = cards.trace_card(H, session_id, c.device_name, list(c.trace), rnd.round if rnd else 1,
-                           rnd.state if rnd else "starting", room_url(session_id), image=c.map_image)
+                           rnd.state if rnd else "starting", room_url(session_id), map_src=c.map_image)
     await reply_card(ctx, c.sender, msg, session_id)
 
 

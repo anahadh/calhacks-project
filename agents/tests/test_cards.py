@@ -150,10 +150,11 @@ def walk_items(node):
 
 
 def test_recommendation_card_can_carry_the_chart_image():
-    m = cards.recommendation_card(H, "s", rec, base, "http://x", "Done.", chart="data:image/png;base64,AAAA")
-    _, root = payload(m)
+    _, root = payload(cards.recommendation_card(H, "s", rec, base, "http://x", "Done.", chart="https://img.example/c.png"))
     imgs = [n for n in walk(root) if n["type"] == "image"]
-    assert imgs and imgs[0]["src"] == "data:image/png;base64,AAAA" and imgs[0]["alt"]
+    assert imgs and imgs[0]["src"] == "https://img.example/c.png" and imgs[0]["alt"]
+    _, root = payload(cards.recommendation_card(H, "s", rec, base, "http://x", "Done.", chart="data:image/png;base64,AAAA"))
+    assert not [n for n in walk(root) if n["type"] == "image"]  # data URIs make ASI:One drop the card
 
 
 def test_trace_card_hides_coordinator_handoffs_but_keeps_mcp():

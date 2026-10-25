@@ -329,5 +329,5 @@ def test_view_hospital_sends_the_map_card_without_the_model(coord, monkeypatch):
     run(c.chat_turn(c.ctx_stub(), "agent1qs", "let me view my hospital"))
     to, message, session_id, text, card = sent[-1]
     s = json.dumps(card)
-    assert card and '"type": "image"' in s and "data:image/png;base64," in s and '"action": "simulate"' in s
+    assert card and "data:image" not in s and '"action": "simulate"' in s and "rooms" in s
     assert "devices" in text
