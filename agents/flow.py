@@ -41,6 +41,18 @@ STARTS = sorted(d for d, x in H.devices.items()
                 if x["type"] in ("workstation", "nurse_station") or (x["type"] in MEDICAL and str(x.get("os", "")).startswith("windows")))
 
 
+def average_infected(c: Candidate | None, req: ProposalRequest) -> float:
+    """The objective: mean devices infected over every place an attack could start (None = no plan)."""
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        counts = list(pool.map(lambda s: run_sim(c, s, req.seed, req.challenges).infectedCount, STARTS))
+    return sum(counts) / len(counts)
+
+
+def with_average(c: Candidate, avg: float, baseline_avg: float) -> Candidate:
+    note = f"Average over {len(STARTS)} attack starts: {avg:.1f} devices infected (vs {baseline_avg:.1f} without segmentation)."
+    return c.copy(update={"policy": c.policy.copy(update={"rationale": f"{c.policy.rationale} {note}"})})
+
+
 def with_coverage(c: Candidate, req: ProposalRequest) -> Candidate:
     """The plan tested against every other starting point: how many attacks it would also hold.
     The count goes into its rationale, so humans see which plans protect beyond this one attack."""
@@ -76,11 +88,17 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
                           if (c := candidates_mod.from_proposal(H, i, p.name, p.strategy, p.rationale, p.tradeoff, p.cut, keep))]
             candidates += candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints, starts=STARTS)
         tested = [(c, run_sim(c, req.patientZero, req.seed, req.challenges)) for c in candidates]
-        chosen = flow.choose([(c.policy, r) for c, r in tested], req.constraints, H)
-        if chosen is None:
+        if not tested:
             raise RuntimeError("no candidate plan: every connection the attack used is one the agents must keep")
-        policy, result, violating = chosen
-        cand = with_coverage(next(c for c, _ in tested if c.policy is policy), req)
+        # The objective is the whole hospital, not this one machine: phishing can land on any workstation.
+        # Among plans that meet every constraint, the lowest average infection over every attack start wins
+        # (fewest connections cut breaks a tie). With none meeting them all, the least-violating one goes.
+        averages = {c.id: average_infected(c, req) for c, _ in tested}
+        ok = [(c, r) for c, r in tested if not flow.violates(r, req.constraints, H, len(c.policy.rules))]
+        violating = not ok
+        pool_ = ok or [min(tested, key=lambda cr: flow.violation_count(cr[1], req.constraints, H, len(cr[0].policy.rules)))]
+        cand, result = min(pool_, key=lambda cr: (averages[cr[0].id], len(cr[1].removedFlows), cr[0].id))
+        cand = with_average(cand, averages[cand.id], average_infected(None, req))
         policy = cand.policy
         # The other plans that meet every constraint, best first: offered alongside the lead.
         ranked = [] if violating else [

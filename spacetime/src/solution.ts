@@ -56,8 +56,10 @@ export const solution_start = spacetimedb.reducer(
     if (base.status === "error") fail("The attack run failed, so there is no attack to rerun. Reset it or start a new attack.");
     const tested = requestBehind(ctx, session_id, rec.updated_at);
     if (!tested) fail("This plan has no aggregate fix request in this session, so there is no attack to rerun.");
-    if (tested.patient_zero !== base.patient_zero || tested.challenges_json !== base.challenges_json) {
-      fail(`This plan was tested on the attack from "${tested.patient_zero}", not the one on screen. Run that attack again, or create an aggregate fix for this one.`);
+    // Plans are designed for every entry point, so any attack on screen can be rerun against one:
+    // the presenter can start a new attack anywhere and test the same plan. Challenges must match.
+    if (tested.challenges_json !== base.challenges_json) {
+      fail("This plan was tested with different challenges than the attack on screen. Create an aggregate fix for this one.");
     }
 
     const pair_id = newPairId(ctx, session_id, rec.id);
