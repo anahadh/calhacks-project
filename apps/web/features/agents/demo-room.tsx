@@ -264,8 +264,15 @@ function PlanTrail({ plans }: { plans: NonNullable<DemoEvent["plan"]>[] }) {
         return (
           <li key={i} className="fx-pop num flex items-center gap-3 rounded-ctl border border-line2 bg-bg/90 px-3 py-1.5 text-[12px]">
             <span className="text-ink-faint">Plan {i + 1}</span>
-            <span className="text-ink">{p.name}</span>
-            <Num label="machines" value={p.devices} prev={prev?.devices} />
+            <span className="max-w-[260px] truncate text-ink" title={p.name}>{p.name}</span>
+            {p.avg ? (
+              <>
+                <Num label={`machines, avg over ${p.avg.starts} starts`} value={Math.round(p.avg.plan * 10) / 10} prev={prev?.avg ? Math.round(prev.avg.plan * 10) / 10 : undefined} />
+                <span className="text-ink-faint">this attack {p.devices}</span>
+              </>
+            ) : (
+              <Num label="machines" value={p.devices} prev={prev?.devices} />
+            )}
             <Num label="patients" value={p.patients} prev={prev?.patients} />
           </li>
         );
@@ -280,7 +287,7 @@ function Num({ label, value, prev }: { label: string; value: number; prev?: numb
     <span className="inline-flex items-baseline gap-1">
       <span className={`readout text-[18px] leading-none ${better ? "text-state-healthy" : "text-ink"}`}>{value}</span>
       <span className="text-ink-faint">{label}</span>
-      {better && <span className="text-state-healthy">↓{prev - value}</span>}
+      {better && <span className="text-state-healthy">↓{Math.round((prev - value) * 10) / 10}</span>}
     </span>
   );
 }

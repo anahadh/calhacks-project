@@ -272,6 +272,8 @@ export type AgentMessageRow = {
   /** The plan's name, on proposals (and revisions that rename it). */
   name?: string;
   tested?: { patientsAffected: number; devicesCompromised?: number };
+  /** Proposals and revisions: the engine's count from every attack start, without and with the plan (Policy.evidence). */
+  evidence?: { start: string; name: string; baseline: number; plan: number }[];
   /** An ASI:One chat message carried an interactive card. */
   card?: boolean;
   /** The plan a proposal, revision or verdict is about. */

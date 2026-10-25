@@ -18,7 +18,7 @@ export type DemoEvent = {
   /** The one-line contribution. */
   line: string;
   /** The plan's numbers, on proposals and revisions. */
-  plan?: { name: string; devices: number; patients: number; cuts?: number; rules: number };
+  plan?: { name: string; devices: number; patients: number; cuts?: number; rules: number; /** Live: machines infected on average over every attack start, without and with the plan. */ avg?: { baseline: number; plan: number; starts: number } };
   /** On a decline: what the agent needs, in a few words. */
   needs?: string;
 };
@@ -95,14 +95,17 @@ export function eventsFromRows(messages: readonly AgentMessageRow[], names: Name
         out.push({ ...base, verb: "opens", line: m.reason || (m.round > 1 ? `Starting round ${m.round}. Flow, revise the plan.` : "Starting round 1. Flow, give us a plan.") });
         break;
       case "proposal":
+      case "revision": {
         name = m.name ?? name;
-        rules = m.rules?.length ?? rules;
-        out.push({ ...base, verb: "proposes", line: m.reason, plan: { name, devices: m.tested?.devicesCompromised ?? 0, patients: m.tested?.patientsAffected ?? 0, rules } });
+        if (m.type === "proposal") rules = m.rules?.length ?? rules;
+        const ev = m.evidence;
+        const avg = ev && ev.length
+          ? { baseline: ev.reduce((a, e) => a + e.baseline, 0) / ev.length, plan: ev.reduce((a, e) => a + e.plan, 0) / ev.length, starts: ev.length }
+          : undefined;
+        out.push({ ...base, verb: m.type === "proposal" ? "proposes" : "revises", line: m.reason,
+          plan: { name, devices: m.tested?.devicesCompromised ?? 0, patients: m.tested?.patientsAffected ?? 0, rules, avg } });
         break;
-      case "revision":
-        name = m.name ?? name;
-        out.push({ ...base, verb: "revises", line: m.reason, plan: { name, devices: m.tested?.devicesCompromised ?? 0, patients: m.tested?.patientsAffected ?? 0, rules } });
-        break;
+      }
       case "accept":
         out.push({ ...base, verb: "approves", line: m.reason });
         break;

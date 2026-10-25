@@ -71,6 +71,7 @@ export function messagesOf(rows: Iterable<AgentMessage>): AgentMessageRow[] {
         out.push({
           ...base, type: "proposal", rules: (p.rules as Rule[] | undefined)?.map((r) => r.plain), name: p.name ?? undefined,
           tested: p.testResult ? tested(p.testResult) : undefined,
+          evidence: Array.isArray(p.evidence) && p.evidence.length ? (p.evidence as AgentMessageRow["evidence"]) : undefined,
         });
         break;
       case "revision":
@@ -82,6 +83,7 @@ export function messagesOf(rows: Iterable<AgentMessage>): AgentMessageRow[] {
           ],
           name: p.name ?? undefined,
           tested: p.testResult ? tested(p.testResult) : undefined,
+          evidence: Array.isArray(p.evidence) && p.evidence.length ? (p.evidence as AgentMessageRow["evidence"]) : undefined,
         });
         break;
       case "verdict":
