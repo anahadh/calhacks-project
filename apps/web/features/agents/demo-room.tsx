@@ -38,9 +38,30 @@ const VERB: Record<Verb, { label: string; color: string; glyph: string }> = {
   recommends: { label: "sends for sign-off", color: "#3DD68C", glyph: "■" },
 };
 
-export function DemoRoom({ onClose, options, status }: { onClose?: () => void; options?: ReactNode; status?: string }) {
-  const [script, setScript] = useState<DemoEvent[]>(() => demoScript());
-  const [shown, setShown] = useState(0);
+/** This viewer's finished run of the scripted room, so reopening it shows the end instead of replaying. */
+function savedScript(key: string | undefined): DemoEvent[] | null {
+  if (!key) return null;
+  try {
+    const raw = window.localStorage.getItem(`hippo.demo-room.${key}`);
+    const v = raw ? (JSON.parse(raw) as DemoEvent[]) : null;
+    return Array.isArray(v) && v.length ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveScript(key: string | undefined, script: DemoEvent[]): void {
+  if (!key) return;
+  try {
+    window.localStorage.setItem(`hippo.demo-room.${key}`, JSON.stringify(script));
+  } catch {
+    // Storage blocked: the room still works, it just replays next time.
+  }
+}
+
+export function DemoRoom({ onClose, options, status, saveKey }: { onClose?: () => void; options?: ReactNode; status?: string; saveKey?: string }) {
+  const [script, setScript] = useState<DemoEvent[]>(() => savedScript(saveKey) ?? demoScript());
+  const [shown, setShown] = useState(() => (savedScript(saveKey) ? script.length : 0));
   const [playing, setPlaying] = useState(true);
   useEffect(() => {
     if (!playing || shown >= script.length) return;
@@ -48,6 +69,9 @@ export function DemoRoom({ onClose, options, status }: { onClose?: () => void; o
     return () => window.clearTimeout(id);
   }, [playing, shown, script.length]);
   const done = shown >= script.length;
+  useEffect(() => {
+    if (done) saveScript(saveKey, script);
+  }, [done, saveKey, script]);
   // The Full chat is the same script as a terminal log, one line per contribution, revealed in step with it.
   const chat = useMemo(() => scriptedLines(script.slice(0, shown)), [script, shown]);
   return (
@@ -63,7 +87,7 @@ export function DemoRoom({ onClose, options, status }: { onClose?: () => void; o
       onClose={onClose}
       options={options}
       status={status}
-      chat={{ lines: chat, source: "scripted_demo.log" }}
+      chat={{ lines: chat, source: "bayview_general.log" }}
     />
   );
 }
