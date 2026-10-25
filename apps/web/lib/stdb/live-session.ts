@@ -176,6 +176,25 @@ function useRunSubscription(conn: DbConnection | undefined, runId: string, onErr
   return applied;
 }
 
+/** The session row's active run id, kept in state and updated from the session table's callbacks. */
+function useActiveRunId(conn: DbConnection | undefined, sessionId: string): string {
+  const [runId, setRunId] = useState("");
+  useEffect(() => {
+    if (!conn) return;
+    const sync = () => setRunId([...conn.db.session.iter()].find((s) => s.id === sessionId)?.activeRunId ?? "");
+    sync();
+    conn.db.session.onInsert(sync);
+    conn.db.session.onUpdate(sync);
+    conn.db.session.onDelete(sync);
+    return () => {
+      conn.db.session.removeOnInsert(sync);
+      conn.db.session.removeOnUpdate(sync);
+      conn.db.session.removeOnDelete(sync);
+    };
+  }, [conn, sessionId]);
+  return runId;
+}
+
 export function useLiveSession(sessionId: string): SessionSnapshot {
   const { live, error: connectError } = useLive();
   const conn = live?.conn;
@@ -211,9 +230,12 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
     };
   }, [conn, sessionId]);
 
-  // The active run's rows; resubscribed when the active run changes.
-  const sessionRow = conn ? [...conn.db.session.iter()].find((s) => s.id === sessionId) : undefined;
-  useRunSubscription(conn, sessionRow?.activeRunId ?? "", (error) => setStatus({ source: "error", error }));
+  // The active run's rows; resubscribed when the active run changes. The id is
+  // React state, not read from the row cache during render: a render that React
+  // bails out of (a same-value setState) would otherwise store the new id as the
+  // effect's deps without running it, and open tabs never subscribed to a new run.
+  const activeRunId = useActiveRunId(conn, sessionId);
+  useRunSubscription(conn, activeRunId, (error) => setStatus({ source: "error", error }));
 
   const data = snapshotOf(sessionId, conn?.db ?? EMPTY_TABLES, live?.identity);
   const source: Status = !SAFE_ID.test(sessionId)
