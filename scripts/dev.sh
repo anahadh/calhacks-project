@@ -6,7 +6,7 @@
 #   scripts/dev.sh stop | start | status | logs [service]
 #
 # Services: stdb (3000), engine (8000), web (3001), watcher (8010 + ports 8001-8004 for the
-# agents it talks to), agents (8001-8004). Each runs in the background with its output in
+# agents it talks to), agents (8001-8004, plus 8005 for the Scorekeeper with SCOREKEEPER=1). Each runs in the background with its output in
 # .dev-logs/<service>.log. Processes are found by the port they listen on, so this also
 # stops services started by hand.
 
@@ -18,13 +18,19 @@ mkdir -p "$LOGS"
 ALL="stdb engine web watcher agents"
 WEB_PORT="${WEB_PORT:-3001}"
 
+# SCOREKEEPER=1 in the shell, or else in agents/.env (the shell wins, as in agents/config.py).
+scorekeeper_on() {
+  if [ -n "${SCOREKEEPER+set}" ]; then [ "$SCOREKEEPER" = 1 ]
+  else grep -qsE '^[[:space:]]*(export[[:space:]]+)?SCOREKEEPER[[:space:]]*=[[:space:]]*"?1"?[[:space:]]*$' "$ROOT/agents/.env"; fi
+}
+
 ports_of() {
   case "$1" in
     stdb) echo 3000 ;;
     engine) echo 8000 ;;
     web) echo "$WEB_PORT" ;;
     watcher) echo "${RELAY_PORT:-8010}" ;;
-    agents) echo "8001 8002 8003 8004" ;;
+    agents) if scorekeeper_on; then echo "8001 8002 8003 8004 8005"; else echo "8001 8002 8003 8004"; fi ;;
     *) echo "unknown service: $1" >&2; exit 2 ;;
   esac
 }

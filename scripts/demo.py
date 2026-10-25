@@ -14,8 +14,8 @@ shell) stops everything it started, children included, and confirms the ports ar
 
 Ports come from the same settings the pieces read: SpacetimeDB from STDB_URI (:3000),
 the engine from ENGINE_URL (:8000), the watcher relay from RELAY_PORT (:8010), the
-agents from agents/config.py PORTS (8001-8004), and the web on :3001, because Next.js
-also defaults to :3000 (docs/hippocratech/INTEGRATION.md §10, item 2).
+agents from agents/config.py PORTS (8001-8004, plus 8005 for the Scorekeeper with SCOREKEEPER=1),
+and the web on :3001, because Next.js also defaults to :3000 (docs/hippocratech/INTEGRATION.md §10, item 2).
 
 Never prints a secret: env checks list variable names only, and any value of a
 *KEY/*TOKEN/*SEED/*SECRET variable is replaced with <redacted> in every log line.
@@ -48,6 +48,7 @@ LOG_DIR = ROOT / "logs" / "demo"
 ORDER = ("spacetimedb", "publish", "engine", "watcher", "web", "agents")
 # agents/config.py PORTS (read as text, not imported: this script needs no agent deps).
 AGENT_PORTS = {"inventory": 8001, "flow": 8002, "clinical_workflow": 8003, "coordinator": 8004}
+SCOREKEEPER_PORT = 8005  # PORTS["scorekeeper"]: only with SCOREKEEPER=1
 WEB_PORT = 3001
 TAIL = 20
 
@@ -58,6 +59,18 @@ SECRET_NAME = re.compile(r"(KEY|TOKEN|SEED|SECRET|PASSWORD)", re.I)
 
 
 # ----------------------------------------------------------------------------- env files
+def scorekeeper_on(agents_env: dict[str, str]) -> bool:
+    """SCOREKEEPER=1 in the shell, or else in agents/.env (the shell wins, as in agents/config.py)."""
+    value = os.environ["SCOREKEEPER"] if "SCOREKEEPER" in os.environ else agents_env.get("SCOREKEEPER", "")
+    return value.strip() == "1"
+
+
+def agent_ports(root: Path = ROOT) -> dict[str, int]:
+    """The agents run_all.py starts: the four, plus the Scorekeeper with SCOREKEEPER=1."""
+    on = scorekeeper_on(read_env(root / "agents" / ".env"))
+    return {**AGENT_PORTS, **({"scorekeeper": SCOREKEEPER_PORT} if on else {})}
+
+
 
 def read_env(path: Path) -> dict[str, str]:
     """A .env file as {name: value}: KEY=VALUE lines, # comments, optional quotes, `export`."""
@@ -118,6 +131,8 @@ def check_env(root: Path = ROOT) -> EnvReport:
     if web.exists() and not set_(w, "ANTHROPIC_API_KEY"):
         r.warnings.append(".env.local: ANTHROPIC_API_KEY is not set (the memo route needs it)")
     seeds = ("INVENTORY_AGENT_SEED", "FLOW_AGENT_SEED", "CLINICAL_WORKFLOW_AGENT_SEED", "COORDINATOR_AGENT_SEED")
+    if scorekeeper_on(a):
+        seeds += ("SCOREKEEPER_AGENT_SEED",)
     for n in (*seeds, "WATCHER_RELAY_URL", "RELAY_TOKEN", "HIPPO_SIM_BIN"):
         if agents.exists() and not set_(a, n):
             r.missing.append(f"agents/.env: {n}")
@@ -287,13 +302,16 @@ def demo_pieces(cfg: Config, root: Path = ROOT) -> list[Piece]:
     agents_py = root / "agents" / ".venv" / "bin" / "python"
     no_agents = "" if agents_py.exists() else "agents/.venv is missing (python -m venv .venv; pip install -r requirements.txt)"
 
+    ports = agent_ports(root)
+
     def agents_health() -> tuple[bool, str]:
         bad = []
-        for name, port in AGENT_PORTS.items():
+        for name, port in ports.items():
             h = http_get(f"http://127.0.0.1:{port}/health", 2)
             if not (h and h[0] == 200 and (json_of(h[1]) or {}).get("agent") == name):
                 bad.append(f"{port} {name}")
-        return (False, "not answering /health: " + ", ".join(bad)) if bad else (True, "all four answer /health")
+        return (False, "not answering /health: " + ", ".join(bad)) if bad else (
+            True, f"all {'five' if len(ports) == 5 else 'four'} answer /health")
 
     return [
         Piece("spacetimedb", stdb_cmd, root, [stdb_port],
@@ -314,7 +332,7 @@ def demo_pieces(cfg: Config, root: Path = ROOT) -> list[Piece]:
         Piece("web", [npm or "npm", "run", "dev", "-w", "web", "--", "-p", str(cfg.web_port)], root, [cfg.web_port],
               lambda: _ok(f"http://127.0.0.1:{cfg.web_port}/", lambda s, _: s < 500, "the app answers", timeout=60),
               timeout=240, env=web_env, missing=no_web),
-        Piece("agents", [str(agents_py), "run_all.py"], root / "agents", list(AGENT_PORTS.values()), agents_health,
+        Piece("agents", [str(agents_py), "run_all.py"], root / "agents", list(ports.values()), agents_health,
               timeout=90, missing=no_agents),
     ]
 
