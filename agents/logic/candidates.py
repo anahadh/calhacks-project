@@ -59,6 +59,13 @@ def cross_zone(h: HospitalIndex, f: Row) -> bool:
     return h.zone(f["from"]) != h.zone(f["to"])
 
 
+def boundary(h: HospitalIndex, f: Row) -> bool:
+    """A connection that crosses a segment wall: between departments (zones, the server room included)
+    or to and from a medical device. Links inside a department stay: staff share files with the PC
+    next to them, and cutting those makes islands of uselessness."""
+    return cross_zone(h, f) or any(h.devices[d]["type"] in MEDICAL_TYPES for d in (f["from"], f["to"]))
+
+
 def zone_wall(h: HospitalIndex, zone: str) -> set[str]:
     return {f["id"] for f in active_flows(h) if cross_zone(h, f) and zone in (h.zone(f["from"]), h.zone(f["to"]))}
 
@@ -129,17 +136,18 @@ def reach(h: HospitalIndex, start: str, open_links: list[Row]) -> set[str]:
 
 
 def optimized_cuts(h: HospitalIndex, starts: list[str], keep: set[str], limit: int = 3) -> set[str]:
-    """Greedy: while some start can reach more than `limit` devices, cut the lateral link whose
-    removal most reduces the total reach over every start. Links in `keep` are never cut.
-    The engine's test run then judges the result like any other plan."""
+    """Greedy: while an attack from some start can reach a machine outside its own department, cut
+    the boundary link whose removal most reduces the total reach over every start. Links inside a
+    department and links in `keep` are never cut. The engine's test run then judges the result."""
     links = [f for f in active_flows(h) if f["protocol"] in LATERAL]
     cut: set[str] = set()
     total = lambda open_: sum(len(reach(h, s, open_)) for s in starts)
+    escapes = lambda open_: any(h.zone(d) != h.zone(s) for s in starts for d in reach(h, s, open_))
     while True:
         open_ = [f for f in links if f["id"] not in cut]
-        if max((len(reach(h, s, open_)) for s in starts), default=0) <= limit:
+        if not escapes(open_):
             return cut
-        options = [f for f in open_ if f["id"] not in keep]
+        options = [f for f in open_ if f["id"] not in keep and boundary(h, f)]
         if not options:
             return cut
         best = min(options, key=lambda f: (total([g for g in open_ if g is not f]), f["id"]))
@@ -204,7 +212,7 @@ def allow_list(h: HospitalIndex, cut: set[str]) -> list[PolicyRule]:
 def candidate(h: HospitalIndex, id: str, strategy: str, name: str, cut: set[str], keep: set[str],
               rationale: str, tradeoff: str) -> Candidate | None:
     """None when the cut set is empty after keeping `keep`, or needs more than MAX_RULES rules."""
-    cut = cut - keep
+    cut = {fid for fid in cut - keep if fid in h.flows and boundary(h, h.flows[fid])}
     if not cut:
         return None
     rules = allow_list(h, cut)
@@ -241,9 +249,9 @@ def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constrain
     """The algorithmic candidate: the optimizer over every start. (The other plans come from the model.)"""
     keep = kept_by_constraints(constraints)
     out = [
-        candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that hold every attack",
+        candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that keep every attack in its department",
                   optimized_cuts(h, starts or [patient_zero], keep), keep,
-                  "The fewest file-sharing and remote-desktop links to cut so an attack from any workstation reaches at most 3 devices.",
+                  "The fewest file-sharing and remote-desktop links to cut at department walls so an attack from any workstation stays in its own department.",
                   "Chosen by an optimizer over every starting point, not just this one."),
     ]
     return [c for c in out if c is not None]

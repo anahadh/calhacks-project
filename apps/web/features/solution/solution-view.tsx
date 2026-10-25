@@ -39,7 +39,14 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const [closing, setClosing] = useState(false);
 
   const { hospital } = session;
+  // Click a ringed device on either side to rerun both sides from that entry point (the plan is for any of them).
+  const pickable = useMemo(() => new Set(session.isPresenter ? session.entryPoints : []), [session.isPresenter, session.entryPoints]);
   const rec = session.recommendations.find((r) => r.id === plan?.recommendationId);
+  const pick = (deviceId: string) => {
+    if (!rec) return;
+    setErr(undefined);
+    session.actions.showSolution(rec.id, undefined, deviceId).catch((x: Error) => setErr(x.message));
+  };
   const sides = [none, planRun];
   const clock = pairClock(sides);
   // One clock for both sides: the longer run sets it, so playback shows the whole spread without segmentation.
@@ -161,6 +168,8 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     hoveredZone={hoveredZone}
                     onHoverZone={setHoveredZone}
                     floorId={floor === "all" ? undefined : floor}
+                    pickable={pickable}
+                    onPick={pick}
                   />
                 </SceneBoundary>
               </Side>
@@ -185,11 +194,18 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     hoveredZone={hoveredZone}
                     onHoverZone={setHoveredZone}
                     floorId={floor === "all" ? undefined : floor}
+                    pickable={pickable}
+                    onPick={pick}
                   />
                 </SceneBoundary>
               </Side>
             </div>
-            <span className="num px-4 py-2 text-[11px] text-ink-faint">
+            {pickable.size > 0 && rec && (
+                <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-ctl border border-ink bg-bg/90 px-4 py-2 text-[14px] text-ink">
+                  Click any ringed device to start the attack there: both sides rerun from it
+                </div>
+              )}
+              <span className="num px-4 py-2 text-[11px] text-ink-faint">
               Drag either building to turn both · scroll to zoom · hover a device
             </span>
           </div>

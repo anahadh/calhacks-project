@@ -39,6 +39,16 @@ def fixture_name(candidate_id: str | None, challenges: list[str]) -> str:
     return f"{base}@{'+'.join(sorted(challenges))}.json" if challenges else f"{base}.json"
 
 
+_HOSPITAL: dict | None = None
+
+
+def _hospital() -> dict:
+    global _HOSPITAL
+    if _HOSPITAL is None:
+        _HOSPITAL = json.loads(settings().hospital_path.read_text())["hospital"]
+    return _HOSPITAL
+
+
 def run_sim(candidate: Candidate | None, patient_zero: str, seed: int, challenges: list[str] = ()) -> RunResult:
     """One test run. candidate None = baseline (no policy)."""
     s = settings()
@@ -51,8 +61,25 @@ def run_sim(candidate: Candidate | None, patient_zero: str, seed: int, challenge
         if not path.exists():
             raise ToolError(f"HIPPO_SIM_FIXTURES=1 but there is no fixture {path.relative_to(AGENTS_DIR)}")
         return RunResult.parse_file(path)
+    engine = os.environ.get("ENGINE_URL", "").strip().rstrip("/")
+    if engine:
+        # The engine server's /app/run_result: the same function as hippo-sim (the parity test keeps them equal),
+        # without forking a process per run (forking beside uAgents' gRPC threads crashed runs with a signal).
+        body = {"hospital": _hospital(), "patient_zero": patient_zero, "challenges": challenges}
+        if candidate is not None:
+            body["policy"] = json.loads(candidate.policy.json(exclude_none=True, by_alias=True))
+        try:
+            r = httpx.post(f"{engine}/app/run_result", json=body, timeout=SIM_TIMEOUT_S)
+        except httpx.HTTPError as e:
+            raise ToolError(f"the engine at {engine} failed to answer: {e}") from e
+        if r.status_code != 200:
+            raise ToolError(f"the engine answered HTTP {r.status_code}: {r.text[:300]}")
+        try:
+            return RunResult.parse_obj(r.json())
+        except ValueError as e:
+            raise ToolError(f"the engine sent something that is not a RunResult: {e}") from e
     if not s.hippo_sim_bin:
-        raise ToolError("No simulator: set HIPPO_SIM_BIN to the hippo-sim binary, or HIPPO_SIM_FIXTURES=1 for fixture results.")
+        raise ToolError("No simulator: set ENGINE_URL or HIPPO_SIM_BIN, or HIPPO_SIM_FIXTURES=1 for fixture results.")
 
     with tempfile.TemporaryDirectory() as tmp:
         cmd = [s.hippo_sim_bin, "--hospital", str(s.hospital_path), "--patient-zero", patient_zero, "--seed", str(seed)]

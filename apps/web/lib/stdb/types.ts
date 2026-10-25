@@ -178,7 +178,8 @@ export type SessionActions = {
   defend: () => Promise<void>;
   answerQuestion: (questionId: string, choice: string) => Promise<void>;
   /** Show the solution: solution_start reruns the attack as a pair, no segmentation vs the plan. Every tab follows. */
-  showSolution: (recommendationId: string, speed?: Speed) => Promise<void>;
+  /** patientZero: rerun both sides from that entry point instead of the attack on screen. */
+  showSolution: (recommendationId: string, speed?: Speed, patientZero?: string) => Promise<void>;
   /** Back to the session: solution_close. The pair's runs are kept. */
   closeSolution: () => Promise<void>;
 };

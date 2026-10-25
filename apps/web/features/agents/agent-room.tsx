@@ -533,7 +533,8 @@ function Transcript({ messages, names }: { messages: readonly (TimedMessage & { 
 
 const ROLE: Record<string, string> = { security: "Security", clinical_engineering: "Clinical engineering", operations: "Operations" };
 /** "Also holds 12 of 17 other attack starts…" from the plan's rationale, as the card's headline difference. */
-const coverage = (rationale?: string) => rationale?.match(/Also holds \d+ of \d+ other attack starts[^.]*\./)?.[0];
+const coverage = (rationale?: string) =>
+  rationale?.match(/Average over \d+ attack starts: [^)]*\)\./)?.[0] ?? rationale?.match(/Also holds \d+ of \d+ other attack starts[^.]*\./)?.[0];
 const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function OptionCards({ recs, review }: { recs: readonly RecommendationRow[]; review?: (rec: RecommendationRow) => ReactNode }) {

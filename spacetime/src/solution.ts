@@ -42,8 +42,8 @@ function newPairId(ctx: any, sessionId: string, recommendationId: string): strin
 }
 
 export const solution_start = spacetimedb.reducer(
-  { session_id: t.string(), recommendation_id: t.string(), speed: t.f64() },
-  (ctx, { session_id, recommendation_id, speed }) => {
+  { session_id: t.string(), recommendation_id: t.string(), speed: t.f64(), patient_zero: t.string() },
+  (ctx, { session_id, recommendation_id, speed, patient_zero }) => {
     requirePresenter(ctx, session_id);
     const s = getSession(ctx, session_id);
     if (!(SPEEDS as readonly number[]).includes(speed)) fail("Speed must be 0.5, 1, 2 or 4.");
@@ -56,13 +56,22 @@ export const solution_start = spacetimedb.reducer(
     if (base.status === "error") fail("The attack run failed, so there is no attack to rerun. Reset it or start a new attack.");
     const tested = requestBehind(ctx, session_id, rec.updated_at);
     if (!tested) fail("This plan has no aggregate fix request in this session, so there is no attack to rerun.");
-    if (tested.patient_zero !== base.patient_zero || tested.challenges_json !== base.challenges_json) {
-      fail(`This plan was tested on the attack from "${tested.patient_zero}", not the one on screen. Run that attack again, or create an aggregate fix for this one.`);
+    // Plans are designed for every entry point, so any attack on screen can be rerun against one:
+    // the presenter can start a new attack anywhere and test the same plan. Challenges must match.
+    if (tested.challenges_json !== base.challenges_json) {
+      fail("This plan was tested with different challenges than the attack on screen. Create an aggregate fix for this one.");
     }
 
+    // "" reruns the attack on screen; a device id reruns both sides from there (the plan holds for any entry point).
+    let start = base.patient_zero;
+    if (patient_zero) {
+      const entryPoints = JSON.parse(s.entry_points_json) as string[];
+      if (entryPoints.length && !entryPoints.includes(patient_zero)) fail(`"${patient_zero}" is not an entry point the engine accepts.`);
+      start = patient_zero;
+    }
     const pair_id = newPairId(ctx, session_id, rec.id);
     const common = {
-      ...BEFORE_FRAME_0, session_id, pair_id, seed: base.seed, patient_zero: base.patient_zero, speed,
+      ...BEFORE_FRAME_0, session_id, pair_id, seed: base.seed, patient_zero: start, speed,
       autoplay: true, challenges_json: base.challenges_json, started_at: ctx.timestamp,
     };
     for (const id of [`${pair_id}_none`, `${pair_id}_plan`]) {
