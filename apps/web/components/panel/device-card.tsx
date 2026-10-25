@@ -30,7 +30,7 @@ export function DeviceCard({
   const stateClass = zero ? "text-state-zero" : st?.infected ? "text-state-infected" : "text-state-healthy";
   const kind = d.role && ROLE[d.role] ? ROLE[d.role] : TYPE_LABEL[d.type] ?? d.type;
   const lines = view.cards.get(deviceId)?.lines ?? [];
-  const pins = session.annotations.filter((a) => a.active && a.targetId === deviceId);
+  const pins = session.annotations.filter((a) => a.active && a.kind === "focus" && a.targetId === deviceId);
   const pin = pins[pins.length - 1];
 
   return (

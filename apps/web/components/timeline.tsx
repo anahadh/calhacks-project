@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 
 import { initials, ROLE_LABEL, runStatusLabel, tickClock } from "@/lib/format";
+import { AddNoteButton, TimelineNotes } from "@/features/review/timeline-notes";
 import { ROLE_SHORT } from "@/lib/role-views";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import type { SessionSnapshot } from "@/lib/stdb/types";
 
 // The top of the simulation panel: the runs strip, the transport row (with
-// presence), and the track for the selected run. History comes from
+// Add note), and the track for the selected run with everyone's notes on it. History comes from
 // tick_snapshot rows; nothing here computes the simulation.
 const SPEEDS = [0.5, 1, 2, 4] as const;
 const MIN_SPAN = 16; // 4 simulated hours, until the run settles
@@ -25,6 +26,7 @@ export function Timeline({
 }) {
   const run = session.runs.find((r) => r.id === session.activeRunId) ?? session.runs[0];
   const [err, setErr] = useState<string>();
+  const [annotating, setAnnotating] = useState(false);
   const runTick = run?.tick ?? 0;
   const settled = run?.status === "done";
   const span = settled ? Math.max(runTick, 1) : Math.max(runTick + 4, MIN_SPAN);
@@ -107,6 +109,7 @@ export function Timeline({
               <path d="M13 3v10M3 3.5 9 8l-6 4.5zM7.5 3.5 13.5 8l-6 4.5z" fill="currentColor" />
             </svg>
           </button>
+          <AddNoteButton on={annotating} onChange={setAnnotating} session={session} />
         </div>
 
         <span className="readout text-[36px] leading-none tracking-[-0.02em]" aria-live="off">
@@ -131,35 +134,38 @@ export function Timeline({
               </button>
             ))}
           </div>
-          <Presence session={session} />
         </div>
       </div>
       {err && <p role="alert" className="num m-0 text-xs text-ink-muted">{err}</p>}
 
-      {/* The track: a marker over the current tick, the end dot where the run settles, the heat strip under it. */}
+      {/* The track: a marker over the current tick, the end dot where the run settles, the heat strip under it.
+          Notes sit on the same row as grey markers; the current tick's marker is the blue one. */}
       <div className="flex flex-col gap-2 pt-1">
-        <div className="relative mx-[7px]" role="img" aria-label={`${tickClock(run.tick)} of ${settled ? tickClock(span) : "a run still going"}`}>
-          <div className="relative h-5">
-            <svg
-              width="12"
-              height="8"
-              viewBox="0 0 12 8"
-              aria-hidden
-              className="absolute top-1 -translate-x-1/2 transition-[left] duration-fade ease-travel"
-              style={{ left: pct(run.tick) }}
-            >
-              <path d="M0 0h12L6 8z" fill="#4DB0FF" />
-            </svg>
+        <div className="relative mx-[7px]">
+          <div role="img" aria-label={`${tickClock(run.tick)} of ${settled ? tickClock(span) : "a run still going"}`}>
+            <div className="relative h-5">
+              <svg
+                width="12"
+                height="8"
+                viewBox="0 0 12 8"
+                aria-hidden
+                className="absolute top-1 -translate-x-1/2 transition-[left] duration-fade ease-travel"
+                style={{ left: pct(run.tick) }}
+              >
+                <path d="M0 0h12L6 8z" fill="#4DB0FF" />
+              </svg>
+            </div>
+            <div className="relative h-4">
+              <span className="absolute inset-x-0 top-[7px] h-px bg-line2" />
+              <span className="absolute left-0 top-[7px] h-px bg-ink-faint" style={{ width: pct(run.tick) }} />
+              <span
+                className={`absolute right-0 top-0 h-[15px] w-[15px] translate-x-1/2 rounded-full border-2 ${
+                  settled ? "border-ink bg-bg shadow-[inset_0_0_0_3px_#0D0F10,inset_0_0_0_8px_#E9ECEE]" : "border-line2 bg-bg"
+                }`}
+              />
+            </div>
           </div>
-          <div className="relative h-4">
-            <span className="absolute inset-x-0 top-[7px] h-px bg-line2" />
-            <span className="absolute left-0 top-[7px] h-px bg-ink-faint" style={{ width: pct(run.tick) }} />
-            <span
-              className={`absolute right-0 top-0 h-[15px] w-[15px] translate-x-1/2 rounded-full border-2 ${
-                settled ? "border-ink bg-bg shadow-[inset_0_0_0_3px_#0D0F10,inset_0_0_0_8px_#E9ECEE]" : "border-line2 bg-bg"
-              }`}
-            />
-          </div>
+          <TimelineNotes session={session} span={span} annotating={annotating} onStop={() => setAnnotating(false)} />
         </div>
         <div aria-hidden className="flex h-2 gap-[3px] px-[7px]">
           {heat.map((bg, t) => (
@@ -243,8 +249,12 @@ function NewRun({ session, onNewRun }: { session: SessionSnapshot; onNewRun?: ()
 
 const AVATAR_FILL = ["#4A5258", "#3E4448", "#2F3438"];
 
-/** Who is here: three avatars, then +N. The presenter wears the ink ring. */
-function Presence({ session }: { session: SessionSnapshot }) {
+/**
+ * Who is here: three avatars, then +N. The presenter wears the ink ring. Rows
+ * come from presence, which the module deletes on disconnect, so these are the
+ * people connected now. Rendered in the header, so it shows before any run.
+ */
+export function Presence({ session }: { session: SessionSnapshot }) {
   const people = session.presence;
   const shown = people.slice(0, 3);
   const extra = people.length - shown.length;
@@ -252,10 +262,11 @@ function Presence({ session }: { session: SessionSnapshot }) {
     <div role="group" aria-label={`${people.length} ${people.length === 1 ? "person" : "people"} in this session`} className="flex items-center rounded-full border border-line2 p-1">
       {shown.map((p, i) => {
         const presenting = p.name === session.presenterName;
+        const you = !!session.me && p.name === session.me.name && p.role === session.me.role;
         return (
           <span
             key={`${p.name}-${i}`}
-            title={`${p.name} · ${ROLE_LABEL[p.role]}${presenting ? " · presenting" : ""}`}
+            title={`${p.name}${you ? " (you)" : ""} · ${ROLE_LABEL[p.role]}${presenting ? " · presenting" : ""}`}
             className="num relative inline-flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-medium text-ink"
             style={{
               marginLeft: i ? -8 : 0,
