@@ -24,6 +24,7 @@ export * from "./solution";
 export * from "./agents";
 export * from "./question";
 export * from "./recommendation";
+export * from "./views";
 
 // ---------------------------------------------------------------- lifecycle
 

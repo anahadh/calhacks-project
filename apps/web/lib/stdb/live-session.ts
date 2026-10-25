@@ -26,6 +26,9 @@ export function sessionQueries(sessionId: string): string[] {
   return [
     `SELECT * FROM session WHERE id = '${sessionId}'`,
     ...SESSION_TABLES.map((t) => `SELECT * FROM ${t} WHERE session_id = '${sessionId}'`),
+    // Role views: per caller, filtered by the role on this browser's presence row (spacetime/src/views.ts).
+    "SELECT * FROM my_device_card",
+    "SELECT * FROM my_arcs",
   ];
 }
 
@@ -136,7 +139,7 @@ function useRowVersion(conn: DbConnection | undefined): number {
     const tables = [
       conn.db.session, conn.db.run, conn.db.presence, conn.db.annotation, conn.db.deviceState, conn.db.serviceState,
       conn.db.patientState, conn.db.spreadAttempt, conn.db.simEvent, conn.db.tickSnapshot, conn.db.agentMessage,
-      conn.db.agentStatus, conn.db.question, conn.db.recommendation,
+      conn.db.agentStatus, conn.db.question, conn.db.recommendation, conn.db.myDeviceCard, conn.db.myArcs,
     ] as any[];
     for (const t of tables) {
       t.onInsert(bump);

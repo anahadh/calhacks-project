@@ -5,10 +5,11 @@
 // cache may hold other sessions' and runs' rows, so everything is filtered here.
 
 import type { Identity } from "spacetimedb";
+import { viewRole, type ArcData, type DeviceCardData } from "../../../../spacetime/src/role_views";
 import { messagesOf, questionsOf, recommendationsOf, roundStateOf, statusOf } from "./agent-rows";
 import type {
-  AgentMessage, AgentStatus, Annotation, DeviceState, PatientState, Presence, Question, Recommendation, Run,
-  ServiceState, Session, SimEvent, SpreadAttempt, TickSnapshot,
+  AgentMessage, AgentStatus, Annotation, ArcRow, DeviceCardRow, DeviceState, PatientState, Presence, Question,
+  Recommendation, Run, ServiceState, Session, SimEvent, SpreadAttempt, TickSnapshot,
 } from "./module_bindings/types";
 import { runStatusOf, speedOf } from "./run-status";
 import type {
@@ -38,6 +39,9 @@ export type SessionTables = RunTables & {
   agentStatus: Iterable<AgentStatus>;
   question: Iterable<Question>;
   recommendation: Iterable<Recommendation>;
+  /** Role views (per caller). Optional so fixtures without them still build a snapshot. */
+  myDeviceCard?: Iterable<DeviceCardRow>;
+  myArcs?: Iterable<ArcRow>;
 };
 
 export const EMPTY_HOSPITAL: Hospital = { id: "", name: "", floors: [], rooms: [], devices: [], flows: [], services: [], patients: [] };
@@ -133,6 +137,24 @@ export function runViewOf(runId: string, tables: RunTables, row: Run | undefined
   };
 }
 
+/** This browser's my_device_card and my_arcs rows, back in role_views.ts's shapes. */
+export function roleViewOf(tables: SessionTables, sessionId: string, role: string): NonNullable<SessionSnapshot["roleView"]> {
+  const cards = [...(tables.myDeviceCard ?? [])].filter((c) => c.sessionId === sessionId).map(
+    (c): DeviceCardData => ({
+      device_id: c.deviceId, services: c.services, os: c.os, vulnerability: c.vulnerability, vlan: c.vlan, ports: c.ports,
+      infected_by: c.infectedBy, criticality: c.criticality, clinical_flows: c.clinicalFlows,
+      clinical_services: c.clinicalServices, patients: c.patients, service_impact: c.serviceImpact,
+    }),
+  );
+  const arcs = [...(tables.myArcs ?? [])].filter((a) => a.sessionId === sessionId).map(
+    (a): ArcData => ({
+      id: a.id, kind: a.kind === "dependency" ? "dependency" : "flow", from: a.fromDevice, to: a.toId,
+      emphasis: a.emphasis === "strong" || a.emphasis === "faint" ? a.emphasis : "normal", label: a.label,
+    }),
+  );
+  return { role: viewRole(role), cards, arcs };
+}
+
 function presenceOf(p: { name: string; role: string; following: boolean }): PresenceRow {
   return { name: p.name, role: (ROLES.has(p.role) ? p.role : "observer") as PresenceRow["role"], following: p.following };
 }
@@ -176,6 +198,7 @@ export function snapshotOf(sessionId: string, tables: SessionTables, me?: Identi
     solutionPairId: session?.solutionPairId ?? "",
     presence: presenceRows.map(presenceOf),
     me: mine ? presenceOf(mine) : undefined,
+    roleView: mine ? roleViewOf(tables, sessionId, mine.role) : undefined,
     annotations: ofSession(tables.annotation)
       .filter((a) => a.active)
       .map(

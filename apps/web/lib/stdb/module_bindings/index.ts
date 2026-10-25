@@ -68,6 +68,8 @@ import AgentStatusRow from "./agent_status_table";
 import AnnotationRow from "./annotation_table";
 import DefendRequestLogRow from "./defend_request_log_table";
 import DeviceStateRow from "./device_state_table";
+import MyArcsRow from "./my_arcs_table";
+import MyDeviceCardRow from "./my_device_card_table";
 import PatientStateRow from "./patient_state_table";
 import PresenceRow from "./presence_table";
 import QuestionRow from "./question_table";
@@ -290,6 +292,20 @@ const tablesSchema = __schema({
       { name: 'tick_snapshot_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, TickSnapshotRow),
+  myArcs: __table({
+    name: 'my_arcs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyArcsRow),
+  myDeviceCard: __table({
+    name: 'my_device_card',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyDeviceCardRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -345,6 +361,10 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "spread_attempt": Omit<typeof tablesSchema.schemaType.tables["spreadAttempt"], "accessorName"> & { readonly accessorName: "spread_attempt" };
     /** @deprecated Use `tickSnapshot` instead. This alias will be removed in the next major version. */
     readonly "tick_snapshot": Omit<typeof tablesSchema.schemaType.tables["tickSnapshot"], "accessorName"> & { readonly accessorName: "tick_snapshot" };
+    /** @deprecated Use `myArcs` instead. This alias will be removed in the next major version. */
+    readonly "my_arcs": Omit<typeof tablesSchema.schemaType.tables["myArcs"], "accessorName"> & { readonly accessorName: "my_arcs" };
+    /** @deprecated Use `myDeviceCard` instead. This alias will be removed in the next major version. */
+    readonly "my_device_card": Omit<typeof tablesSchema.schemaType.tables["myDeviceCard"], "accessorName"> & { readonly accessorName: "my_device_card" };
   };
 };
 
@@ -372,6 +392,8 @@ const tableAccessorAliases = {
   "sim_event": "simEvent",
   "spread_attempt": "spreadAttempt",
   "tick_snapshot": "tickSnapshot",
+  "my_arcs": "myArcs",
+  "my_device_card": "myDeviceCard",
 } as const;
 
 function __withTableAccessorAliases<T extends object>(target: T, freeze = false): T {
@@ -410,6 +432,10 @@ export type DbView = __DbViewBase & {
   readonly "spread_attempt": __DbViewBase["spreadAttempt"];
   /** @deprecated Use `tickSnapshot` instead. This alias will be removed in the next major version. */
   readonly "tick_snapshot": __DbViewBase["tickSnapshot"];
+  /** @deprecated Use `myArcs` instead. This alias will be removed in the next major version. */
+  readonly "my_arcs": __DbViewBase["myArcs"];
+  /** @deprecated Use `myDeviceCard` instead. This alias will be removed in the next major version. */
+  readonly "my_device_card": __DbViewBase["myDeviceCard"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
@@ -432,6 +458,10 @@ export type Tables = __TablesBase & {
   readonly "spread_attempt": __TablesBase["spreadAttempt"];
   /** @deprecated Use `tickSnapshot` instead. This alias will be removed in the next major version. */
   readonly "tick_snapshot": __TablesBase["tickSnapshot"];
+  /** @deprecated Use `myArcs` instead. This alias will be removed in the next major version. */
+  readonly "my_arcs": __TablesBase["myArcs"];
+  /** @deprecated Use `myDeviceCard` instead. This alias will be removed in the next major version. */
+  readonly "my_device_card": __TablesBase["myDeviceCard"];
 };
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */

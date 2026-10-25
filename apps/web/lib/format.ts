@@ -26,12 +26,8 @@ export function runStatusLabel(r: { status: string; tick: number }): string {
   return `paused · ${tickClock(r.tick)}`;
 }
 
-export const ROLE_LABEL = {
-  security: "Security",
-  clinical_engineering: "Clinical engineering",
-  operations: "Operations",
-  observer: "Observer",
-} as const;
+// Role names live with the role views.
+export { ROLE_LABEL } from "./role-views";
 
 /** Two-letter initials for a presence avatar ("Maya R." → "MR"). */
 export function initials(name: string): string {
