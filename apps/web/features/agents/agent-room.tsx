@@ -467,7 +467,8 @@ function Mark({ who, short, decision }: { who: string; short: string; decision: 
 function ScorecardPanel({ card }: { card: AgentMessageRow }) {
   const rows = card.scorecard ?? [];
   return (
-    <section aria-label={SCOREKEEPER_LABEL} className="max-h-[260px] shrink-0 overflow-y-auto border-t border-line px-5 py-3">
+    // Takes only the column's leftover height and scrolls inside it, so it never pushes over the blocks above.
+    <section aria-label={SCOREKEEPER_LABEL} className="min-h-0 flex-1 basis-0 overflow-y-auto border-t border-line px-5 py-3">
       <div className="flex items-center gap-2 text-[13px]" style={{ color: SPEAKER_COLOR.scorekeeper }}>
         <AgentGlyph who="scorekeeper" size={14} />
         <span>{SCOREKEEPER_LABEL}</span>
