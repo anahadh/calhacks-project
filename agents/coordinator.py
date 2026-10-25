@@ -29,6 +29,7 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
+import addresses
 import brain
 import cards
 import chat
@@ -357,8 +358,43 @@ def local_tools(ctx: Context, sender: str) -> list[brain.Tool]:
     ]
 
 
+ASK_TIMEOUT_S = 25
+
+
+async def _ask_over_wire(ctx: Context, agent: str, question: str) -> str:
+    """Send a chat-protocol message to a specialist and wait for its ChatMessage reply
+    (uAgents send_and_receive; the specialist's ack has another digest and passes by).
+    Raises TimeoutError when nothing comes back in ASK_TIMEOUT_S."""
+    response, status = await ctx.send_and_receive(
+        addresses.address(agent), ChatMessage(content=[TextContent(text=question)]),
+        response_type=ChatMessage, timeout=ASK_TIMEOUT_S,
+    )
+    if status.status.value not in ("delivered", "sent") or not isinstance(response, ChatMessage):
+        raise TimeoutError(status.detail or "no reply")
+    return response.text().strip()
+
+
 async def ask_agent(ctx: Context, sender: str, handle: str, question: str) -> dict:
-    return {"error": "ask_agent is not available yet"}
+    """The Coordinator invokes a specialist by @handle, visibly: an interim line to the chat
+    user, the question and the answer relayed as agent_message rows (rule 10), and the
+    answer returned to the loop to quote. Refused while any round is running (rule 5)."""
+    handle = handle.lstrip("@").strip()
+    agent = HANDLES.get(handle)
+    if agent is None:
+        return {"error": f"unknown agent @{handle}; the specialists are " + ", ".join("@" + h for h in sorted(HANDLES))}
+    if any(r.state == "running" for r in rounds.values()):
+        return {"error": "a round is running"}
+    sid = _session_for(sender, None) or CHAT_SESSION
+    rnd_no = rounds[sid].round if sid in rounds else 0
+    await chat_send(ctx, sender, ChatMessage(content=[TextContent(text=f"Asking @{handle}: {question}")]), sid,
+                    f"Asking @{handle}: {question}")
+    await relay.post(sid, rnd_no, NAME, agent, "chat", {"text": question, "via": "asi1"}, direction="sent")
+    try:
+        said = await _ask_over_wire(ctx, agent, question)
+    except (TimeoutError, asyncio.TimeoutError) as e:
+        return {"error": f"@{handle} did not answer within {ASK_TIMEOUT_S} s" + (f": {e}" if str(e) else "")}
+    await relay.post(sid, rnd_no, agent, NAME, "chat", {"text": said, "via": "asi1"}, direction="received")
+    return {"agent": handle, "said": said}
 
 
 # --- the turn ---

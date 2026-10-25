@@ -59,16 +59,47 @@ FAKE_ASI1_TEXT = "Worded by the test model from the facts given."
 
 class FakeAsi1(BaseHTTPRequestHandler):
     """A stand-in for ASI:One's chat completions API, so the agents word every message
-    with a model call (there is no fallback) without reaching the real API."""
+    with a model call (there is no fallback) without reaching the real API. A request with
+    `tools` is a brain.py chat turn: it is answered by a fixed script (one tool call, then
+    text), so the live chat tests are deterministic."""
 
     def do_POST(self):
-        self.rfile.read(int(self.headers.get("content-length", 0)))
-        body = json.dumps({"choices": [{"message": {"content": json.dumps({"text": FAKE_ASI1_TEXT})}}]}).encode()
+        req = json.loads(self.rfile.read(int(self.headers.get("content-length", 0))) or b"{}")
+        if "tools" in req:
+            message = self.brain_turn(req)
+        else:
+            message = {"content": json.dumps({"text": FAKE_ASI1_TEXT})}
+        body = json.dumps({"choices": [{"message": {"role": "assistant", **message}}]}).encode()
         self.send_response(200)
         self.send_header("content-type", "application/json")
         self.send_header("content-length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    @staticmethod
+    def brain_turn(req: dict) -> dict:
+        msgs = req["messages"]
+        user = next(m["content"] for m in reversed(msgs) if m["role"] == "user")
+        tool_results = [m for m in msgs if m["role"] == "tool"]
+        call = lambda name, args: {"content": None, "tool_calls": [
+            {"id": "call_1", "type": "function", "function": {"name": name, "arguments": json.dumps(args)}}]}
+        if tool_results:  # the second leg: text from the tool's result, no numbers invented
+            result = json.loads(tool_results[-1]["content"])
+            if "said" in result:
+                return {"content": f'@{result["agent"]} said: "{result["said"]}"'}
+            if "error" in result:
+                return {"content": f"Sorry: {result['error']}"}
+            if "session_id" in result and "device" in result:
+                return {"content": f"Started a simulated round from {result['device']}."}
+            return {"content": "Round summary: see the events above."}
+        low = user.lower()
+        if low.startswith("simulate ransomware from "):
+            return call("start_round", {"device_query": user[len("simulate ransomware from "):]})
+        if "ask the inventory agent" in low:
+            return call("ask_agent", {"handle": "hippocratech-inventory", "question": "which devices can't you identify?"})
+        if low.startswith("the round just ended"):
+            return call("round_status", {})
+        return {"content": "Hello from the fake model."}
 
     def log_message(self, *args):
         pass
@@ -261,42 +292,66 @@ def chat_replies(out: Path) -> list[dict]:
     return [json.loads(line) for line in out.read_text().splitlines()] if out.exists() else []
 
 
-def test_live_chat_starts_a_round_and_sends_the_summary(agents):
+def send_chat(agents, texts: list[str]):
     out = agents / "chat_replies.jsonl"
-    texts = ["hello", "simulate ransomware from Toaster 9", "simulate ransomware from MRI 2"]
     sender = subprocess.Popen(
         [sys.executable, "-u", "tests/chat_sender.py", "--out", str(out), *[x for t in texts for x in ("--text", t)]],
         cwd=AGENTS_DIR, env=env_for(agents), stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, start_new_session=True,
     )
+    return out, sender
+
+
+def test_live_chat_starts_a_round_narrates_it_and_sends_the_summary(agents):
+    texts = ["hello", "simulate ransomware from Toaster 9", "simulate ransomware from MRI 2"]
+    out, sender = send_chat(agents, texts)
     try:
         chats = lambda: [r for r in chat_replies(out) if r["type"] == "chat"]
-        wait_until(lambda: len(chats()) >= 4, TIMEOUT_S, "4 chat replies (help, unknown device, started, summary)")
+        texts_of = lambda: [r["text"] for r in chats()]
+        wait_until(lambda: any(t.startswith("Round summary") for t in texts_of()), TIMEOUT_S, "the round summary")
         rows = chat_replies(out)
         assert [r["status"] for r in rows if r["type"] == "sent"] == ["delivered"] * 3
         acked = {r["acknowledged"] for r in rows if r["type"] == "ack"}
         assert {r["msg_id"] for r in rows if r["type"] == "sent"} <= acked  # every message acknowledged
-        help_, unknown, started, summary = chats()
         assert all(r["from_coordinator"] for r in chats())
-        card = lambda r: json.dumps(r["cards"], ensure_ascii=False)
-        assert "simulate ransomware from MRI 2" in help_["text"] and '"action": "simulate"' in card(help_)
-        assert 'I don\'t know a device called "Toaster 9"' in unknown["text"] and "MRI 2" in unknown["text"]
-        assert "Round started: MRI 2" in card(started) and "/room/chat-" in started["text"] and "fixture" not in card(started)
-        s = card(summary)
-        assert "Round 1 \u00b7 Isolate medical devices" in s and "Option 1: " in s
-        assert "Security must sign off" in s and "fixture" not in s
-        for r in (help_, unknown, started, summary):
-            assert not FORBIDDEN.search(r["text"] + card(r)), r
+        got = texts_of()
+        assert got[0] == "Hello from the fake model."
+        assert got[1].startswith("Sorry:") and "Toaster 9" in got[1]
+        assert "Started a simulated round from MRI 2." in got
+        # The live narration: the baseline line, then one status line per negotiation event, by handle.
+        lines = [t for t in got if t.startswith("[ @") or t.startswith("Baseline:")]
+        assert lines[0].startswith("Baseline:") and "@hippocratech-flow" in lines[0]
+        assert any(t.startswith("[ @hippocratech-flow · round 1 ] proposed") for t in lines)
+        assert any(t.startswith("[ @hippocratech-clinical-workflow · round 1 ]") for t in lines)
+        assert any(t.startswith("[ @hippocratech-coordinator ] the agents agree on") for t in lines)
+        for t in got:
+            assert not FORBIDDEN.search(t), t
         # The chat round went through the same code path as /start_round, and was relayed.
         logs = list(agents.glob("chat-*.jsonl"))
         assert len(logs) == 1
         relayed = [m for m in messages(logs[0]) if m.get("type") == "recommendation"]
         assert relayed and relayed[0]["payload"]["requiredRoles"][0] == "security"
-        chat_rows = [m for m in messages(agents / "asi1-chat.jsonl") if m.get("type") == "chat"]
-        assert [m["payload"]["text"] for m in chat_rows if m["direction"] == "received"] == texts[:2]
-        # The request that started the round is relayed into the round's own session, with the cards sent there.
         round_chat = [m for m in messages(logs[0]) if m.get("type") == "chat"]
-        assert [m["payload"]["text"] for m in round_chat if m["direction"] == "received"] == texts[2:]
-        assert [bool(m["payload"].get("card")) for m in round_chat if m["direction"] == "sent"] == [True, True]
+        assert [m["payload"]["text"] for m in round_chat if m["direction"] == "received"][0] == texts[2]
+        assert sum(1 for m in round_chat if m["direction"] == "sent") == len(lines) + 2  # narration + started + summary
+    finally:
+        os.killpg(sender.pid, signal.SIGKILL)
+        sender.wait()
+
+
+def test_live_coordinator_asks_a_specialist_by_handle(agents):
+    out, sender = send_chat(agents, ["ask the inventory agent which devices it can't identify"])
+    try:
+        chats = lambda: [r for r in chat_replies(out) if r["type"] == "chat"]
+        wait_until(lambda: len(chats()) >= 2, TIMEOUT_S, "the interim line and the quoted answer")
+        interim, quoted = [r["text"] for r in chats()][:2]
+        assert interim == "Asking @hippocratech-inventory: which devices can't you identify?"
+        assert quoted.startswith('@hippocratech-inventory said: "')
+        chat_rows = [m for m in messages(agents / "asi1-chat.jsonl") if m.get("type") == "chat"]
+        pairs = [(m["from"], m["to"]) for m in chat_rows]
+        assert ("coordinator", "inventory") in pairs and ("inventory", "coordinator") in pairs
+        assert pairs.index(("coordinator", "inventory")) < pairs.index(("inventory", "coordinator"))
+        for t in (interim, quoted):
+            assert not FORBIDDEN.search(t), t
     finally:
         os.killpg(sender.pid, signal.SIGKILL)
         sender.wait()
