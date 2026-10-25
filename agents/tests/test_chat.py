@@ -74,3 +74,9 @@ def test_wants_round_finds_the_device(text, device):
 ])
 def test_wants_round_ignores_questions(text):
     assert chat.wants_round(text) is None
+
+
+def test_open_selection_carries_its_url():
+    assert chat.selection('{"action": "open", "source": "hippocratech", "url": "http://x/room/s"}').url == "http://x/room/s"
+    assert chat.selection("The user picked action open with url http://x/room/s2").url == "http://x/room/s2"
+    assert chat.selection("what is PACS?") is None

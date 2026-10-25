@@ -284,3 +284,15 @@ def test_summary_message_carries_the_trace_and_the_recommendation_card(coord, mo
     to, message, session_id, text, card = sent[-1]
     assert text.startswith("[ a ] one\n\n[ b ] two\n\n") and text.endswith("The agents agree.")
     assert card is not None and "Recommendation" in json.dumps(card)
+
+
+def test_open_button_replies_with_the_link_without_the_model(coord, monkeypatch):
+    c, sent = coord
+
+    async def never(*a, **k):
+        raise AssertionError("the model must not be asked")
+
+    monkeypatch.setattr(c.brain, "respond", never)
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", '{"action": "open", "source": "hippocratech", "url": "http://x/room/chat-1"}'))
+    run(c.chat_turn(c.ctx_stub(), "agent1qs", "The user picked action open with url http://x/room/chat-2 from source hippocratech"))
+    assert "http://x/room/chat-1" in sent[-2][3] and "http://x/room/chat-2" in sent[-1][3]

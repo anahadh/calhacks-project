@@ -249,7 +249,7 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
             open_round = {"type": "list", "items": []}
             children += [heading(f"Round {current}" if current else "Start", 3), open_round]
         open_round["items"].append(trace_row(line))
-    children.append(button("Open the live room", "open", False, url=room_url))
+    children += [text(f"Live room: {room_url}", "muted"), button("Open the live room", "open", False, url=room_url)]
     root = section(f"Negotiation · round {round} · {state.replace('_', ' ')}", children,
                    subtitle=f"Attack from {device_label} · session {session_id}")
     return message(narrate.render(lines), root, False)
@@ -267,6 +267,6 @@ def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_u
     roles = group([badge(ROLE_NAMES[r], "warning") for r in rec.requiredRoles], direction="row", gap=6)
     children = [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
                 text("Must sign off in the Hippocra.tech app (agents agreeing is not approval):", "muted"), roles,
-                button("Open the live room", "open", True, url=room_url)]
+                text(f"Live room: {room_url}", "muted"), button("Open the live room", "open", True, url=room_url)]
     root = section("Recommendation", children, subtitle=f"Session {session_id}")
     return message(bubble, root, False)

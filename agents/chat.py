@@ -43,13 +43,14 @@ def wants_round(text: str) -> str | None:
     return None
 
 
-ACTIONS = {"simulate", "lookup", "devices", "protected", "status", "help"}
+ACTIONS = {"simulate", "lookup", "devices", "protected", "status", "help", "open"}
 
 
 @dataclass(frozen=True)
 class Command:
-    kind: str  # "simulate", "lookup", "devices", "protected", "status" or "help"
+    kind: str  # "simulate", "lookup", "devices", "protected", "status", "help" or "open"
     device: str | None = None
+    url: str | None = None  # "open": the link a card button carries (ASI:One buttons only send selections)
 
 
 def selection(text: str) -> Command | None:
@@ -62,12 +63,13 @@ def selection(text: str) -> Command | None:
         except json.JSONDecodeError:
             data = None
         if isinstance(data, dict) and data.get("action") in ACTIONS:
-            device = data.get("device")
-            return Command(data["action"], device if isinstance(device, str) else None)
-    m = re.search(r"\baction\W+(?P<action>simulate|lookup|devices|protected|status|help)\b", t, re.I)
+            device, url = data.get("device"), data.get("url")
+            return Command(data["action"], device if isinstance(device, str) else None, url if isinstance(url, str) else None)
+    m = re.search(r"\baction\W+(?P<action>simulate|lookup|devices|protected|status|help|open)\b", t, re.I)
     if m:
         d = re.search(r"\bdevice\W+(?P<device>[a-z0-9_]+)", t, re.I)
-        return Command(m.group("action").lower(), d.group("device") if d else None)
+        u = re.search(r"(?P<url>https?://\S+)", t)
+        return Command(m.group("action").lower(), d.group("device") if d else None, u.group("url").rstrip(".,)") if u else None)
     return None
 
 

@@ -177,3 +177,15 @@ def test_handoff_lines_name_both_agents():
 def test_render_separates_lines_into_paragraphs():
     assert narrate.render(["a", "b"]) == "a\n\nb"
     assert narrate.render([]) == ""
+
+
+def test_revision_line_says_why_and_the_counts_not_rule_arithmetic():
+    from protocol import Revision, RuleDiff
+    r = Revision(sessionId="s", round=2, policyId="p", diff=RuleDiff(added=[], removed=["r1"]), name="Critical Care Shield",
+                 testResult=cand, reason="Keeps MRI and CT scans flowing to PACS.")
+    s = narrate.line(H, "revision", r, baseline=baseline)
+    assert s.startswith('[ @hippocratech-flow · round 2 ] revised the plan, now "Critical Care Shield": Keeps MRI and CT scans flowing to PACS.')
+    assert f"{cand.infectedCount} devices infected with it, {baseline.infectedCount} without" in s
+    assert "rules added" not in s
+    unnamed = Revision(sessionId="s", round=3, policyId="p", diff=RuleDiff(added=[], removed=[]), testResult=cand)
+    assert narrate.line(H, "revision", unnamed).startswith("[ @hippocratech-flow · round 3 ] revised the plan:")

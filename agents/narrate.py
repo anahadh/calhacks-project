@@ -55,8 +55,11 @@ def line(h: HospitalIndex, type: str, msg, baseline: RunResult | None = None) ->
         return f'{_tag("flow", msg.round)} proposed "{msg.name}": {msg.testResult.infectedCount} devices infected with it{without}.'
     if type == "revision":
         assert isinstance(msg, Revision)
-        change = f"{len(msg.diff.added)} rules added, {len(msg.diff.removed)} removed"
-        return f"{_tag('flow', msg.round)} revised: {change}, {msg.testResult.infectedCount} infected."
+        named = f', now "{msg.name}"' if msg.name else ""
+        why = f" {msg.reason}" if msg.reason else ""
+        without = f", {baseline.infectedCount} without" if baseline is not None else ""
+        return (f"{_tag('flow', msg.round)} revised the plan{named}:{why} "
+                f"{msg.testResult.infectedCount} devices infected with it{without}.")
     if type == "verdict":
         assert isinstance(msg, Verdict)
         if msg.decision == "accept":

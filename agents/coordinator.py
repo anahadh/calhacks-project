@@ -473,8 +473,12 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
                     prefix: str = "", default_card: str | None = None) -> None:
     """One ASI:One turn: relay the text in, let the loop pick tools and write the reply,
     relay the reply out, send it with a card when a tool asked for one."""
-    text = _selection_text(text)
+    sel = chat.selection(text)
     sid = session_id or _session_for(sender, None) or CHAT_SESSION
+    if sel is not None and sel.kind == "open":  # a card's link button: ASI:One sends the selection back; answer with the link
+        await reply(ctx, sender, f"Live room for this round: {sel.url or room_url(sid)}", sid)
+        return
+    text = _selection_text(text)
     if relay_in:
         await relay.post(sid, rounds[sid].round if sid in rounds else 0, "humans", NAME, "chat",
                          {"text": text, "via": "asi1"}, direction="received")

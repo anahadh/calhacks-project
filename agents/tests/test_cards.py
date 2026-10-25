@@ -121,3 +121,10 @@ def test_every_card_passes_the_documented_schema():
         cards.validate({"type": "text", "value": "x", "style": "bold"})
     with pytest.raises(ValueError, match="type"):
         cards.validate({"type": "table"})
+
+
+def test_cards_print_the_live_room_link_as_text_too():
+    for m in (cards.recommendation_card(H, "s", rec, base, "http://x/room/s", "Done."),
+              cards.trace_card(H, "s", "MRI 2", ["[ @hippocratech-flow · round 1 ] accepted."], 1, "running", "http://x/room/s")):
+        _, root = payload(m)
+        assert any(n["type"] == "text" and "http://x/room/s" in n["value"] for n in walk(root))
