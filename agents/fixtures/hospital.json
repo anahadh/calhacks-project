@@ -1758,6 +1758,145 @@
           "svc_pharm"
         ]
       }
+    ],
+    "domains": [
+      {
+        "id": "H",
+        "dcs": [
+          "srv_dc"
+        ]
+      }
+    ],
+    "trusts": [],
+    "accounts": [
+      {
+        "id": "H\\da",
+        "domain": "H",
+        "tier": "domain_admin",
+        "admin_to": [
+          "*"
+        ],
+        "sessions_on": [
+          "srv_dc",
+          "ws_admin_1"
+        ]
+      },
+      {
+        "id": "H\\svc_backup",
+        "domain": "H",
+        "tier": "service",
+        "admin_to": [
+          "srv_file",
+          "srv_ehr",
+          "srv_pacs"
+        ],
+        "sessions_on": [
+          "srv_file"
+        ]
+      },
+      {
+        "id": "H\\pacs_admin",
+        "domain": "H",
+        "tier": "administrator",
+        "admin_to": [
+          "srv_pacs",
+          "srv_file"
+        ],
+        "sessions_on": [
+          "ws_img_1",
+          "ws_rad_1",
+          "ws_admin_2"
+        ]
+      },
+      {
+        "id": "H\\helpdesk_er",
+        "domain": "H",
+        "tier": "service_desk_admin",
+        "admin_to": [
+          "ws_er_1",
+          "ws_reg",
+          "ns_er"
+        ],
+        "sessions_on": [
+          "ws_er_1",
+          "ws_reg",
+          "ns_er"
+        ]
+      },
+      {
+        "id": "H\\helpdesk_img",
+        "domain": "H",
+        "tier": "service_desk_admin",
+        "admin_to": [
+          "ws_img_1",
+          "ws_img_2",
+          "mri_2"
+        ],
+        "sessions_on": [
+          "ws_img_1",
+          "ws_img_2",
+          "mri_2"
+        ]
+      },
+      {
+        "id": "H\\helpdesk_lab",
+        "domain": "H",
+        "tier": "service_desk_admin",
+        "admin_to": [
+          "ws_lab",
+          "ws_pharm"
+        ],
+        "sessions_on": [
+          "ws_lab",
+          "ws_pharm"
+        ]
+      },
+      {
+        "id": "H\\helpdesk_admin",
+        "domain": "H",
+        "tier": "service_desk_admin",
+        "admin_to": [
+          "ws_admin_1",
+          "ws_admin_2",
+          "ws_admin_3"
+        ],
+        "sessions_on": [
+          "ws_admin_2",
+          "ws_admin_3"
+        ]
+      },
+      {
+        "id": "H\\helpdesk_ward",
+        "domain": "H",
+        "tier": "service_desk_admin",
+        "admin_to": [
+          "ns_icu",
+          "ns_ward",
+          "ws_ward",
+          "ws_or"
+        ],
+        "sessions_on": [
+          "ns_icu",
+          "ns_ward",
+          "ws_ward",
+          "ws_or"
+        ]
+      },
+      {
+        "id": "H\\helpdesk_rad",
+        "domain": "H",
+        "tier": "service_desk_admin",
+        "admin_to": [
+          "ws_rad_1",
+          "ws_rad_2",
+          "ws_rad_3"
+        ],
+        "sessions_on": [
+          "ws_rad_1",
+          "ws_rad_2",
+          "ws_rad_3"
+        ]
+      }
     ]
   }
 }

@@ -7,7 +7,8 @@
     "fl_10",
     "fl_61",
     "fl_62",
-    "fl_63"
+    "fl_63",
+    "fl_72"
   ],
   "protectedBroken": [],
   "frames": [
@@ -413,11 +414,12 @@
           "fl_10",
           "fl_61",
           "fl_62",
-          "fl_63"
+          "fl_63",
+          "fl_72"
         ],
         "protectedBroken": [],
         "assumptions": [
-          "[S] synthesized one domain-admin H\\da with a session on each of 18 workstations and admin_to=* (identity layer invented; not in the hospital file).",
+          "[R/S] used the hospital's supplied identity layer (domains/accounts/trusts).",
           "[S] SMB/RDP links carry admin-class (lateral) reach; HTTPS/DICOM/HL7 stay application-layer.",
           "[S] Windows medical consoles are modeled as attackable IT nodes; the vendor scanners never encrypt.",
           "[S] A blocked attempt marks a connection the plan removed, out of a device the attack had taken."
@@ -762,7 +764,7 @@
   "chokePoints": [],
   "delayedProcedures": 26,
   "assumptions": [
-    "[S] synthesized one domain-admin H\\da with a session on each of 18 workstations and admin_to=* (identity layer invented; not in the hospital file).",
+    "[R/S] used the hospital's supplied identity layer (domains/accounts/trusts).",
     "[S] SMB/RDP links carry admin-class (lateral) reach; HTTPS/DICOM/HL7 stay application-layer.",
     "[S] Windows medical consoles are modeled as attackable IT nodes; the vendor scanners never encrypt.",
     "[S] A blocked attempt marks a connection the plan removed, out of a device the attack had taken."

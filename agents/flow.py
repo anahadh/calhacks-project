@@ -5,6 +5,8 @@ hippo-opt optimizer when HIPPO_OPT_BIN is set), a test run for each, then logic.
 picks one under the request's constraints. Round 1 sends a Proposal;
 a revise request sends a Revision (a rule diff against the current policy).
 
+Strategies come from the model (llm.propose), designed for this hospital and attack,
+plus an optimizer's plan; code checks them and the engine tests every one.
 The candidates never use which flows are protected: Flow learns them only from
 the Clinical Workflow Agent's rejections (keep_flow constraints). That is the demo.
 
@@ -65,7 +67,14 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         if settings().hippo_opt_bin:
             candidates = optimize(hospital_without_protection(), req.baseline, req.constraints)
         else:
-            candidates = candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints, starts=STARTS)
+            # The agent's own strategies for this hospital and attack (the model designs them; code checks
+            # and turns them into rules; the engine tests them), plus the optimizer's plan.
+            keep = candidates_mod.kept_by_constraints(req.constraints)
+            plans = await llm.propose(candidates_mod.proposal_facts(H, req.baseline, req.patientZero, req.constraints),
+                                      {fid for fid in H.flows})
+            candidates = [c for i, p in enumerate(plans, start=1)
+                          if (c := candidates_mod.from_proposal(H, i, p.name, p.strategy, p.rationale, p.tradeoff, p.cut, keep))]
+            candidates += candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints, starts=STARTS)
         tested = [(c, run_sim(c, req.patientZero, req.seed, req.challenges)) for c in candidates]
         chosen = flow.choose([(c.policy, r) for c, r in tested], req.constraints, H)
         if chosen is None:

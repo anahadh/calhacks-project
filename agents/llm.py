@@ -211,9 +211,9 @@ async def _ask_claude(messages: list[dict]) -> str:
 
 
 async def _asi1_post(body: dict) -> httpx.Response:
-    """One ASI:One chat completion (OpenAI-style). Tests replace this."""
+    """One ASI:One chat completion (OpenAI-style). Tests replace this. Longer answers get longer to arrive."""
     key = os.environ.get("ASI1_API_KEY", "").strip()
-    async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT_S * (3 if body.get("max_tokens", 0) > MAX_TOKENS else 1)) as client:
         return await client.post(ASI1_URL, json=body, headers={"Authorization": f"Bearer {key}"})
 
 
@@ -317,3 +317,84 @@ def with_text(msg: Strict, text: str, source: Source) -> Strict:
 async def worded(msg: Strict, kind: Kind, facts: dict) -> Strict:
     text, source = await explain(kind, facts)
     return with_text(msg, text, source)
+
+
+# --- propose(): the Flow Agent's strategies, from the model; code tests and decides ---
+
+PROPOSE_SYSTEM = (
+    "You are a hospital network security engineer designing ransomware segmentation for the hospital described. "
+    "Ransomware spreads from machine to machine over file sharing (smb) and remote desktop (rdp) using stolen admin logins; "
+    "clinical traffic (hl7, dicom, https) does not carry it. Design 2 or 3 genuinely different segmentation plans for this "
+    "hospital and this attack: for example by department, by device class, around the servers, or around where the attack "
+    "started. Keep clinical work running: avoid cutting what departments clearly need. Each plan is a list of connection ids "
+    "to cut, chosen only from the ids given. Any numbers you write are ignored: every plan is tested in a simulator, and "
+    "humans decide. Never write approved, ready or safe to deploy. "
+    'Reply with JSON only: {"plans": [{"name": "...", "strategy": "least_disruption|max_containment|protect_critical_care", '
+    '"rationale": "one sentence", "tradeoff": "one sentence", "cut": ["fl_1", ...]}]}'
+)
+PROPOSE_TOKENS = 1500
+
+
+class ProposedPlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=3, max_length=80)
+    strategy: Literal["least_disruption", "max_containment", "protect_critical_care"]
+    rationale: str = Field(min_length=1, max_length=300)
+    tradeoff: str = Field(min_length=1, max_length=300)
+    cut: list[str] = Field(min_length=1, max_length=60)
+
+
+class ProposedPlans(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    plans: list[ProposedPlan] = Field(min_length=1, max_length=3)
+
+
+async def _raw(messages: list[dict], system: str, max_tokens: int) -> str:
+    """One model call returning raw text (ASI:One first, else Claude)."""
+    if os.environ.get("ASI1_API_KEY", "").strip():
+        body = {"model": _asi1_model(), "max_tokens": max_tokens, "temperature": 0,
+                "messages": [{"role": "system", "content": system}, *messages]}
+        try:
+            resp = await _asi1_post(body)
+        except httpx.TimeoutException as e:
+            raise _ApiFailed(f"ASI:One timed out after {TIMEOUT_S:.0f} s") from e
+        except httpx.HTTPError as e:
+            raise _ApiFailed(f"could not reach ASI:One: {e}") from e
+        if resp.status_code != 200:
+            raise _ApiFailed(f"ASI:One error {resp.status_code}: {resp.text[:200]}", _transient(resp.status_code))
+        return (resp.json()["choices"][0]["message"]["content"] or "").strip()
+    if os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        try:
+            r = await _make_client().messages.create(model=_model(), max_tokens=max_tokens, system=system, messages=messages)
+        except anthropic.APIStatusError as e:
+            raise _ApiFailed(f"API error {e.status_code}: {e.message}", _transient(e.status_code)) from e
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError) as e:
+            raise _ApiFailed(f"could not reach the API: {e}") from e
+        return next((b.text for b in r.content if getattr(b, "type", None) == "text"), "").strip()
+    raise LlmError("neither ASI1_API_KEY nor ANTHROPIC_API_KEY is set, so no model can propose plans")
+
+
+async def propose(facts: dict, valid_ids: set[str]) -> list[ProposedPlan]:
+    """2-3 plans from the model for this hospital and attack. Checked: strict JSON, known
+    connection ids only, no forbidden words. One retry with the errors, then LlmError (no fallback)."""
+    messages = [{"role": "user", "content": "Hospital and attack (JSON):\n" + json.dumps(facts, ensure_ascii=False)}]
+    for attempt in (1, 2):
+        raw = await _ask_with_retries(lambda m: _raw(m, PROPOSE_SYSTEM, PROPOSE_TOKENS), messages)
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
+        errors: list[str] = []
+        try:
+            plans = ProposedPlans.model_validate_json(raw).plans
+        except ValidationError as e:
+            plans, errors = [], [f"not the JSON asked for: {e.errors()[0]['loc']}: {e.errors()[0]['msg']}"]
+        for p in plans:
+            unknown = sorted(set(p.cut) - valid_ids)
+            if unknown:
+                errors.append(f"plan {p.name!r} cuts unknown ids {unknown[:5]}")
+            if FORBIDDEN.search(" ".join((p.name, p.rationale, p.tradeoff))):
+                errors.append(f"plan {p.name!r} uses forbidden words")
+        if not errors:
+            return plans
+        if attempt == 1:
+            messages += [{"role": "assistant", "content": raw},
+                         {"role": "user", "content": "Fix these and reply with the JSON only: " + "; ".join(errors)}]
+    raise LlmError("the model's plans were rejected twice: " + "; ".join(errors))

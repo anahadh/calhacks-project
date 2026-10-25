@@ -213,33 +213,37 @@ def candidate(h: HospitalIndex, id: str, strategy: str, name: str, cut: set[str]
     return Candidate(id=id, policy=Policy(strategy=strategy, name=name, rules=rules, rationale=rationale, tradeoff=tradeoff))
 
 
+def proposal_facts(h: HospitalIndex, baseline: RunResult, patient_zero: str, constraints: list[Constraint]) -> dict:
+    """What the model sees to design plans: every connection (no protected flags or purposes:
+    the Flow Agent learns those only from rejections), where the attack went, and what it must keep."""
+    keep = kept_by_constraints(constraints)
+    name = lambda d: h.devices[d]["name"]
+    return {
+        "attackStartsAt": f"{name(patient_zero)} ({zone_name(h.zone(patient_zero))})",
+        "attackReached": [f"{name(d.id)} ({zone_name(h.zone(d.id))}) at step {d.tick}" for d in baseline.infectedDevices],
+        "connections": [
+            {"id": f["id"], "from": f"{name(f['from'])} [{h.devices[f['from']]['type']}, {zone_name(h.zone(f['from']))}]",
+             "to": f"{name(f['to'])} [{h.devices[f['to']]['type']}, {zone_name(h.zone(f['to']))}]", "protocol": f["protocol"]}
+            for f in active_flows(h)
+        ],
+        "mustKeep": sorted(keep),
+    }
+
+
+def from_proposal(h: HospitalIndex, i: int, name: str, strategy: str, rationale: str, tradeoff: str,
+                  cut: list[str], keep: set[str]) -> Candidate | None:
+    """A model-proposed plan as a Candidate (the cut becomes an allow-list; kept links are never cut)."""
+    return candidate(h, f"proposed_{i}", strategy, name, set(cut), keep, rationale, tradeoff)
+
+
 def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constraints: list[Constraint],
              path: set[str] | None = None, starts: list[str] | None = None) -> list[Candidate]:
-    """The candidate plans for this attack. `path` overrides the attack path (the Flow
-    Agent widens it with each test run, as the attack reroutes around a cut)."""
+    """The algorithmic candidate: the optimizer over every start. (The other plans come from the model.)"""
     keep = kept_by_constraints(constraints)
-    start = h.zone(patient_zero)
-    path = attack_path(h, baseline) if path is None else path
     out = [
-        candidate(h, "clinical_only_between_zones", "least_disruption", "Allow only clinical traffic between zones", lateral(h), keep,
-                  "Zones keep talking over HL7, DICOM and HTTPS; file sharing and remote desktop stop at zone boundaries.",
-                  "Shared drives in other zones stop working."),
-        candidate(h, "admin_from_it_only", "protect_critical_care", "Server admin access from IT only", admin_from_it_only(h), keep,
-                  "Only IT workstations may open file shares or remote desktop on the servers, so a compromised ward PC can't reach them.",
-                  "Clinical workstations lose their mapped shared drive."),
-        candidate(h, "medical_device_segments", "protect_critical_care", "Medical device segments (imaging, monitors, pumps)",
-                  medical_isolation(h), keep,
-                  f"Imaging, monitors and pumps each sit on their own segment with minimum holes: {holes(h, medical_isolation(h) - keep)}.",
-                  "Vendor file shares and remote support to medical devices stop."),
-        candidate(h, f"quarantine_{start}", "max_containment", f"Quarantine {zone_name(start)}", quarantine(h, start), keep,
-                  f"The attack starts in {zone_name(start)}; that zone keeps only clinical traffic to the rest of the hospital.",
-                  f"{zone_name(start).capitalize()} loses file shares and remote access outside the zone."),
         candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that hold every attack",
                   optimized_cuts(h, starts or [patient_zero], keep), keep,
                   "The fewest file-sharing and remote-desktop links to cut so an attack from any workstation reaches at most 3 devices.",
                   "Chosen by an optimizer over every starting point, not just this one."),
-        candidate(h, "block_attack_route", "max_containment", "Block the attack's file-sharing route", lateral_route(h, path), keep,
-                  "An emergency cut: the file-sharing and remote-desktop links the attack used in the test run.",
-                  "Targeted to this attack; a different starting point may need a different cut."),
     ]
     return [c for c in out if c is not None]
