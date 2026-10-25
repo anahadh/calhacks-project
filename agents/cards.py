@@ -207,106 +207,181 @@ def device_card(h: HospitalIndex, device_id: str) -> ChatMessage:
     root = section(d["name"], children, subtitle=f"{room['name']} · {room['zone'].replace('_', ' ')}")
     return message(f"{d['name']} sits in {room['name']}.", root, True)
 
+# --- the four agents, from the round's events ---
+
+Lane = tuple[str, list[Node]]  # agent name, its badges
+
+
+def count(events: list[tuple[str, object]], *types: str) -> int:
+    return sum(1 for t, _ in events if t in types)
+
+
+def message_count(events: list[tuple[str, object]]) -> int:
+    """Every uAgents message the Coordinator exchanged: a proposal or revision arrives from
+    Flow and goes out to both guardians (3), a verdict or a question is one, a
+    recommendation goes to the app, not an agent."""
+    return sum(3 if t in ("proposal", "revision") else 1 if t in ("verdict", "question") else 0 for t, _ in events)
+
+
+def lanes(events: list[tuple[str, object]], state: str, round: int) -> list[Lane]:
+    """One lane per agent with what it did, as badges: the Coordinator's rounds and messages,
+    Flow's plans and revisions, each guardian's accepts, rejects and questions. While the
+    round runs, the agent whose turn it is shows "working"."""
+    live = state not in ("done", "idle")
+    last = events[-1][0] if events else None
+    plans = sum(1 + len(m.alternatives) for t, m in events if t in ("proposal", "revision"))
+    revisions = count(events, "revision")
+    out: list[Lane] = []
+    coord = [badge(f"round {round}" if live else plural(round, "round"), "info"),
+             badge(f"{plural(message_count(events), 'message')} over Agentverse", "info")]
+    if state == "waiting_for_human":
+        coord.append(badge("waiting for a human", "warning"))
+    elif live:
+        coord.append(badge("running", "success"))
+    out.append((AGENT_NAMES["coordinator"], coord))
+    flow = []
+    if plans:
+        flow.append(badge(f"tested {plural(plans, 'plan')} in the simulator", "info"))
+    if revisions:
+        flow.append(badge(f"revised {plural(revisions, 'time')}", "info"))
+    if live and (last is None or (last == "verdict" and events[-1][1].decision == "reject")):
+        flow.append(badge("working", "success"))
+    out.append((AGENT_NAMES["flow"], flow or [badge("waiting", "info")]))
+    for who in ("inventory", "clinical_workflow"):
+        mine = [m for t, m in events if t == "verdict" and m.agent == who]
+        asked = sum(1 for t, m in events if t == "question" and m.agent == who)
+        row = []
+        ok = sum(1 for m in mine if m.decision == "accept")
+        no = len(mine) - ok
+        if ok:
+            row.append(badge(f"✓ accepted {ok}", "success"))
+        if no:
+            row.append(badge(f"✕ rejected {no}", "warning"))
+        if asked:
+            row.append(badge(f"? asked a human {asked}×" if asked > 1 else "? asked a human", "warning"))
+        if live and last in ("proposal", "revision"):
+            row.append(badge("reviewing", "success"))
+        out.append((AGENT_NAMES[who], row or [badge("waiting", "info")]))
+    return out
+
+
+def lanes_list(rows: list[Lane]) -> Node:
+    return {"type": "list", "items": [item([heading(name), group(badges, direction="row", gap=6)]) for name, badges in rows]}
+
+
+def numbers(result, baseline=None) -> list[Node]:
+    """A plan's tested numbers as badges. Devices turn green when the plan contains the
+    attack better than no plan did."""
+    better = baseline is not None and result.infectedCount < baseline.infectedCount
+    return [badge(f"{plural(result.infectedCount, 'device')} compromised", "success" if better else "info"),
+            badge(f"{plural(affected(result), 'patient')} affected", "info"),
+            badge(f"{plural(len(result.removedFlows), 'connection')} cut", "info")]
+
 
 def started_card(device: str, device_label: str, session_id: str, room_url: str, fixture: bool) -> ChatMessage:
-    lanes = {"type": "list", "items": [
-        item([group([heading("Flow Agent"), text("Proposing a segmentation plan and testing it in the simulator", "muted")], gap=4), badge("working", "info")]),
-        item([group([heading("Inventory Agent"), text("Checking every device the plan touches can be named", "muted")], gap=4), badge("working", "info")]),
-        item([group([heading("Clinical Workflow Agent"), text("Will review the plan against protected clinical flows", "muted")], gap=4), badge("waiting", "info")]),
-    ]}
-    children = [text(f"Ransomware starts at {device_label}. I'm coordinating the three agents now and will send the result here."),
-                lanes]
+    rows = lanes([], "running", 1)
+    children = [text(f"Ransomware starts at {device_label}. The four agents are on it; the result lands here when they finish."),
+                lanes_list(rows)]
     if fixture:
         children.append(text("Test numbers come from fixture files while the simulator isn't connected.", "muted"))
-    children += [DIVIDER, button("Check progress", "status")]
+    children += [DIVIDER, button("Check progress", "status", True)]
     root = section(f"Round started: {device_label}", children, subtitle=f"Session {session_id}")
-    return message(f"Started. Watch the agents negotiate live: [{room_url}]({room_url})", root)
+    return message(f"Started. Watch the agents negotiate live: [{room_url}]({room_url})", root, True)
 
 
-def plan_block(policy_id: str, title: str, what: str, result, reason: str | None, by_policy: dict[str, tuple[Node, Node]]) -> Node:
-    """One plan on the table: title, its tested numbers, the Flow Agent's reason, and an
-    (initially empty) row the guardians' verdict badges go into; their reasons follow it."""
-    children = [heading(title),
-                text(f"{what} · tested: {plural(affected(result), 'patient')} affected, "
-                     f"{plural(result.infectedCount, 'device')} compromised", "muted")]
-    if reason:
-        children.append(text(f"Flow Agent: {reason.strip()}", "muted"))
-    row = group([], direction="row")
-    children.append(row)
-    block = item(children)
+def progress_card(session_id: str, device_label: str, events: list[tuple[str, object]], state: str, round: int,
+                  room_url: str) -> ChatMessage:
+    """The round so far: the four lanes from what the Coordinator has seen."""
+    rows = lanes(events, state, round)
+    what = "waiting for a human to answer a question" if state == "waiting_for_human" else f"round {round} running"
+    children = [lanes_list(rows), DIVIDER, button("Check again", "status", True)]
+    root = section(f"In progress: attack from {device_label}", children, subtitle=f"Session {session_id} · {what}")
+    return message(f"Still going: {what}. Live: [{room_url}]({room_url})", root, True)
+
+
+def plan_block(policy_id: str, title: str, result, baseline, by_policy: dict[str, tuple[Node, Node]]) -> Node:
+    """One plan on the table: title, its tested numbers, and a verdict row that starts
+    with Flow (it proposed) and fills with each guardian's badge."""
+    row = group([badge("Flow Agent · proposed", "info")], direction="row", gap=6)
+    block = item([heading(title), group(numbers(result, baseline), direction="row", gap=6), row])
     by_policy[policy_id] = (block, row)
     return block
 
 
 def traffic_line(events: list[tuple[str, object]], round: int) -> str:
-    """"4 agents · 11 messages over Agentverse · 2 rounds": every uAgents message the
-    Coordinator exchanged in the round, counted from what it saw. A proposal or revision
-    arrives from Flow and goes out to both guardians (3 messages); a verdict or a question
-    is one; a recommendation goes to the app, not an agent."""
-    n = sum(3 if t in ("proposal", "revision") else 1 if t in ("verdict", "question") else 0 for t, _ in events)
-    return f"4 agents · {plural(n, 'message')} over Agentverse · {plural(round, 'round')}"
+    return f"4 agents · {plural(message_count(events), 'message')} over Agentverse · {plural(round, 'round')}"
 
 
 def summary_card(h: HospitalIndex, session_id: str, device_label: str, events: list[tuple[str, object]],
-                 state: str, round: int, fixture: bool, room_url: str) -> ChatMessage:
-    """The round as a card: a header with how many agents and messages it took, one block
-    per plan the Flow Agent put on the table (the lead plan and its alternatives, each
-    with its test result and each guardian's verdict and reason), then the options for
-    humans (or no agreement). events as chat.summary takes them."""
+                 state: str, round: int, fixture: bool, room_url: str, baseline=None) -> ChatMessage:
+    """The round as a card, numbers and badges first: the decision strip (no plan → best
+    option), the four agents' lanes, one block per plan the Flow Agent put on the table
+    with its numbers and each agent's verdict, then the options side by side. Text is
+    one line per rejection (what it needs) and one per option."""
     plans: list[Node] = []
-    by_policy: dict[str, tuple[Node, Node]] = {}  # policy id → (its block, its badge row), so a verdict lands on the plan it judged
+    by_policy: dict[str, tuple[Node, Node]] = {}  # policy id → (its block, its verdict row)
     recommendations = []
     for type, m in events:
         if type in ("proposal", "revision"):
-            title = f"Round {m.round} · {m.name}" if type == "proposal" else f"Round {m.round} · revised plan"
-            rules = len(m.rules) if type == "proposal" else len(m.diff.added) + len(m.diff.removed)
-            what = plural(rules, "rule") if type == "proposal" else plural(rules, "change")
-            plans.append(plan_block(m.policyId, title, what, m.testResult, m.reason, by_policy))
+            name = m.name or "revised plan"
+            title = f"Round {m.round} · {name}"
+            plans.append(plan_block(m.policyId, title, m.testResult, baseline, by_policy))
             for a in m.alternatives:
-                plans.append(plan_block(a.policyId, f"Round {m.round} · also tested: {a.name}", plural(len(a.rules), "rule"),
-                                        a.testResult, a.reason, by_policy))
+                plans.append(plan_block(a.policyId, f"Round {m.round} · also tested: {a.name}", a.testResult, baseline, by_policy))
         elif type == "verdict" and plans:
             block, row = by_policy.get(m.policyId, next(reversed(by_policy.values())))
             who = AGENT_NAMES[m.agent]
             row["children"].append(badge(f"✓ {who}" if m.decision == "accept" else f"✕ {who}",
                                          "success" if m.decision == "accept" else "warning"))
-            said = m.reason.strip() if m.reason else ""
             if m.decision == "reject" and m.constraint:
                 need = target_label(h, m.constraint.kind, m.constraint.targetIds)
-                block["children"].append(text(f"{who}: {said} Needs: {need}." if said else f"{who} needs: {need}", "muted"))
-            elif said:
-                block["children"].append(text(f"{who}: {said}", "muted"))
+                block["children"].append(text(f"{who} needs: {need}.", "muted"))
         elif type == "question" and plans:
-            next(reversed(by_policy.values()))[1]["children"].append(badge("? asked a human", "warning"))
+            next(reversed(by_policy.values()))[1]["children"].append(badge(f"? {AGENT_NAMES[m.agent]} asked a human", "warning"))
         elif type == "recommendation":
             recommendations.append(m)
-    children: list[Node] = [text(traffic_line(events, round), "emphasis")]
+    recommendations.sort(key=lambda x: x.option)
+    children: list[Node] = []
+    # Decision strip
+    if recommendations:
+        best = min(r.testResult.infectedCount for r in recommendations)
+        if baseline is not None:
+            children.append(heading(f"{baseline.infectedCount} → {best} devices compromised", 2))
+            children.append(text(f"No plan vs the best of {plural(len(recommendations), 'option')} the agents agreed on", "muted"))
+        else:
+            children.append(heading(f"{plural(len(recommendations), 'option')} agreed · best holds it to {plural(best, 'device')}", 2))
+    elif state == "done":
+        children.append(heading(f"No agreement after {plural(round, 'round')}", 2))
+        if baseline is not None:
+            children.append(text(f"Without a plan the attack reached {plural(baseline.infectedCount, 'device')}.", "muted"))
+    else:
+        children.append(heading(f"Round {round} · {state.replace('_', ' ')}", 2))
+    children.append(group([badge(traffic_line(events, round), "info")], direction="row"))
+    # The four agents
+    children += [heading("The agents"), lanes_list(lanes(events, state, round))]
     if plans:
-        children.append({"type": "list", "items": plans})
+        children += [heading("Plans tested"), {"type": "list", "items": plans}]
     if recommendations:
         children += [DIVIDER, heading(f"{plural(len(recommendations), 'option')} for humans to choose from", 2)]
         options = []
-        for r in sorted(recommendations, key=lambda x: x.option):
+        for r in recommendations:
             options.append(item([
                 heading(f"Option {r.option}: {r.policy.name}"),
-                text(r.explanation),
-                text(f"{plural(affected(r.testResult), 'patient')} affected · {plural(r.testResult.infectedCount, 'device')} compromised · "
-                     f"{plural(len(r.testResult.removedFlows), 'connection')} cut", "emphasis"),
-                group([badge(f"{ROLE_NAMES[x]} must sign off", "warning") for x in r.requiredRoles], direction="row"),
+                group(numbers(r.testResult, baseline) + [badge(plural(len(r.policy.rules), "rule"), "info")], direction="row", gap=6),
+                group([badge(f"{ROLE_NAMES[x]} signs off", "warning") for x in r.requiredRoles], direction="row", gap=6),
+                text(r.explanation, "muted"),
             ]))
         children.append({"type": "list", "items": options})
-        names = ", ".join(f"\"{r.policy.name}\"" for r in sorted(recommendations, key=lambda x: x.option))
+        names = ", ".join(f"\"{r.policy.name}\"" for r in recommendations)
         bubble = (f"The agents agree on {plural(len(recommendations), 'option')}: {names}. "
                   "Humans choose one and sign off; agent agreement is not approval.")
     elif state == "done":
-        children += [DIVIDER, text(f"No agreement after {round} rounds, so there is no recommendation.", "emphasis")]
         bubble = f"No agreement after {round} rounds."
     else:
-        children += [DIVIDER, text(f"The round is {state.replace('_', ' ')} (round {round}).", "emphasis")]
         bubble = f"The round is {state.replace('_', ' ')}."
     if fixture:
         children.append(text("Numbers come from fixture files (the simulator isn't connected yet).", "muted"))
     children += [text("Nothing is applied to any real network.", "muted"),
-                 group([button("Try another device", "help", True), button("Last round", "status")], direction="row")]
+                 button("Try another device", "help", True)]
     root = section(f"Result: attack from {device_label}", children, subtitle=f"Session {session_id}")
     return message(f"{bubble} Replay the negotiation: [{room_url}]({room_url})", root, True)

@@ -219,7 +219,7 @@ async def notify_chat(ctx: Context, rnd: Round) -> None:
         return
     c.notified = True
     card = cards.summary_card(H, rnd.sessionId, c.device_name, events.get(rnd.sessionId, []), rnd.state, rnd.round,
-                              settings().hippo_sim_fixtures, room_url(rnd.sessionId))
+                              settings().hippo_sim_fixtures, room_url(rnd.sessionId), rnd.baseline)
     await reply_card(ctx, c.sender, card, rnd.sessionId)
 
 
@@ -240,16 +240,16 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     if command.kind == "status":
         sid = last_session[0] if last_session else None
         rnd = rounds.get(sid) if sid else None
-        if rnd is not None and rnd.state == "done" and sid in chats:
-            card = cards.summary_card(H, sid, chats[sid].device_name, events.get(sid, []), rnd.state, rnd.round,
-                                      settings().hippo_sim_fixtures, room_url(sid))
-            await reply_card(ctx, sender, card)
+        if rnd is None:
+            await reply(ctx, sender, chat.status(None))
             return
-        last = None
-        if rnd is not None:
-            name = chats[sid].device_name if sid in chats else rnd.patient_zero
-            last = (sid, name, rnd.state, rnd.round, rnd.recommendation is not None)
-        await reply(ctx, sender, chat.status(last) + (f" Watch it live: {room_url(sid)}" if sid in chats else ""))
+        name = chats[sid].device_name if sid in chats else H.devices.get(rnd.patient_zero, {}).get("name", rnd.patient_zero)
+        if rnd.state == "done":
+            card = cards.summary_card(H, sid, name, events.get(sid, []), rnd.state, rnd.round,
+                                      settings().hippo_sim_fixtures, room_url(sid), rnd.baseline)
+        else:
+            card = cards.progress_card(sid, name, events.get(sid, []), rnd.state, rnd.round, room_url(sid))
+        await reply_card(ctx, sender, card)
         return
     if command.kind == "devices":
         await reply_card(ctx, sender, cards.devices_card(H, chat.devices_on_network(H)))
