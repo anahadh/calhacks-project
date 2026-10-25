@@ -29,16 +29,20 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
+import brain
 import cards
 import chat
 import facts
 import llm
+import mcp_server
 import narrate
 from config import AGENTS, settings
 from logic import hospital as hospital_mod
 from logic.coordinator import Action, Round
 from protocol import Answer, Proposal, Question, Reassess, RestAck, Resume, Revision, StartRound, Verdict
-from runtime import fail, make_agent, reason_of, received, send
+from pathlib import Path
+
+from runtime import PROFILES, fail, make_agent, reason_of, received, send
 from tools import relay, run_sim
 
 NAME = "coordinator"
@@ -62,6 +66,24 @@ class ChatRound:
 
 chats: dict[str, ChatRound] = {}  # session → who to tell when it ends
 last_session: list[str] = []  # the most recent session started, for "status"
+picked: dict[str, str] = {}  # sender → card the turn's tools asked for: "picker" or "recommendation:<session>"
+SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "coordinator.md").read_text()
+HANDLES = {PROFILES[a].handle: a for a in ("inventory", "flow", "clinical_workflow")}  # @handle → agent name
+
+
+def ctx_stub():
+    """A Context stand-in for tests: storage and a logger, nothing else. Not used at runtime."""
+    import logging
+    from types import SimpleNamespace
+
+    class Store(dict):
+        def get(self, k):
+            return super().get(k)
+
+        def set(self, k, v):
+            self[k] = v
+
+    return SimpleNamespace(storage=Store(), logger=logging.getLogger("coordinator.test"))
 
 
 async def execute(ctx: Context, rnd: Round, actions: list[Action]):
@@ -230,13 +252,159 @@ def room_url(session_id: str) -> str:
 
 
 async def notify_chat(ctx: Context, rnd: Round) -> None:
+    """When a round started from chat ends: one prose summary (worded by the loop from the
+    round's events) and the recommendation card. Scheduled as a task: model round trips
+    must not hold the Coordinator's lock."""
     c = chats.get(rnd.sessionId)
     if c is None or c.notified or rnd.state != "done":
         return
     c.notified = True
-    card = cards.summary_card(H, rnd.sessionId, c.device_name, events.get(rnd.sessionId, []), rnd.state, rnd.round,
-                              settings().hippo_sim_fixtures, room_url(rnd.sessionId), rnd.baseline)
-    await reply_card(ctx, c.sender, card, rnd.sessionId)
+    asyncio.get_event_loop().create_task(_summary(ctx, rnd))
+
+
+async def _summary(ctx: Context, rnd: Round) -> None:
+    c = chats[rnd.sessionId]
+    last_session[:] = [rnd.sessionId]
+    await chat_turn(ctx, c.sender, "The round just ended; summarise it for me, naming each agent by handle and ending "
+                                   "with who must sign off.", session_id=rnd.sessionId, relay_in=False)
+
+
+# --- the Coordinator's own tools (the hospital ones come from mcp_server) ---
+
+
+def _session_for(sender: str, session_id: str | None) -> str | None:
+    if session_id and session_id in rounds:
+        return session_id
+    mine = [s for s, c in chats.items() if c.sender == sender]
+    return mine[-1] if mine else (last_session[0] if last_session else None)
+
+
+def _events(session_id: str, most: int = 30) -> list[dict]:
+    rnd = rounds[session_id]
+    out = []
+    for type, msg in events.get(session_id, [])[-most:]:
+        agent = getattr(msg, "agent", "flow" if type in ("proposal", "revision") else "coordinator")
+        out.append({"type": type, "agent": "@" + PROFILES[agent].handle, "round": getattr(msg, "round", rnd.round),
+                    "line": narrate.line(H, type, msg, baseline=rnd.baseline)})
+    return out
+
+
+def local_tools(ctx: Context, sender: str) -> list[brain.Tool]:
+    async def start_round(args: dict):
+        query = str(args.get("device_query", "")).strip()
+        device = chat.resolve_device(H, query) if query else None
+        if device is None:
+            return {"error": chat.unknown_device(H, query or "?")}
+        name = H.devices[device]["name"]
+        session_id = f"chat-{uuid.uuid4().hex[:8]}"
+        chats[session_id] = ChatRound(sender=sender, device_name=name)
+        req = StartRound(sessionId=session_id, runId=f"run_{session_id.replace('-', '_')}", patientZero=device,
+                         seed=chat.DEMO_SEED, challenges=[])
+        ack = await begin(ctx, req)
+        if not ack.ok:
+            chats.pop(session_id, None)
+            return {"error": ack.detail or "unknown error"}
+        return {"session_id": session_id, "device": name, "live_room": room_url(session_id)}
+
+    async def round_status(args: dict):
+        sid = _session_for(sender, args.get("session_id"))
+        rnd = rounds.get(sid) if sid else None
+        if rnd is None:
+            return {"none": True, "hint": "no round has run yet; start_round starts one"}
+        device = chats[sid].device_name if sid in chats else H.devices.get(rnd.patient_zero, {}).get("name", rnd.patient_zero)
+        return {"session_id": sid, "device": device, "state": rnd.state, "round": rnd.round, "events": _events(sid),
+                "live_room": room_url(sid)}
+
+    async def recommendation(args: dict):
+        sid = _session_for(sender, args.get("session_id"))
+        rnd = rounds.get(sid) if sid else None
+        rec = getattr(rnd, "recommendation", None) if rnd is not None else None
+        if rec is None:
+            return {"none": True}
+        n = facts.numbers(H, rec.testResult, rnd.baseline)
+        picked[sender] = f"recommendation:{sid}"
+        return {"session_id": sid, "policy_name": rec.policy.name, "explanation": rec.explanation,
+                "required_roles": [facts.ROLE_NAMES[r] for r in rec.requiredRoles],
+                "infected_before": n.get("infectedDevicesWithoutPlan"), "infected_after": n["infectedDevicesWithPlan"],
+                "patients_affected_before": n.get("patientsWithCareDelayedOrDisruptedWithoutPlan"),
+                "patients_affected_after": n["patientsWithCareDelayedOrDisruptedWithPlan"],
+                "agents_agreeing": [facts.AGENT_NAMES[v.agent] for v in rec.verdicts if v.decision == "accept"],
+                "note": "a recommendation, not a decision: humans sign off in the app"}
+
+    async def show_device_picker(args: dict):
+        picked[sender] = "picker"
+        return {"shown": True, "devices": [H.devices[d]["name"] for d in chat.devices_on_network(H)][:6]}
+
+    async def ask(args: dict):
+        return await ask_agent(ctx, sender, str(args.get("handle", "")), str(args.get("question", "")))
+
+    obj = lambda props, req=(): {"type": "object", "properties": props, "required": list(req)}
+    sid = {"session_id": {"type": "string", "description": "a session id from an earlier answer; omit for the latest round"}}
+    return [
+        brain.Tool("start_round", "Start a simulated ransomware round from one device. The round narrates itself in the "
+                   "thread. Returns the session id and device name, or an error.",
+                   obj({"device_query": {"type": "string", "description": "device name or id as the user wrote it"}}, ["device_query"]), start_round),
+        brain.Tool("round_status", "The state of a round and every event so far (proposals, verdicts with reasons, "
+                   "questions, recommendation), one line each.", obj(sid), round_status),
+        brain.Tool("recommendation", "The recommendation a finished round produced: plan name, explanation, numbers before "
+                   "and after, and the roles that must sign off. Attaches the recommendation card.", obj(sid), recommendation),
+        brain.Tool("show_device_picker", "Show the user a card of devices an attack can start from. Use for 'where can "
+                   "an attack start' or 'which device should I pick'.", obj({}), show_device_picker),
+        brain.Tool("ask_agent", "Ask one specialist agent a question in its own words and get its answer. Use for the "
+                   "specialist's own reasoning. Refused while a round is running.",
+                   obj({"handle": {"type": "string", "enum": sorted(HANDLES)},
+                        "question": {"type": "string"}}, ["handle", "question"]), ask),
+    ]
+
+
+async def ask_agent(ctx: Context, sender: str, handle: str, question: str) -> dict:
+    return {"error": "ask_agent is not available yet"}
+
+
+# --- the turn ---
+
+
+def _selection_text(text: str) -> str:
+    """A card button click (JSON, or ASI:One's planner prose) as the user turn it stands for."""
+    sel = chat.selection(text)
+    if sel is None:
+        return text
+    if sel.kind == "simulate" and sel.device:
+        return f"simulate ransomware from {sel.device}"
+    if sel.kind == "lookup" and sel.device:
+        return f"what is {sel.device}?"
+    return {"status": "what is the status of the last round?", "devices": "where can an attack start?",
+            "protected": "which flows are protected?"}.get(sel.kind, "help")
+
+
+async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None = None, relay_in: bool = True) -> None:
+    """One ASI:One turn: relay the text in, let the loop pick tools and write the reply,
+    relay the reply out, send it with a card when a tool asked for one."""
+    text = _selection_text(text)
+    sid = session_id or _session_for(sender, None) or CHAT_SESSION
+    if relay_in:
+        await relay.post(sid, rounds[sid].round if sid in rounds else 0, "humans", NAME, "chat",
+                         {"text": text, "via": "asi1"}, direction="received")
+    picked.pop(sender, None)
+    try:
+        tools = await mcp_server.as_brain_tools() + local_tools(ctx, sender)
+        turn = await brain.respond(ctx.storage, NAME, sender, text, tools, SYSTEM_PROMPT, session_id=sid)
+    except brain.BrainError as e:
+        await reply(ctx, sender, f"I couldn't answer: {e}", sid)
+        return
+    want = picked.pop(sender, None)
+    card = None
+    if want == "picker":
+        card = cards.picker_card(H, chat.devices_on_network(H), turn.text)
+    elif want and want.startswith("recommendation:"):
+        rsid = want.split(":", 1)[1]
+        rnd = rounds.get(rsid)
+        if rnd is not None and rnd.recommendation is not None:
+            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), turn.text)
+    if card is not None:
+        await reply_card(ctx, sender, card, sid)
+    else:
+        await reply(ctx, sender, turn.text, sid)
 
 
 @chat_protocol.on_message(ChatMessage)
@@ -245,54 +413,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     text = msg.text().strip()
     if not text:
         if any(isinstance(c, StartSessionContent) for c in msg.content):
-            await reply_card(ctx, sender, cards.help_card(H, chat.devices_on_network(H)))
+            await chat_turn(ctx, sender, "hello")
         return
-    command = chat.parse(text)
-    # A round's request is relayed into the round's own session, so its live Agent Room
-    # starts with the ASI:One message that started it.
-    device = chat.resolve_device(H, command.device) if command.device else None
-    session_id = f"chat-{uuid.uuid4().hex[:8]}" if command.kind == "simulate" and device else CHAT_SESSION
-    await relay.post(session_id, 0, "humans", NAME, "chat", {"text": text, "via": "asi1"}, direction="received")
-    if command.kind == "status":
-        sid = last_session[0] if last_session else None
-        rnd = rounds.get(sid) if sid else None
-        if rnd is None:
-            await reply(ctx, sender, chat.status(None))
-            return
-        name = chats[sid].device_name if sid in chats else H.devices.get(rnd.patient_zero, {}).get("name", rnd.patient_zero)
-        if rnd.state == "done":
-            card = cards.summary_card(H, sid, name, events.get(sid, []), rnd.state, rnd.round,
-                                      settings().hippo_sim_fixtures, room_url(sid), rnd.baseline)
-        else:
-            card = cards.progress_card(sid, name, events.get(sid, []), rnd.state, rnd.round, room_url(sid))
-        await reply_card(ctx, sender, card)
-        return
-    if command.kind == "devices":
-        await reply_card(ctx, sender, cards.devices_card(H, chat.devices_on_network(H)))
-        return
-    if command.kind == "protected":
-        await reply_card(ctx, sender, cards.protected_card(H))
-        return
-    if command.kind == "help" or not command.device:
-        await reply_card(ctx, sender, cards.help_card(H, chat.devices_on_network(H)))
-        return
-    if device is None:
-        await reply(ctx, sender, chat.unknown_device(H, command.device))
-        return
-    if command.kind == "lookup":
-        await reply_card(ctx, sender, cards.device_card(H, device))
-        return
-    name = H.devices[device]["name"]
-    chats[session_id] = ChatRound(sender=sender, device_name=name)
-    req = StartRound(sessionId=session_id, runId=f"run_{session_id.replace('-', '_')}", patientZero=device,
-                     seed=chat.DEMO_SEED, challenges=[])
-    ack = await begin(ctx, req)
-    if not ack.ok:
-        chats.pop(session_id, None)
-        await reply(ctx, sender, chat.could_not_start(name, ack.detail or "unknown error"), session_id)
-        return
-    await reply_card(ctx, sender, cards.started_card(device, name, session_id, room_url(session_id),
-                                                     settings().hippo_sim_fixtures), session_id)
+    await chat_turn(ctx, sender, text)
 
 
 @chat_protocol.on_message(ChatAcknowledgement)

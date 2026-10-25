@@ -136,6 +136,36 @@ def affected(result) -> int:
 # --- cards ---
 
 
+def picker_card(h: HospitalIndex, on_network: list[str], bubble: str) -> ChatMessage:
+    """Six devices an attack can start from, one tap each. The only card a question gets."""
+    picks = [d for d in PICK_DEVICES if d in on_network] or on_network
+    picks = (picks + [d for d in on_network if d not in picks])[:6]
+    rows = {"type": "list", "items": [
+        item([heading(device_name(h, d), 4), text(f"{h.zone(d).replace('_', ' ')} · {h.devices[d]['type']}", "muted")],
+             "simulate", device=d)
+        for d in picks]}
+    root = section("Where should the attack start?", [rows], subtitle="Simulation only: nothing touches a real network.")
+    return message(bubble, root, True)
+
+
+def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_url: str, bubble: str) -> ChatMessage:
+    """The round's result: the plan, before and after, who must sign off, the live room."""
+    before = baseline
+    after = rec.testResult
+    pair = lambda label, b, a: group([text(label, "muted"), text(f"{b} → {a}" if b is not None else str(a))], gap=2)
+    numbers = group([
+        pair("Infected devices", before.infectedCount if before else None, after.infectedCount),
+        pair("Patients affected", affected(before) if before else None, affected(after)),
+    ], direction="row", gap=16)
+    roles = group([badge(ROLE_NAMES[r], "warning") for r in rec.requiredRoles], direction="row", gap=6)
+    children = [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
+                text("Must sign off in the Hippocra.tech app (agents agreeing is not approval):", "muted"), roles,
+                button("Open the live room", "open", True, url=room_url)]
+    root = section("Recommendation", children, subtitle=f"Session {session_id}")
+    return message(bubble, root, False)
+
+
+
 def help_card(h: HospitalIndex, on_network: list[str]) -> ChatMessage:
     picks = [d for d in PICK_DEVICES if d in on_network] or on_network[:6]
     devices = {"type": "list", "items": [
