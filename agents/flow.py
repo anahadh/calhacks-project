@@ -88,8 +88,8 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         ]
         # Only plans that actually contain the attack are offered: safe-but-useless plans stay off the table.
         contains = lambda r: r.infectedCount <= max(CONTAINED, req.baseline.infectedCount // 4)
-        alternatives = [Alternative(policyId=c.id, testResult=r, **with_coverage(c, req).policy.dict())
-                        for c, r in [(c, r) for c, r in ranked if c.id != cand.id and contains(r)][:2]]
+        # One plan: the best of what the agent designed and tested. No alternatives go to the reviewers or humans.
+        alternatives: list[Alternative] = []
         if violating:
             ctx.logger.warning(f"no candidate meets every constraint; sending the least-violating, {cand.id}")
 
