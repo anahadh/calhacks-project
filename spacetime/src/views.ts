@@ -17,17 +17,7 @@ const DeviceCardRow = t.row("DeviceCardRow", {
   device_id: t.string().primaryKey(),
   session_id: t.string(),
   viewer_role: t.string(),
-  services: t.string(),
-  os: t.string(),
-  vulnerability: t.string(),
-  vlan: t.string(),
-  ports: t.string(),
-  infected_by: t.string(),
-  criticality: t.string(),
-  clinical_flows: t.string(),
-  clinical_services: t.string(),
-  patients: t.string(),
-  service_impact: t.string(),
+  lines_json: t.string(), // [label, value][], at most MAX_LINES (role_views.ts)
 });
 
 const ArcRow = t.row("ArcRow", {
@@ -49,7 +39,7 @@ function viewer(ctx: any) {
   return { session: s, role: viewRole(p.role), hospital: (JSON.parse(s.hospital_json) as HospitalFile).hospital };
 }
 
-/** One card per device, with only the fields the caller's role sees. Infected-by comes from the active run. */
+/** One card per device: the few lines the caller's role sees. Infected-by comes from the active run. */
 export const my_device_card = spacetimedb.view({ name: "my_device_card", public: true }, t.array(DeviceCardRow), (ctx) => {
   const v = viewer(ctx);
   if (!v) return [];
@@ -59,7 +49,9 @@ export const my_device_card = spacetimedb.view({ name: "my_device_card", public:
     const st = runId ? ctx.db.device_state.id.find(`${runId}:${id}`) : undefined;
     return st?.infected && st.infected_by ? name.get(st.infected_by) ?? st.infected_by : undefined;
   };
-  return deviceCards(v.hospital, v.role, infectedBy).map((c) => ({ ...c, session_id: v.session.id, viewer_role: v.role }));
+  return deviceCards(v.hospital, v.role, infectedBy).map((c) => ({
+    device_id: c.device_id, session_id: v.session.id, viewer_role: v.role, lines_json: JSON.stringify(c.lines),
+  }));
 });
 
 /** The connections the caller's role draws. The infection path is drawn from device_state for everyone. */

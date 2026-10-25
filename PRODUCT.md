@@ -50,7 +50,7 @@ Authoritative sources: `docs/Hippocratech.md` (spec), `docs/hippocratech/UX.md` 
 - **Readable before fast.** Agent messages reveal no faster than one per 1.2 s; toasts stay ≥ 2 s; **Skip to result** is always available.
 - **The Create segmentation plan button is the one chrome element in a state color** (infected orange).
 - **Fixed motion budget**, one drawer (Log), and only two full-screen moments (Agent Room overlay, solution view).
-- **No game elements**: no attacker role, scores, or win states. No accounts or auth; everyone joins with a name and one of three roles (Chief Information Security Officer, Clinical IT Team, Hospital Management), which sets their lens on the scene and which questions and sign-offs are theirs.
+- **No game elements**: no attacker role, scores, or win states. No accounts or auth; everyone joins with a name and one of four roles (Chief Information Security Officer, Network Engineer, Clinical IT Team, Hospital Management), which sets their lens on the scene and which questions and sign-offs are theirs.
 - **No faking a sponsor.** Integration failures show the error; the only exception is a cached demo round labeled "Cached run."
 - **Sponsor scope:** Fetch.ai, Anthropic (Claude), SpacetimeDB (plus Armadin and Microsoft tracks). No other integrations.
 - Out of scope: real network access or enforcement, real patient data, voice, an in-app hospital editor, non-JSON formats.

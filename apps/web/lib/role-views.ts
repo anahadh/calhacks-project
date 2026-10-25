@@ -1,20 +1,21 @@
-// Role views on the web side: role names for people, labels for card fields,
-// and useRoleView(), which hands components the caller's device cards and
-// connections. Which fields and connections each role gets is decided in one
+// Role views on the web side: role names for people, and useRoleView(), which
+// hands components the caller's device cards and connections. Which card lines
+// and connections each role gets is decided in one
 // place, spacetime/src/role_views.ts: live sessions read it through the
 // my_device_card and my_arcs views; without SpacetimeDB the same functions run here.
 
 import { useMemo } from "react";
 import {
-  deviceCards, roleArcs, viewRole, type ArcData, type CardField, type DeviceCardData, type ViewRole,
+  deviceCards, roleArcs, viewRole, type ArcData, type CardLine, type DeviceCardData, type ViewRole,
 } from "../../../spacetime/src/role_views";
 import type { PresenceRow, SessionSnapshot } from "./stdb/types";
 
-export type { ArcData, CardField, DeviceCardData, ViewRole };
+export type { ArcData, CardLine, DeviceCardData, ViewRole };
 
 /** The roles people pick on the join card, mapped to the module's role ids (agents' allowed and required roles). */
 export const ROLE_OPTIONS = [
   { id: "security", label: "Chief Information Security Officer", short: "CISO" },
+  { id: "network", label: "Network Engineer", short: "Network" },
   { id: "clinical_engineering", label: "Clinical IT Team", short: "Clinical IT" },
   { id: "operations", label: "Hospital Management", short: "Management" },
 ] as const satisfies readonly { id: PresenceRow["role"]; label: string; short: string }[];
@@ -23,6 +24,7 @@ export type JoinRole = (typeof ROLE_OPTIONS)[number]["id"];
 
 export const ROLE_LABEL: Record<PresenceRow["role"], string> = {
   security: "Chief Information Security Officer",
+  network: "Network Engineer",
   clinical_engineering: "Clinical IT Team",
   operations: "Hospital Management",
   observer: "Observer",
@@ -30,30 +32,17 @@ export const ROLE_LABEL: Record<PresenceRow["role"], string> = {
 
 export const ROLE_SHORT: Record<PresenceRow["role"], string> = {
   security: "CISO",
+  network: "Network",
   clinical_engineering: "Clinical IT",
   operations: "Management",
   observer: "Observer",
-};
-
-export const FIELD_LABEL: Record<CardField, string> = {
-  os: "OS",
-  vulnerability: "Known vulnerability",
-  vlan: "VLAN",
-  ports: "Protocols and ports",
-  infected_by: "Infected by",
-  criticality: "Criticality",
-  clinical_flows: "Clinical flows",
-  clinical_services: "Clinical services",
-  patients: "Patients",
-  service_impact: "If it goes down",
 };
 
 export type RoleView = { role: ViewRole; cards: Map<string, DeviceCardData>; arcs: ArcData[] };
 
 /**
  * The caller's role view. Live: the rows of the my_device_card and my_arcs
- * views. Without SpacetimeDB nobody joins, so the offline demo shows the CISO
- * lens, which is everything the card showed before roles.
+ * views. Without SpacetimeDB nobody joins, so the offline demo shows the CISO lens.
  */
 export function useRoleView(session: SessionSnapshot): RoleView {
   const live = session.source === "live";

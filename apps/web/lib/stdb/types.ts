@@ -139,7 +139,7 @@ export type ChokePoint = { deviceId: string; share: number };
 
 export type PresenceRow = {
   name: string;
-  role: "security" | "clinical_engineering" | "operations" | "observer";
+  role: "security" | "network" | "clinical_engineering" | "operations" | "observer";
   following: boolean;
 };
 

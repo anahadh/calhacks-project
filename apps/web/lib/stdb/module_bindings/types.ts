@@ -88,17 +88,7 @@ export const DeviceCardRow = __t.object("DeviceCardRow", {
   deviceId: __t.string(),
   sessionId: __t.string(),
   viewerRole: __t.string(),
-  services: __t.string(),
-  os: __t.string(),
-  vulnerability: __t.string(),
-  vlan: __t.string(),
-  ports: __t.string(),
-  infectedBy: __t.string(),
-  criticality: __t.string(),
-  clinicalFlows: __t.string(),
-  clinicalServices: __t.string(),
-  patients: __t.string(),
-  serviceImpact: __t.string(),
+  linesJson: __t.string(),
 });
 export type DeviceCardRow = __Infer<typeof DeviceCardRow>;
 

@@ -5,7 +5,7 @@
 // cache may hold other sessions' and runs' rows, so everything is filtered here.
 
 import type { Identity } from "spacetimedb";
-import { viewRole, type ArcData, type DeviceCardData } from "../../../../spacetime/src/role_views";
+import { viewRole, type ArcData, type CardLine, type DeviceCardData } from "../../../../spacetime/src/role_views";
 import { messagesOf, questionsOf, recommendationsOf, roundStateOf, statusOf } from "./agent-rows";
 import type {
   AgentMessage, AgentStatus, Annotation, ArcRow, DeviceCardRow, DeviceState, PatientState, Presence, Question,
@@ -52,7 +52,7 @@ export const EMPTY_TABLES: SessionTables = {
   deviceState: [], serviceState: [], patientState: [], spreadAttempt: [], simEvent: [], tickSnapshot: [],
 };
 
-const ROLES = new Set(["security", "clinical_engineering", "operations", "observer"]);
+const ROLES = new Set(["security", "network", "clinical_engineering", "operations", "observer"]);
 
 function parse(json: string): unknown {
   try {
@@ -137,14 +137,20 @@ export function runViewOf(runId: string, tables: RunTables, row: Run | undefined
   };
 }
 
+/** A card's lines_json, or no lines if it doesn't parse as [label, value][]. */
+function linesOf(json: string): CardLine[] {
+  try {
+    const v = JSON.parse(json);
+    return Array.isArray(v) ? v.filter((l): l is CardLine => Array.isArray(l) && l.length === 2 && l.every((x) => typeof x === "string")) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** This browser's my_device_card and my_arcs rows, back in role_views.ts's shapes. */
 export function roleViewOf(tables: SessionTables, sessionId: string, role: string): NonNullable<SessionSnapshot["roleView"]> {
   const cards = [...(tables.myDeviceCard ?? [])].filter((c) => c.sessionId === sessionId).map(
-    (c): DeviceCardData => ({
-      device_id: c.deviceId, services: c.services, os: c.os, vulnerability: c.vulnerability, vlan: c.vlan, ports: c.ports,
-      infected_by: c.infectedBy, criticality: c.criticality, clinical_flows: c.clinicalFlows,
-      clinical_services: c.clinicalServices, patients: c.patients, service_impact: c.serviceImpact,
-    }),
+    (c): DeviceCardData => ({ device_id: c.deviceId, lines: linesOf(c.linesJson) }),
   );
   const arcs = [...(tables.myArcs ?? [])].filter((a) => a.sessionId === sessionId).map(
     (a): ArcData => ({

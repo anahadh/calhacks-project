@@ -4,13 +4,14 @@ import { createModuleTestHarness, TestAuth } from "spacetimedb/server/test-utils
 import type { Hospital } from "../src/hospital";
 import demo from "../../data/hospitals/demo.json";
 import spacetimedb, * as mod from "../src/index";
-import { CARD_FIELDS, type CardField } from "../src/role_views";
+import { MAX_LINES } from "../src/role_views";
 import { HANDWRITTEN } from "./oracle";
 
 const h = (demo as unknown as { hospital: Hospital }).hospital;
 const user = (sub: string) => TestAuth.fromJwtPayload(JSON.stringify({ iss: "hippo-test", sub, aud: ["spacetimedb"] }), ConnectionId.random());
 const SERVER = user("server");
 const CISO = user("ciso"); // presenter
+const NET = user("net");
 const CLIN = user("clin");
 const MGMT = user("mgmt");
 const STRANGER = user("stranger"); // never joins
@@ -21,39 +22,43 @@ const call = (auth: any, fn: any, args: object = {}) => t.withReducerTx(auth, (c
 const rows = (table: string) => [...(t.db as any)[table].iter()] as any[];
 const view = (auth: any, fn: any) => fn(t.viewContext(auth), {}) as any[];
 const card = (auth: any, deviceId: string) => view(auth, mod.my_device_card).find((c) => c.device_id === deviceId);
-
-const ALL_FIELDS: CardField[] = [
-  "os", "vulnerability", "vlan", "ports", "infected_by", "criticality", "clinical_flows", "clinical_services", "patients", "service_impact",
-];
+/** A card's lines as label → value. */
+const lines = (auth: any, deviceId: string) => new Map<string, string>(JSON.parse(card(auth, deviceId).lines_json));
 
 beforeEach(() => {
   t = createModuleTestHarness(spacetimedb as any, mod as any);
   call(SERVER, mod.init);
   call(CISO, mod.session_create, { session_id: "demo", hospital_json: JSON.stringify(demo) });
   call(CISO, mod.presence_join, { session_id: "demo", name: "Ana", role: "security" });
+  call(NET, mod.presence_join, { session_id: "demo", name: "Nik", role: "network" });
   call(CLIN, mod.presence_join, { session_id: "demo", name: "Dev", role: "clinical_engineering" });
   call(MGMT, mod.presence_join, { session_id: "demo", name: "Mo", role: "operations" });
 });
 
 describe("my_device_card", () => {
-  it("gives each role only its own fields, plus the services everyone sees", () => {
-    for (const [auth, role] of [[CISO, "security"], [CLIN, "clinical_engineering"], [MGMT, "operations"]] as const) {
-      const c = card(auth, "mri_2");
-      expect(c.viewer_role).toBe(role);
-      expect(c.services).toContain("MRI imaging");
-      // infected_by is empty until something infects mri_2, so skip it here.
-      for (const f of CARD_FIELDS[role].filter((f) => f !== "infected_by")) expect(c[f], `${role}.${f}`).not.toBe("");
-      for (const f of ALL_FIELDS.filter((f) => !CARD_FIELDS[role].includes(f))) expect(c[f], `${role}.${f}`).toBe("");
+  it("keeps every card short: at most MAX_LINES lines, for every device and role", () => {
+    for (const auth of [CISO, NET, CLIN, MGMT]) {
+      const cards = view(auth, mod.my_device_card);
+      expect(cards).toHaveLength(h.devices.length);
+      for (const c of cards) expect(JSON.parse(c.lines_json).length).toBeLessThanOrEqual(MAX_LINES);
     }
   });
 
-  it("shows ports and VLAN to the CISO, protected flows to Clinical IT, plain-language impact to Management", () => {
-    expect(card(CISO, "mri_2").ports).toMatch(/DICOM 104 → PACS/);
-    expect(card(CISO, "mri_2").vlan).toBe(String(h.devices.find((d) => d.id === "mri_2")!.vlan));
-    expect(card(CLIN, "mri_2").clinical_flows).toMatch(/Scans to radiologists \(DICOM\).*protected/);
-    expect(card(MGMT, "mri_2").patients).toMatch(/^\d+ patients/);
-    expect(card(MGMT, "mri_2").service_impact).toContain("Scheduled MRI scans can't run");
-    expect(card(MGMT, "mri_2").os).toBe("");
+  it("gives each role its own lens on the same MRI", () => {
+    expect([...lines(CISO, "mri_2").keys()]).toEqual(["Risk", "Exposure"]);
+    expect(lines(CISO, "mri_2").get("Risk")).toBe("Vulnerable · Windows 7");
+    expect(lines(CISO, "mri_2").get("Exposure")).toBe("1 SMB/RDP link");
+
+    expect(lines(NET, "mri_2").get("VLAN")).toMatch(/^10 · /);
+    expect(lines(NET, "mri_2").get("Ports")).toMatch(/^DICOM 104 → PACS \+1 more$/);
+
+    expect(lines(CLIN, "mri_2").get("Clinical flow")).toBe("Scans to radiologists");
+    expect(lines(CLIN, "mri_2").get("Supports")).toBe("MRI imaging (critical)");
+
+    expect(lines(MGMT, "mri_2").get("Patients")).toMatch(/^\d+ depend on it$/);
+    expect(lines(MGMT, "mri_2").get("If it fails")).toContain("Scheduled MRI scans can't run");
+    // Management never sees the technical lines.
+    for (const k of ["Risk", "VLAN", "Ports", "Criticality"]) expect(lines(MGMT, "mri_2").has(k)).toBe(false);
   });
 
   it("tells the CISO what infected a device in the active run", () => {
@@ -71,14 +76,14 @@ describe("my_device_card", () => {
     const hit = rows("device_state").find((d) => d.run_id === "run_1" && d.infected && d.infected_by);
     expect(hit).toBeDefined();
     const fxHospital = JSON.parse(fx.hospitalJson).hospital as Hospital;
-    const by = fxHospital.devices.find((d) => d.id === hit.infected_by)!.name;
-    expect(card(CISO, hit.device_id).infected_by).toBe(by);
-    expect(card(MGMT, hit.device_id).infected_by).toBe("");
+    expect(lines(CISO, hit.device_id).get("Infected by")).toBe(fxHospital.devices.find((d) => d.id === hit.infected_by)!.name);
+    expect(lines(MGMT, hit.device_id).has("Infected by")).toBe(false);
   });
 
   it("follows a role change on the presence row, and returns nothing before joining", () => {
-    call(MGMT, mod.presence_join, { session_id: "demo", name: "Mo", role: "security" });
-    expect(card(MGMT, "mri_2").vlan).not.toBe("");
+    call(MGMT, mod.presence_join, { session_id: "demo", name: "Mo", role: "network" });
+    expect(card(MGMT, "mri_2").viewer_role).toBe("network");
+    expect(lines(MGMT, "mri_2").has("VLAN")).toBe(true);
     expect(view(STRANGER, mod.my_device_card)).toEqual([]);
   });
 });
@@ -86,16 +91,23 @@ describe("my_device_card", () => {
 describe("my_arcs", () => {
   const active = h.flows.filter((f) => f.active !== false);
 
-  it("draws every flow with protocol and port for the CISO", () => {
+  it("emphasizes lateral-movement links (SMB, RDP) for the CISO", () => {
     const arcs = view(CISO, mod.my_arcs);
     expect(arcs).toHaveLength(active.length);
-    expect(arcs.every((a) => a.kind === "flow" && a.emphasis === "normal" && /^[A-Za-z0-9]+ \d+$/.test(a.label))).toBe(true);
+    for (const a of arcs) {
+      const f = active.find((x) => x.id === a.id)!;
+      expect(a.emphasis).toBe(f.protocol === "smb" || f.protocol === "rdp" ? "strong" : "faint");
+    }
+  });
+
+  it("labels every flow with protocol and port for the Network Engineer", () => {
+    const arcs = view(NET, mod.my_arcs);
+    expect(arcs).toHaveLength(active.length);
+    expect(arcs.every((a) => a.kind === "flow" && /^[A-Za-z0-9]+ \d+$/.test(a.label))).toBe(true);
   });
 
   it("emphasizes protected, DICOM and HL7 flows for Clinical IT and fades the rest", () => {
-    const arcs = view(CLIN, mod.my_arcs);
-    expect(arcs).toHaveLength(active.length);
-    for (const a of arcs) {
+    for (const a of view(CLIN, mod.my_arcs)) {
       const f = active.find((x) => x.id === a.id)!;
       expect(a.emphasis).toBe(f.protected || f.protocol === "dicom" || f.protocol === "hl7" ? "strong" : "faint");
     }
