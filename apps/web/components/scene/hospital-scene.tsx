@@ -38,6 +38,7 @@ export function HospitalScene({
   onPick,
   pickable,
   view,
+  quiet = false,
   children,
 }: {
   session: SessionSnapshot;
@@ -52,6 +53,8 @@ export function HospitalScene({
   pickable?: (id: string) => boolean;
   /** The caller's role view: how the hovered device's connections look (spacetime/src/role_views.ts). */
   view: RoleView;
+  /** Quiet: room chips only where the infection is, or where the hovered device stands (the solution page). */
+  quiet?: boolean;
   /** Extra layers drawn in the building's frame (the solution view's segment walls). */
   children?: ReactNode;
 }) {
@@ -303,6 +306,7 @@ export function HospitalScene({
               {group && groupState && door && (
                 <PatientFigures room={room} door={door} level={level} count={group.count} state={groupState} />
               )}
+              {(!quiet || c.infected > 0 || index.device.get(hovered ?? "")?.roomId === room.id) && (
               <RoomChip
                 position={to3(centroid(room.polygon), level, WALL_H + 1.2)}
                 name={room.name}
@@ -312,6 +316,7 @@ export function HospitalScene({
                 servicesDown={downByRoom.get(room.id) ?? []}
                 downAt={timing.downAt}
               />
+              )}
             </group>
           );
         })}

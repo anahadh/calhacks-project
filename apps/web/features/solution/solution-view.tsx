@@ -178,6 +178,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     onHover={setHovered}
                     floorId={floor === "all" ? undefined : floor}
                     view={roleView}
+                    quiet
                   >
                     <SegmentBarriers hospital={hospital} segments={segments} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
                     <HoleLines hospital={hospital} kept={flows.kept} segmentOf={segmentOf} litZone={hoveredZone ?? listZone} floorId={floor === "all" ? undefined : floor} />
