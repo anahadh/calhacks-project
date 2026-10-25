@@ -75,23 +75,6 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
     }
     return new Map([...by].map(([z, set]) => [z, [...set].sort()]));
   }, [flows.kept, segmentOf]);
-  // The holes: kept connections that cross a segment wall, named by what they carry (rule 16: from the
-  // hospital's flows minus the run's removed ones).
-  const holes = useMemo(() => {
-    const labels = new Map<string, number>();
-    for (const f of flows.kept) {
-      if (!segmentOf.size || segmentOf.get(f.from) === segmentOf.get(f.to)) continue;
-      const label =
-        f.protocol === "dicom" ? "DICOM scans into PACS"
-        : f.protocol === "hl7" ? "HL7 vitals and ADT"
-        : f.protocol === "https" || f.protocol === "http" ? "charts over HTTPS"
-        : f.port === 123 ? "common time (NTP)"
-        : f.protocol === "smb" || f.protocol === "rdp" ? "file sharing kept on request"
-        : "vendor service";
-      labels.set(label, (labels.get(label) ?? 0) + 1);
-    }
-    return [...labels.entries()];
-  }, [flows.kept, segmentOf]);
   const hoveredZone = hovered ? segmentOf.get(hovered) ?? null : null;
   const rowsError = base.error ?? rows.error;
   // The side column: this step's count on both sides, and the final numbers once each side is done.
@@ -213,7 +196,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
             <aside aria-label="Before and after" className="flex min-w-0 flex-col gap-5 border-t border-line bg-bg p-4 lg:border-l lg:border-t-0">
               <Headline before={ghost} after={infectedNow} total={hospital.devices.length} />
               <Saved deltas={deltas} pending={pending} />
-              <Segments segments={segments} hovered={hoveredZone ?? listZone} onHover={setListZone} holes={holes} />
+              <Segments segments={segments} hovered={hoveredZone ?? listZone} onHover={setListZone} allowed={allowed} />
             </aside>
             </div>
           </div>
@@ -448,7 +431,7 @@ function Saved({ deltas, pending }: { deltas: Delta[]; pending: string | null })
 }
 
 /** The plan's segments: swatch, name, floors, and how many of its devices this run shows infected. Hover one to light its fence. */
-function Segments({ segments, hovered, onHover, holes }: { segments: Segment[]; hovered: string | null; onHover: (zone: string | null) => void; holes: [string, number][] }) {
+function Segments({ segments, hovered, onHover, allowed }: { segments: Segment[]; hovered: string | null; onHover: (zone: string | null) => void; allowed: Map<string, string[]> }) {
   return (
     <section aria-labelledby="segments" className="flex flex-col gap-3">
       <h2 id="segments" className="eyebrow m-0">Segments the plan makes · {segments.length} · the barriers</h2>
@@ -482,21 +465,6 @@ function Segments({ segments, hovered, onHover, holes }: { segments: Segment[]; 
           );
         })}
       </ul>
-      {holes.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="eyebrow">Still crosses the walls · the holes</span>
-          <ul className="num m-0 flex list-none flex-wrap gap-1.5 p-0">
-            {holes.map(([label, n]) => (
-              <li key={label} className="inline-flex h-7 items-center gap-1.5 rounded-ctl border border-line2 px-2 text-[11px] text-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-state-healthy" aria-hidden />
-                {label}
-                <span className="text-ink-faint">{n}</span>
-              </li>
-            ))}
-          </ul>
-          <span className="num text-[11px] text-ink-faint">Only file sharing and remote desktop are cut between segments. Nothing inside a segment is cut.</span>
-        </div>
-      )}
     </section>
   );
 }
