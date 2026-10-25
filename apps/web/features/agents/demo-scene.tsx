@@ -70,8 +70,6 @@ export function DemoScene({ plan, infected, reopened, naive }: { plan: number; i
   }, [plan, devices, zoneOf, reopened]);
 
   const vb = `${bounds.x0} ${bounds.y0} ${bounds.x1 - bounds.x0} ${bounds.y1 - bounds.y0}`;
-  const labels = new Map<string, Blob>();
-  for (const b of blobs) if (b.label && !labels.has(b.label)) labels.set(b.label, b);
 
   return (
     <div className="relative h-full w-full bg-scene-ground">
@@ -83,7 +81,7 @@ export function DemoScene({ plan, infected, reopened, naive }: { plan: number; i
           ))}
         </g>
         <g key={plan}>
-          {blobs.map((b, i) => (
+          {blobs.map((b) => (
             <polygon
               key={b.key}
               points={b.pts.map((p) => p.join(",")).join(" ")}
@@ -91,7 +89,7 @@ export function DemoScene({ plan, infected, reopened, naive }: { plan: number; i
               fillOpacity={0.16}
               stroke={b.color}
               strokeWidth={0.3}
-              style={{ transformBox: "fill-box", transformOrigin: "center", animation: `demo-grow 900ms cubic-bezier(0.22,1,0.36,1) ${i * 90}ms both` }}
+              style={{ transformBox: "fill-box", transformOrigin: "center", animation: `demo-grow 900ms cubic-bezier(0.22,1,0.36,1) both` }}
             />
           ))}
           {holes.map((l) => (
@@ -103,14 +101,6 @@ export function DemoScene({ plan, infected, reopened, naive }: { plan: number; i
           return <circle key={d.id} cx={d.position[0]} cy={d.position[1]} r={hit ? 0.75 : 0.55} fill={hit ? "#FF6A2E" : "#4DB0FF"} stroke={d.id === "mri_2" ? "#E9ECEE" : "none"} strokeWidth={0.2} />;
         })}
       </svg>
-      <ul className="num pointer-events-none absolute bottom-9 left-4 m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[11px]">
-        {[...labels.values()].map((b) => (
-          <li key={b.label} className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: b.color, background: `${b.color}33` }} aria-hidden />
-            <span style={{ color: b.color }}>{b.label}</span>
-          </li>
-        ))}
-      </ul>
       <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
         {reopened
           ? plan === 0
