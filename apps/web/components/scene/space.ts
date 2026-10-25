@@ -3,8 +3,9 @@ import type { Point, Room } from "@/lib/stdb/types";
 // Floor plan meters → scene units. Floors stack along y with a gap wide enough
 // that, from the isometric camera, the ground floor is not hidden by the one above.
 export const FLOOR_GAP = 15;
-const OFFSET_X = -20;
-const OFFSET_Z = -12;
+// Centres the demo hospital (a cross-shaped floor, 2..64 on both axes) on the scene origin.
+const OFFSET_X = -33;
+const OFFSET_Z = -33;
 
 /** How far the slab extends past the outermost room wall. */
 export const SLAB_MARGIN = 1.6;

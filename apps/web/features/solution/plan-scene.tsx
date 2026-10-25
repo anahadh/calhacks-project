@@ -30,7 +30,8 @@ const DOT_LIFT = 0.6;
  */
 export type SharedCamera = { position: THREE.Vector3; target: THREE.Vector3; owner: string | null; stamp: number };
 export function sharedCamera(): SharedCamera {
-  return { position: new THREE.Vector3(4, 40, 80), target: new THREE.Vector3(0, 7, 0), owner: null, stamp: 0 };
+  // One cross-shaped floor centred on the origin: high and back enough that each half shows the whole building.
+  return { position: new THREE.Vector3(6, 78, 92), target: new THREE.Vector3(0, 0, 2), owner: null, stamp: 0 };
 }
 
 function FollowCamera({ id, shared, controls }: { id: string; shared: SharedCamera; controls: RefObject<OrbitControlsImpl | null> }) {
@@ -150,7 +151,7 @@ export function PlanScene({
         enableDamping
         maxPolarAngle={Math.PI / 2.1}
         minDistance={20}
-        maxDistance={110}
+        maxDistance={170}
         onStart={() => (shared.owner = id)}
         onChange={() => shared.owner === id && publish()}
         onEnd={() => (shared.owner = null)}

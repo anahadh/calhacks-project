@@ -230,7 +230,9 @@ export function HospitalScene({
   const topLevel = floorId ? 0 : Math.max(0, ...hospital.floors.map((f) => f.level));
   const [cx, , cz] = to3([(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2], 0);
   const target: Vec3 = [cx, (topLevel * FLOOR_GAP) / 2 + 1, cz];
-  const camera: Vec3 = [target[0] + CAM_OFFSET[0], target[1] + CAM_OFFSET[1], target[2] + CAM_OFFSET[2]];
+  // Back the camera off for a bigger floor, so the whole building fits at the start.
+  const k = Math.max(1, Math.max(b.maxX - b.minX, b.maxY - b.minY) / 40);
+  const camera: Vec3 = [target[0] + CAM_OFFSET[0] * k, target[1] + CAM_OFFSET[1] * k, target[2] + CAM_OFFSET[2] * k];
 
   return (
     <Canvas
