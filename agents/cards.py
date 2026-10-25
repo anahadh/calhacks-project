@@ -14,6 +14,7 @@ Coordinator saw (rule 16). Agent acceptance is never called approval (rule 9).
 """
 
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -81,15 +82,48 @@ def message(bubble: str, root: Node, interactive: bool = False) -> ChatMessage:
 
 
 def metadata(root: Node, interactive: bool = False) -> dict[str, str]:
+    # The documented wire format (Agentverse "agent-driven interactive cards"): every card,
+    # informational ones included, carries requires_card_interaction "true" (the Innovation
+    # Lab examples do the same); is_terminal "true" marks a card that needs no input, so the
+    # planner is not paused. A card that fails validation is shown as plain text, so the
+    # tree is checked here first.
+    validate(root)
     meta = {
         "card_protocol_version": CARD_PROTOCOL_VERSION,
-        "requires_card_interaction": "true" if interactive else "false",
+        "requires_card_interaction": "true",
         "card_kind": "custom",
         "card_payload": json.dumps({"root": root}),
+        "preferred_drawer_width_px": "560",
     }
     if not interactive:
-        meta["is_terminal"] = "true"  # an informational card (ASI:One: set only on cards that need no input)
+        meta["is_terminal"] = "true"
     return meta
+
+
+ELEMENTS = {"section", "group", "divider", "text", "heading", "image", "badge", "button", "input", "list", "choice_grid"}
+BADGE_VARIANTS = {"info", "success", "warning"}
+TEXT_STYLES = {"body", "muted", "emphasis"}
+HEADING_LEVELS = {1, 2, 3}
+
+
+def validate(node: Any, level: int = 1) -> None:
+    """Raise ValueError when a tree breaks the element-tree schema ASI:One documents."""
+    if not isinstance(node, dict) or node.get("type") not in ELEMENTS:
+        raise ValueError(f"unknown element type: {node.get('type') if isinstance(node, dict) else node!r}")
+    if level > 8:
+        raise ValueError("nesting deeper than 8")
+    t = node["type"]
+    if t == "badge" and node.get("variant", "info") not in BADGE_VARIANTS:
+        raise ValueError(f"badge variant {node.get('variant')!r}; allowed: {sorted(BADGE_VARIANTS)}")
+    if t == "heading" and node.get("level", 2) not in HEADING_LEVELS:
+        raise ValueError(f"heading level {node.get('level')!r}; allowed: 1, 2, 3")
+    if t == "text" and node.get("style", "body") not in TEXT_STYLES:
+        raise ValueError(f"text style {node.get('style')!r}; allowed: {sorted(TEXT_STYLES)}")
+    for k in node.get("children", []):
+        validate(k, level + 1)
+    for i in node.get("items", []):
+        for k in i.get("children", []):
+            validate(k, level + 1)
 
 
 def depth(node: Any) -> int:
@@ -143,7 +177,7 @@ def picker_card(h: HospitalIndex, on_network: list[str], bubble: str) -> ChatMes
     picks = [d for d in PICK_DEVICES if d in on_network] or on_network
     picks = (picks + [d for d in on_network if d not in picks])[:6]
     rows = {"type": "list", "items": [
-        item([heading(device_name(h, d), 4), text(f"{h.zone(d).replace('_', ' ')} · {h.devices[d]['type']}", "muted")],
+        item([heading(device_name(h, d), 3), text(f"{h.zone(d).replace('_', ' ')} · {h.devices[d]['type']}", "muted")],
              "simulate", device=d)
         for d in picks]}
     root = section("Where should the attack start?", [rows], subtitle="Simulation only: nothing touches a real network.")
@@ -151,11 +185,15 @@ def picker_card(h: HospitalIndex, on_network: list[str], bubble: str) -> ChatMes
 
 
 TRACE_LINES = 30
-AGENT_STATES = (  # the last line naming the handle decides the badge
-    ("rejected", "rejected", "danger"), ("accepted", "accepted", "success"), ("proposed", "proposed", "info"),
-    ("revised", "revised", "info"), ("asking a human", "asking a human", "warning"), ("failed", "failed", "danger"),
+AGENT_STATES = (  # the last line naming the handle decides the badge; variants are ASI:One's three
+    ("rejected", "rejected", "warning"), ("accepted", "accepted", "success"), ("proposed", "proposed", "info"),
+    ("revised", "revised", "info"), ("asking a human", "asking a human", "warning"), ("failed", "failed", "warning"),
     ("asked", "working", "info"), ("asking", "working", "info"), ("sent the", "judging", "info"),
 )
+SHORT = {"hippocratech-flow": "Flow", "hippocratech-inventory": "Inventory", "hippocratech-clinical-workflow": "Clinical",
+         "hippocratech-coordinator": "Coordinator"}
+TAG = re.compile(r"^\[ @(?P<handle>[a-z-]+)(?: · round (?P<round>\d+))? \] (?P<rest>.*)$")
+ROUND_IN_TEXT = re.compile(r"\(round (?P<round>\d+)\)\.?$")
 
 
 def agent_state(lines: list[str], handle: str) -> tuple[str, str]:
@@ -167,26 +205,53 @@ def agent_state(lines: list[str], handle: str) -> tuple[str, str]:
             if needle in line:
                 return label, variant
         return "working", "info"
-    return "idle", "neutral"
+    return "idle", "info"
+
+
+def trace_row(line: str) -> Node:
+    """One trace line as a list row: who (badge) and what (text); the Coordinator's handoffs muted."""
+    m = TAG.match(line)
+    if not m:
+        return item([text(line, "emphasis")])
+    who = SHORT.get(m.group("handle"), m.group("handle"))
+    rest = ROUND_IN_TEXT.sub("", m.group("rest")).strip()
+    if m.group("handle") == "hippocratech-coordinator":
+        return item([text(f"{who}: {rest}", "muted")])
+    label, variant = agent_state([line], "@" + m.group("handle"))
+    return item([group([badge(who, variant), text(rest, "body")], direction="row", gap=8)])
+
+
+def round_of(line: str, current: int) -> int:
+    m = TAG.match(line)
+    if m and m.group("round"):
+        return int(m.group("round"))
+    m2 = ROUND_IN_TEXT.search(line)
+    return int(m2.group("round")) if m2 else current
 
 
 def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list[str], round: int, state: str,
                room_url: str) -> ChatMessage:
-    """The live trace: every agent's state as a badge, the last TRACE_LINES lines of the
-    negotiation, and the live-room button. The bubble is the whole trace, so the one
-    message ASI:One shows per turn carries everything so far."""
+    """The live negotiation as a card: each agent's state as a badge, then the trace grouped
+    by round (who did what, in order), then the live-room button. The bubble is the whole
+    trace as text, so the one message ASI:One shows per turn carries everything so far."""
     from runtime import PROFILES
-    lanes = []
-    for agent in ("flow", "inventory", "clinical_workflow"):
-        handle = "@" + PROFILES[agent].handle
-        label, variant = agent_state(lines, handle)
-        lanes.append(item([heading(handle, 4), badge(label, variant)]))
-    recent = lines[-TRACE_LINES:]
-    rows = {"type": "list", "items": [item([text(l, "muted" if l.startswith("[ @hippocratech-coordinator ]") else "body")]) for l in recent]}
-    children = [{"type": "list", "items": lanes}, DIVIDER, heading("What happened", 4), rows,
-                button("Open the live room", "open", False, url=room_url)]
-    root = section(f"Round {round} · {state.replace('_', ' ')}", children, subtitle=f"Attack from {device_label} · session {session_id}")
     import narrate
+    lanes = group([group([badge(agent_state(lines, "@" + PROFILES[a].handle)[0], agent_state(lines, "@" + PROFILES[a].handle)[1]),
+                          text("@" + PROFILES[a].handle, "muted")], gap=2)
+                   for a in ("flow", "inventory", "clinical_workflow")], direction="row", gap=16)
+    children: list[Node] = [lanes, DIVIDER]
+    current, open_round = 0, None
+    for line in lines[-TRACE_LINES:]:
+        r = round_of(line, current)
+        if r != current or open_round is None:
+            if r != current:
+                current = r
+            open_round = {"type": "list", "items": []}
+            children += [heading(f"Round {current}" if current else "Start", 3), open_round]
+        open_round["items"].append(trace_row(line))
+    children.append(button("Open the live room", "open", False, url=room_url))
+    root = section(f"Negotiation · round {round} · {state.replace('_', ' ')}", children,
+                   subtitle=f"Attack from {device_label} · session {session_id}")
     return message(narrate.render(lines), root, False)
 
 

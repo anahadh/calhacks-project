@@ -57,7 +57,7 @@ def test_recommendation_card_has_four_numbers_roles_and_room_link():
         assert str(n) in s
     assert "Security" in s and "Clinical engineering" in s and "http://x/room/chat-1" in s
     assert "approved" not in s.lower() and not FORBIDDEN.search(s)
-    assert meta["requires_card_interaction"] == "false" and meta["is_terminal"] == "true"
+    assert meta["requires_card_interaction"] == "true" and meta["is_terminal"] == "true"
     assert len(meta["card_payload"]) < 64 * 1024 and cards.depth(root) <= 8
     assert all(n["type"] in ALLOWED for n in walk(root))
 
@@ -87,9 +87,10 @@ def test_trace_card_shows_each_agent_state_and_the_lines():
     badges = [n for n in walk(root) if n["type"] == "badge"]
     assert {b["label"] for b in badges} >= {"accepted", "rejected", "proposed"}
     assert "Isolate imaging" in s and "http://x/room/chat-1" in s
-    assert meta["requires_card_interaction"] == "false"
+    assert meta["requires_card_interaction"] == "true" and meta["preferred_drawer_width_px"]
     assert cards.depth(root) <= 8 and all(n["type"] in ALLOWED for n in walk(root))
     assert m.text() == "\n\n".join(lines)
+    assert [n["value"] for n in walk(root) if n["type"] == "heading" and n["value"].startswith("Round")] == ["Round 1"]
     assert meta["is_terminal"] == "true"
 
 
@@ -99,3 +100,24 @@ def test_trace_card_keeps_only_the_last_lines_and_stays_small():
     meta, root = payload(m)
     assert len(meta["card_payload"]) < 64 * 1024
     assert "plan 199" in json.dumps(root) and "plan 0\"" not in json.dumps(root)
+
+
+def test_every_card_passes_the_documented_schema():
+    """ASI:One drops a card that fails validation and shows plain text instead, so every
+    card is checked against the element-tree schema before it is sent."""
+    import pytest
+    lines = ["[ @hippocratech-flow · round 1 ] proposed \"x\": 3 devices infected with it, 9 without.",
+             "[ @hippocratech-clinical-workflow · round 1 ] rejected: no. Needs: keep a flow.",
+             "[ @hippocratech-inventory · round 2 ] asking a human to confirm Thing."]
+    for m in (cards.picker_card(H, ["mri_2", "ct_1"], "Pick."),
+              cards.recommendation_card(H, "s", rec, base, "http://x", "Done."),
+              cards.trace_card(H, "s", "MRI 2", lines, 2, "waiting_for_human", "http://x")):
+        cards.validate(payload(m)[1])  # raises on a bad node
+    with pytest.raises(ValueError, match="variant"):
+        cards.validate({"type": "badge", "label": "x", "variant": "danger"})
+    with pytest.raises(ValueError, match="level"):
+        cards.validate({"type": "heading", "value": "x", "level": 4})
+    with pytest.raises(ValueError, match="style"):
+        cards.validate({"type": "text", "value": "x", "style": "bold"})
+    with pytest.raises(ValueError, match="type"):
+        cards.validate({"type": "table"})
