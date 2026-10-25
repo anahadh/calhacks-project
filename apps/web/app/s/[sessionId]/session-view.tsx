@@ -13,7 +13,7 @@ import { Timeline } from "@/components/timeline";
 import { AgentRoom, OptionCards } from "@/features/agents/agent-room";
 import { RecommendationCard } from "@/features/policy/card-body";
 import { showBlocker } from "@/features/solution/pair";
-import { DemoRoom } from "@/features/agents/demo-room";
+import { DemoRoom, LiveNegotiationRoom } from "@/features/agents/demo-room";
 import { defendBlocker } from "@/features/agents/defend-button";
 import { QuestionBanner } from "@/features/agents/question-card";
 import { JoinModal } from "@/features/review/join-modal";
@@ -58,12 +58,13 @@ export function SessionView({ sessionId }: { sessionId: string }) {
   };
 
   // ?view=agents opens straight onto the Agents tab; ?demo=1 plays the scripted negotiation there.
-  // The scripted negotiation plays by default while the live agents work; ?demo=0 shows the live room instead.
-  const [demo, setDemo] = useState(true);
+  // The negotiation room runs on the live rows; ?demo=1 plays the scripted version instead; ?demo=0 the classic Agent Room.
+  const [demo, setDemo] = useState<"live" | "script" | "classic">("live");
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.get("view") === "agents") setView("agents");
-    if (q.get("demo") === "0") setDemo(false);
+    if (q.get("demo") === "1") setDemo("script");
+    if (q.get("demo") === "0") setDemo("classic");
   }, []);
 
   // 1 and 2 switch views.
@@ -173,9 +174,28 @@ export function SessionView({ sessionId }: { sessionId: string }) {
       ) : (
         <main className="flex-grow space-y-3.5 p-4 md:p-6">
           <Counters session={session} />
-          {demo ? (
+          {demo !== "classic" ? (
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-[2px] md:p-8" role="dialog" aria-modal="true">
               <div className="h-full w-full max-w-[1760px]">
+                {demo === "live" ? (
+                  <LiveNegotiationRoom
+                    messages={session.messages}
+                    roundState={session.roundState}
+                    names={index}
+                    onClose={() => setView("simulation")}
+                    status={session.roundState.state === "idle" && !session.messages.length ? "Press Create segmentation plan to wake the agents." : undefined}
+                    options={
+                      session.recommendations.length ? (
+                        <OptionCards
+                          recs={session.recommendations.filter((r) => r.round === session.recommendations[0]?.round)}
+                          review={(rec) => (
+                            <RecommendationCard rec={rec} index={index} blocked={showBlocker(session, rec.id)} onShow={() => session.actions.showSolution(rec.id)} />
+                          )}
+                        />
+                      ) : undefined
+                    }
+                  />
+                ) : (
                 <DemoRoom
                   onClose={() => setView("simulation")}
                   status={session.roundState.state === "running" ? "The agents are finalizing the plan behind the scenes…" : session.roundState.state === "idle" && !session.messages.length ? "Press Create segmentation plan to wake the agents." : undefined}
@@ -190,6 +210,7 @@ export function SessionView({ sessionId }: { sessionId: string }) {
                     ) : undefined
                   }
                 />
+                )}
               </div>
             </div>
           ) : (

@@ -6,7 +6,10 @@ import type { ReactNode } from "react";
 import { AgentGlyph } from "./agent-icon";
 import { SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
 import { DemoScene } from "./demo-scene";
-import { demoScript, type DemoEvent, type Verb } from "./demo-script";
+import { demoScript, eventsFromRows, reopenedFromRows, type DemoEvent, type Verb } from "./demo-script";
+import type { Names } from "./negotiation";
+import { RevealClock } from "./reveal";
+import type { AgentMessageRow, RoundState } from "@/lib/stdb/types";
 
 // The scripted negotiation, top and center: a web of the four agents around the
 // Coordinator, a particle travelling along the edge each message takes and the
@@ -34,62 +37,116 @@ const VERB: Record<Verb, { label: string; color: string; glyph: string }> = {
   recommends: { label: "sends for sign-off", color: "#3DD68C", glyph: "■" },
 };
 
-export function DemoRoom({ onClose, options, status }: { onClose?: () => void; /** The real recommendation, once the live agents publish it. */ options?: ReactNode; /** What the live agents are doing meanwhile. */ status?: string }) {
+export function DemoRoom({ onClose, options, status }: { onClose?: () => void; options?: ReactNode; status?: string }) {
   const [script, setScript] = useState<DemoEvent[]>(() => demoScript());
   const [shown, setShown] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const feed = useRef<HTMLOListElement>(null);
-
   useEffect(() => {
     if (!playing || shown >= script.length) return;
     const id = window.setTimeout(() => setShown((n) => n + 1), shown === 0 ? 600 : STEP_MS);
     return () => window.clearTimeout(id);
   }, [playing, shown, script.length]);
+  const done = shown >= script.length;
+  return (
+    <NegotiationRoom
+      events={script.slice(0, shown)}
+      done={done}
+      subtitle={`Round ${script[Math.max(0, shown - 1)]?.round ?? 1} of 3 · ${done ? "agreed" : "negotiating"}`}
+      badge="Scripted demo"
+      controls={
+        <>
+          {!done && <button type="button" onClick={() => setPlaying((p) => !p)} className="ctl h-9 px-3 text-[13px]">{playing ? "Pause" : "Play"}</button>}
+          {!done && <button type="button" onClick={() => setShown(script.length)} className="ctl h-9 px-3 text-[13px]">Skip to result</button>}
+          {done && <button type="button" onClick={() => { setScript(demoScript()); setShown(0); setPlaying(true); }} className="ctl h-9 px-3 text-[13px]">Replay</button>}
+        </>
+      }
+      onClose={onClose}
+      options={options}
+      status={status}
+    />
+  );
+}
 
+/**
+ * The same room on the live round: the session's agent_message rows, revealed one every
+ * few seconds so each can be read (UX rule 5), with the real recommendation at the end.
+ */
+export function LiveNegotiationRoom({ messages, roundState, names, onClose, options, status }: {
+  messages: readonly AgentMessageRow[];
+  roundState: RoundState;
+  names: Names;
+  onClose?: () => void;
+  options?: ReactNode;
+  status?: string;
+}) {
+  const clock = useRef(new RevealClock());
+  const [now, setNow] = useState(() => Date.now());
+  const seqs = messages.map((m) => m.seq).join(",");
+  useEffect(() => {
+    const t = Date.now();
+    clock.current.observe(messages.map((m) => m.seq), t);
+    setNow(t);
+  }, [seqs]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const next = clock.current.nextAt(now);
+    if (next === undefined) return;
+    const id = window.setTimeout(() => setNow(Date.now()), Math.max(0, next - now));
+    return () => window.clearTimeout(id);
+  }, [now, seqs]);
+  const shownRows = useMemo(() => messages.filter((m) => clock.current.shown(m.seq, now)), [messages, now]);
+  const events = useMemo(() => eventsFromRows(shownRows, names), [shownRows, names]);
+  const reopened = useMemo(() => reopenedFromRows(shownRows), [shownRows]);
+  const revealing = shownRows.length < messages.length;
+  const done = !revealing && roundState.state === "done";
+  const round = events[events.length - 1]?.round ?? roundState.round ?? 1;
+  const skip = () => { const t = Date.now(); clock.current.flush(t); setNow(t); };
+  return (
+    <NegotiationRoom
+      events={events}
+      done={done}
+      reopened={reopened}
+      subtitle={`Round ${Math.max(1, round)} of ${roundState.maxRounds} · ${done ? (roundState.detail?.startsWith("No agreement") ? "no agreement" : "agreed") : roundState.state === "waiting_for_human" && !revealing ? "waiting for a human" : roundState.state === "idle" && !messages.length ? "idle" : "negotiating"}`}
+      badge={roundState.detail?.startsWith("Cached run") ? "Cached run" : undefined}
+      controls={revealing ? <button type="button" onClick={skip} className="ctl h-9 px-3 text-[13px]">Skip to result</button> : null}
+      onClose={onClose}
+      options={options}
+      status={status}
+    />
+  );
+}
+
+function NegotiationRoom({ events, done, reopened, subtitle, badge, controls, onClose, options, status }: {
+  events: DemoEvent[];
+  done: boolean;
+  reopened?: string[];
+  subtitle: string;
+  badge?: string;
+  controls?: ReactNode;
+  onClose?: () => void;
+  options?: ReactNode;
+  status?: string;
+}) {
+  const feed = useRef<HTMLOListElement>(null);
   useEffect(() => {
     feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: "smooth" });
-  }, [shown]);
-
-  const events = script.slice(0, shown);
+  }, [events.length]);
   const newest = events[events.length - 1];
-  const done = shown >= script.length;
   const plans = useMemo(() => events.filter((e) => e.plan).map((e) => e.plan!), [events]);
-  const replay = () => {
-    setScript(demoScript());
-    setShown(0);
-    setPlaying(true);
-  };
 
   return (
     <div className="flex h-full w-full flex-col rounded-panel border border-line bg-panel shadow-overlay">
       <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-4 border-b border-line px-6 py-3">
         <div>
           <h1 className="m-0 text-[24px] font-normal tracking-[-0.01em] text-ink">Agents negotiating the plan</h1>
-          <div className="num mt-0.5 text-[12px] text-ink-faint">Round {newest?.round ?? 1} of 3 · {done ? "agreed" : "negotiating"}</div>
+          <div className="num mt-0.5 text-[12px] text-ink-faint">{subtitle}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="num inline-flex h-9 items-center rounded-ctl border border-state-delayed/60 px-3 text-[13px] text-state-delayed" title="A scripted negotiation for the stage, not agent rows">
-            Scripted demo
-          </span>
-          {!done && (
-            <button type="button" onClick={() => setPlaying((p) => !p)} className="ctl h-9 px-3 text-[13px]">
-              {playing ? "Pause" : "Play"}
-            </button>
+          {badge && (
+            <span className="num inline-flex h-9 items-center rounded-ctl border border-state-delayed/60 px-3 text-[13px] text-state-delayed">{badge}</span>
           )}
-          {!done && (
-            <button type="button" onClick={() => setShown(script.length)} className="ctl h-9 px-3 text-[13px]">
-              Skip to result
-            </button>
-          )}
-          {done && (
-            <button type="button" onClick={replay} className="ctl h-9 px-3 text-[13px]">
-              Replay
-            </button>
-          )}
+          {controls}
           {onClose && (
-            <button type="button" onClick={onClose} aria-label="Close" className="ctl h-9 min-w-[40px] text-ink">
-              ✕
-            </button>
+            <button type="button" onClick={onClose} aria-label="Close" className="ctl h-9 min-w-[40px] text-ink">✕</button>
           )}
         </div>
       </header>
@@ -104,12 +161,12 @@ export function DemoRoom({ onClose, options, status }: { onClose?: () => void; /
               {events.map((e, i) => (
                 <Bubble key={e.seq} e={e} fresh={i === events.length - 1} />
               ))}
-              {!events.length && <li className="num text-[13px] text-ink-faint">The Coordinator is opening the round…</li>}
+              {!events.length && <li className="num text-[13px] text-ink-faint">{status ?? "Waiting for the Coordinator to open the round…"}</li>}
             </ol>
           </section>
         </div>
         <section aria-label="The plan on the hospital" className="relative min-h-[420px]">
-          <DemoScene plan={plans.length} infected={plans[plans.length - 1]?.devices ?? 9} />
+          <DemoScene plan={plans.length} infected={plans[plans.length - 1]?.devices ?? 9} reopened={reopened} />
           {plans.length > 0 && <PlanTrail plans={plans} />}
         </section>
       </div>
@@ -230,7 +287,7 @@ function Bubble({ e, fresh }: { e: DemoEvent; fresh: boolean }) {
             <Chip tone="info">{e.plan.name}</Chip>
             <Chip tone="ok">{e.plan.devices} machines compromised</Chip>
             <Chip tone="ok">{e.plan.patients} patients affected</Chip>
-            <Chip tone="info">{e.plan.cuts} links cut</Chip>
+            {e.plan.cuts !== undefined && <Chip tone="info">{e.plan.cuts} links cut</Chip>}
             <Chip tone="info">{e.plan.rules} rules</Chip>
           </div>
         )}

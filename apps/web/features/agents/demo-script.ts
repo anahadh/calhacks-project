@@ -3,7 +3,8 @@
 // no two runs read the same, but every plan is better than the one before. This is
 // theatre, labeled "Scripted demo" on screen; it writes no rows and wakes no agent.
 
-import type { AgentId } from "@/lib/stdb/types";
+import type { AgentId, AgentMessageRow } from "@/lib/stdb/types";
+import { needsLabel, type Names } from "./negotiation";
 
 export type Verb = "opens" | "proposes" | "declines" | "approves" | "revises" | "asks" | "recommends";
 
@@ -17,7 +18,7 @@ export type DemoEvent = {
   /** The one-line contribution. */
   line: string;
   /** The plan's numbers, on proposals and revisions. */
-  plan?: { name: string; devices: number; patients: number; cuts: number; rules: number };
+  plan?: { name: string; devices: number; patients: number; cuts?: number; rules: number };
   /** On a decline: what the agent needs, in a few words. */
   needs?: string;
 };
@@ -65,4 +66,56 @@ export function demoScript(baseline = { devices: 9, patients: 90 }): DemoEvent[]
     e(3, "clinical_workflow", "coordinator", "approves", "I approve. Scans reach PACS, every monitor reaches the chart, the lab reaches the chart, and no critical service is down for long."),
     e(3, "coordinator", "humans", "recommends", `Both reviewers approve. I'm sending “Five networks by function” to the humans for sign-off: ${d3} machines and ${p3} patients instead of ${baseline.devices} and ${baseline.patients}.`),
   ];
+}
+
+
+/**
+ * The same events from real agent_message rows: one card per thing an agent sent, in its
+ * own words (the reason the model wrote), with the engine's tested numbers on each plan and
+ * the constraint a rejection added. The Coordinator's forwards are folded away; its round
+ * requests open each round. Nothing is invented (rule 16).
+ */
+export function eventsFromRows(messages: readonly AgentMessageRow[], names: Names): DemoEvent[] {
+  const out: DemoEvent[] = [];
+  let name = "";
+  let rules = 0;
+  for (const m of [...messages].sort((a, b) => a.seq - b.seq)) {
+    if (m.type === "chat" || m.type === "answer") continue;
+    if (m.from === "coordinator" && (m.type === "proposal" || m.type === "revision")) continue;
+    if (m.from === "humans" || m.from === "asi1") continue;
+    const agent = m.from as AgentId;
+    const base = { seq: m.seq, round: m.round, agent, to: (m.to === "all" ? "humans" : m.to) as DemoEvent["to"] };
+    switch (m.type) {
+      case "request":
+        out.push({ ...base, verb: "opens", line: m.reason || (m.round > 1 ? `Starting round ${m.round}. Flow, revise the plan.` : "Starting round 1. Flow, give us a plan.") });
+        break;
+      case "proposal":
+        name = m.name ?? name;
+        rules = m.rules?.length ?? rules;
+        out.push({ ...base, verb: "proposes", line: m.reason, plan: { name, devices: m.tested?.devicesCompromised ?? 0, patients: m.tested?.patientsAffected ?? 0, rules } });
+        break;
+      case "revision":
+        name = m.name ?? name;
+        out.push({ ...base, verb: "revises", line: m.reason, plan: { name, devices: m.tested?.devicesCompromised ?? 0, patients: m.tested?.patientsAffected ?? 0, rules } });
+        break;
+      case "accept":
+        out.push({ ...base, verb: "approves", line: m.reason });
+        break;
+      case "reject":
+        out.push({ ...base, verb: "declines", line: m.reason, needs: m.constraint ? needsLabel(m.constraint, names) : undefined });
+        break;
+      case "question":
+        out.push({ ...base, verb: "asks", line: m.reason });
+        break;
+      case "recommendation":
+        out.push({ ...base, verb: "recommends", line: m.reason });
+        break;
+    }
+  }
+  return out;
+}
+
+/** The feeds the reviewers made Flow reopen so far: every keep_flow target in the rows. */
+export function reopenedFromRows(messages: readonly AgentMessageRow[]): string[] {
+  return [...new Set(messages.filter((m) => m.type === "reject" && m.constraint?.kind === "keep_flow").flatMap((m) => m.constraint!.targetIds))];
 }

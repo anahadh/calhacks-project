@@ -13,13 +13,13 @@ import type { Hospital, Point } from "@/lib/stdb/types";
 // plan 3 is the five networks by function with the feeds care needs drawn as lines.
 // Scripted (demo-script.ts): the shapes come from the hospital file, the counts from the script.
 
-const H = (demo as { hospital: Hospital }).hospital;
+const H = (demo as unknown as { hospital: Hospital }).hospital;
 const BASELINE_INFECTED = ["mri_2", "ws_img_1", "ws_img_2", "ws_rad_1", "ws_rad_2", "srv_file", "srv_ehr", "srv_dc", "ws_lab"];
 const PAD = 1.4;
 
 type Blob = { key: string; color: string; pts: Point[]; label?: string };
 
-export function DemoScene({ plan, infected }: { plan: number; infected: number }) {
+export function DemoScene({ plan, infected, reopened }: { plan: number; infected: number; /** Live: the feeds reopened so far (flow ids); the plan is then always the five networks. */ reopened?: string[] }) {
   const rooms = H.rooms.filter((r) => r.polygon.length >= 3);
   const zoneOf = useMemo(() => new Map(H.rooms.map((r) => [r.id, r.zone])), []);
   const devices = H.devices;
@@ -39,7 +39,10 @@ export function DemoScene({ plan, infected }: { plan: number; infected: number }
     };
     for (const d of devices) {
       const zone = zoneOf.get(d.roomId) ?? "";
-      if (plan === 1) {
+      if (reopened) {
+        const s = segmentOf(d, zone) as FunctionalSegment;
+        add(`${s}:${d.roomId}`, SEGMENT[s].color, SEGMENT[s].name, d.position);
+      } else if (plan === 1) {
         if (zone === "imaging") add("imaging", ZONE_STYLE.imaging.color, "Imaging, walled off", d.position);
       } else if (plan === 2) {
         add(`${zone}:${d.roomId}`, ZONE_STYLE[zone]?.color ?? "#7D858B", zoneName(zone), d.position);
@@ -49,18 +52,19 @@ export function DemoScene({ plan, infected }: { plan: number; infected: number }
       }
     }
     return [...byKey.entries()].map(([key, g]) => ({ key, color: g.color, label: g.label, pts: roundedHullOf(g.pts, PAD) }));
-  }, [plan, devices, zoneOf]);
+  }, [plan, devices, zoneOf, reopened]);
 
   // Plan 3: the feeds reopened for care, as lines between the machines they join.
   const holes = useMemo(() => {
-    if (plan < 3) return [];
+    if (!reopened && plan < 3) return [];
     const pos = new Map(devices.map((d) => [d.id, d.position]));
     const seg = new Map(devices.map((d) => [d.id, segmentOf(d, zoneOf.get(d.roomId) ?? "")]));
+    const open = reopened ? new Set(reopened) : null;
     return H.flows
-      .filter((f) => f.active !== false && f.protocol === "hl7" && seg.get(f.from) !== seg.get(f.to))
+      .filter((f) => f.active !== false && (open ? open.has(f.id) : f.protocol === "hl7" && seg.get(f.from) !== seg.get(f.to)))
       .map((f) => ({ id: f.id, a: pos.get(f.from)!, b: pos.get(f.to)! }))
       .filter((l) => l.a && l.b);
-  }, [plan, devices, zoneOf]);
+  }, [plan, devices, zoneOf, reopened]);
 
   const vb = `${bounds.x0} ${bounds.y0} ${bounds.x1 - bounds.x0} ${bounds.y1 - bounds.y0}`;
   const labels = new Map<string, Blob>();
@@ -105,7 +109,11 @@ export function DemoScene({ plan, infected }: { plan: number; infected: number }
         })}
       </svg>
       <span className="num pointer-events-none absolute bottom-3 left-4 text-[11px] text-ink-faint">
-        {plan === 0
+        {reopened
+          ? plan === 0
+            ? "No plan yet: where the attack reaches"
+            : `Plan ${plan} · five networks by function · teal lines: ${reopened.length ? `${reopened.length} feeds reopened for care` : "no feeds reopened yet"}`
+          : plan === 0
           ? "No plan: where the attack from MRI 2 reaches"
           : plan === 1
             ? "Plan 1 · one wall around Imaging"
