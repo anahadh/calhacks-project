@@ -174,10 +174,18 @@ export function PlanScene({
           />
         ))}
 
-        {/* Kept flows only for the hovered segment: by default the scene shows what the plan changes, not every connection. */}
-        {kept.filter((f) => flowShown(f) && !!hoveredZone && [f.from, f.to].some((id) => device.get(id) && zoneOf(device.get(id)!) === hoveredZone)).map((f) => (
-          <PlanArc key={f.id} from={point(f.from)} to={point(f.to)} kind="kept" />
-        ))}
+        {/* By default only the holes: kept connections that cross a segment wall (scans to PACS, vitals and ADT, NTP).
+            A hovered segment also shows its own internal connections. */}
+        {kept.filter((f) => {
+          if (!flowShown(f)) return false;
+          const za = device.get(f.from) ? zoneOf(device.get(f.from)!) : "";
+          const zb = device.get(f.to) ? zoneOf(device.get(f.to)!) : "";
+          return za !== zb || (!!hoveredZone && (za === hoveredZone || zb === hoveredZone));
+        }).map((f) => {
+          const za = device.get(f.from) ? zoneOf(device.get(f.from)!) : "";
+          const zb = device.get(f.to) ? zoneOf(device.get(f.to)!) : "";
+          return <PlanArc key={f.id} from={point(f.from)} to={point(f.to)} kind={za !== zb ? "hole" : "kept"} />;
+        })}
         {cut.filter(flowShown).map((f) => (
           <PlanArc key={f.id} from={point(f.from)} to={point(f.to)} kind="cut" />
         ))}
@@ -263,7 +271,9 @@ function SegmentOutline({
   );
 }
 
-const ARC: Record<"kept" | "cut" | "infection", { color: string; width: number; opacity: number; dash?: [number, number] }> = {
+const ARC: Record<"kept" | "hole" | "cut" | "infection", { color: string; width: number; opacity: number; dash?: [number, number] }> = {
+  // A hole in a segment wall: the minimum traffic that still crosses it. Faint, so the walls read first.
+  hole: { color: C.healthy, width: 1, opacity: 0.35 },
   // The plan's kept clinical flows: solid blue, bright enough to read from across the room.
   kept: { color: C.healthy, width: 1.4, opacity: 0.85 },
   // A connection the plan removed: dashed grey (UX rule 3), at full strength.

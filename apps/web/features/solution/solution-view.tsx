@@ -395,7 +395,7 @@ function Legend() {
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="h-px w-5 bg-state-healthy" />
-        Kept connection (hover a segment)
+        Hole in a wall (hover a segment for its links)
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="inline-flex items-center gap-1">

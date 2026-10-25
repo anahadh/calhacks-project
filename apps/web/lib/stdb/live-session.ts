@@ -47,6 +47,62 @@ function unsubscribe(handle: Handle): void {
   }
 }
 
+/**
+ * One subscription per query set per connection, shared by every component that
+ * asks for it and released a moment after the last one lets go. React's dev mode
+ * mounts each effect twice (subscribe, unsubscribe, subscribe): tearing down the
+ * first subscription would drop rows the second one shares, so a run's rows
+ * stopped updating until a reload.
+ */
+type Shared = {
+  handle?: Handle; users: number; applied: boolean; timer?: ReturnType<typeof setTimeout>;
+  onApplied: Set<() => void>; onError: Set<(e: string) => void>;
+};
+const shared = new WeakMap<DbConnection, Map<string, Shared>>();
+const RELEASE_MS = 1500;
+
+function acquire(conn: DbConnection, queries: string[], onApplied: () => void, onError: (e: string) => void): () => void {
+  let byKey = shared.get(conn);
+  if (!byKey) shared.set(conn, (byKey = new Map()));
+  const key = queries.join("\n");
+  let s = byKey.get(key);
+  if (!s) {
+    const entry: Shared = { users: 0, applied: false, onApplied: new Set(), onError: new Set() };
+    entry.handle = conn
+      .subscriptionBuilder()
+      .onApplied(() => {
+        entry.applied = true;
+        for (const f of [...entry.onApplied]) f();
+      })
+      .onError((ctx) => {
+        const msg = String(ctx?.event?.message ?? "Subscription failed.");
+        for (const f of [...entry.onError]) f(msg);
+      })
+      .subscribe(queries);
+    byKey.set(key, (s = entry));
+  }
+  const sub = s;
+  if (sub.timer) {
+    clearTimeout(sub.timer);
+    sub.timer = undefined;
+  }
+  sub.users += 1;
+  sub.onApplied.add(onApplied);
+  sub.onError.add(onError);
+  if (sub.applied) onApplied();
+  return () => {
+    sub.users -= 1;
+    sub.onApplied.delete(onApplied);
+    sub.onError.delete(onError);
+    if (sub.users > 0) return;
+    sub.timer = setTimeout(() => {
+      if (sub.users > 0) return;
+      byKey!.delete(key);
+      if (sub.handle) unsubscribe(sub.handle);
+    }, RELEASE_MS);
+  };
+}
+
 /** This tab's connection (one per tab, connection.ts), or why there is none, including a dropped one. */
 function useLive(): { live?: Live; error?: string } {
   const [state, setState] = useState<{ live?: Live; error?: string }>({});
@@ -108,14 +164,10 @@ function useRunSubscription(conn: DbConnection | undefined, runId: string, onErr
     const queries = runQueries(runId);
     if (!conn || !queries.length) return;
     let cancelled = false;
-    const handle = conn
-      .subscriptionBuilder()
-      .onApplied(() => !cancelled && setApplied(runId))
-      .onError((ctx) => !cancelled && report.current(String(ctx?.event?.message ?? "Subscription failed.")))
-      .subscribe(queries);
+    const release = acquire(conn, queries, () => !cancelled && setApplied(runId), (e) => !cancelled && report.current(e));
     return () => {
       cancelled = true;
-      unsubscribe(handle);
+      release();
     };
   }, [conn, runId]);
   return applied;
@@ -133,9 +185,10 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
     const queries = sessionQueries(sessionId);
     if (!conn || !queries.length) return;
     let cancelled = false;
-    const handle = conn
-      .subscriptionBuilder()
-      .onApplied(() => {
+    const release = acquire(
+      conn,
+      queries,
+      () => {
         if (cancelled) return;
         const exists = [...conn.db.session.iter()].some((s) => s.id === sessionId);
         if (!exists && sessionId === "demo" && !created.current) {
@@ -146,12 +199,12 @@ export function useLiveSession(sessionId: string): SessionSnapshot {
           });
         }
         setStatus({ source: exists || sessionId === "demo" ? "live" : "missing" });
-      })
-      .onError((ctx) => !cancelled && setStatus({ source: "error", error: String(ctx?.event?.message ?? "Subscription failed.") }))
-      .subscribe(queries);
+      },
+      (e) => !cancelled && setStatus({ source: "error", error: e }),
+    );
     return () => {
       cancelled = true;
-      unsubscribe(handle);
+      release();
     };
   }, [conn, sessionId]);
 
