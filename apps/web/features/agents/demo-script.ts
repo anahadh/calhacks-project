@@ -44,25 +44,25 @@ export function demoScript(baseline = { devices: 9, patients: 90 }): DemoEvent[]
     seq: ++seq, round, agent, to, verb, line, ...extra,
   });
   return [
-    e(1, "coordinator", "flow", "opens", "Round 1. Attack from MRI 2 reached 9 machines and 90 patients. Flow, propose a plan."),
-    e(1, "flow", "coordinator", "proposes", `Strict first: wall off the five networks, close every feed between them, keep only charts and time.`, {
+    e(1, "coordinator", "flow", "opens", "Starting round 1. Without any plan, the attack from MRI 2 reached 9 machines and disrupted care for 90 patients. Flow, give us a plan."),
+    e(1, "flow", "coordinator", "proposes", "My first plan is strict on purpose. I split the hospital into five networks and block every connection between them except the chart and the clock. Clinical can tell me which feeds they need back.", {
       plan: { name: "Strict walls", devices: d1, patients: p1, cuts: cuts1, rules: rules1 },
     }),
-    e(1, "coordinator", "inventory", "opens", "Sent to Inventory and Clinical Workflow for review."),
-    e(1, "inventory", "coordinator", "declines", `${rules1} allow rules. The switches carry 24. Fold them.`, { needs: "at most 24 rules" }),
-    e(1, "clinical_workflow", "coordinator", "declines", "The ER and ICU stations lost vitals and ADT to the chart. Those stay open.", { needs: "keep ER and ICU HL7 feeds" }),
-    e(2, "coordinator", "flow", "opens", "Round 2. Two constraints learned. Flow, revise."),
-    e(2, "flow", "coordinator", "revises", `Reopened the ER and ICU feeds, folded the rules department to department.`, {
-      plan: { name: "Critical care holes", devices: d2, patients: p2, cuts: cuts2, rules: rules2 },
+    e(1, "coordinator", "inventory", "opens", "Inventory and Clinical Workflow, please review Flow's plan."),
+    e(1, "inventory", "coordinator", "declines", `I can't approve this. It needs ${rules1} firewall rules and our switches can only hold 24. Flow has to combine rules.`, { needs: "24 rules or fewer" }),
+    e(1, "clinical_workflow", "coordinator", "declines", "I can't approve this either. It cuts the ER and ICU monitors off from the patient chart, so nurses would lose live vitals and bed assignments. Those two feeds must stay open.", { needs: "ER and ICU monitor feeds stay open" }),
+    e(2, "coordinator", "flow", "opens", "Starting round 2. Flow, both reviewers said no. Keep the ER and ICU feeds open and get under 24 rules."),
+    e(2, "flow", "coordinator", "revises", "Done. I reopened the ER and ICU monitor feeds and merged rules by department, which brought the count down. The attack still can't leave its own network.", {
+      plan: { name: "ER and ICU feeds open", devices: d2, patients: p2, cuts: cuts2, rules: rules2 },
     }),
-    e(2, "inventory", "coordinator", "approves", `${rules2} rules, every machine it touches is in the inventory.`),
-    e(2, "clinical_workflow", "coordinator", "declines", "Lab results no longer reach the chart. The lab feed stays open.", { needs: "keep lab HL7 feed" }),
-    e(3, "coordinator", "flow", "opens", "Round 3. One constraint added. Flow, revise."),
-    e(3, "flow", "coordinator", "revises", `Reopened the lab feed. Walls, cuts and the rule budget all hold.`, {
-      plan: { name: "Critical care and lab holes", devices: d3, patients: p3, cuts: cuts3, rules: rules3 },
+    e(2, "inventory", "coordinator", "approves", `I approve. ${rules2} rules fits our switches, and every machine this plan touches is one we know.`),
+    e(2, "clinical_workflow", "coordinator", "declines", "Closer, but still no. The lab can't send results to the chart anymore, so doctors would wait on paper. That feed must stay open too.", { needs: "lab results feed stays open" }),
+    e(3, "coordinator", "flow", "opens", "Starting round 3. Flow, one more fix: keep the lab results feed open."),
+    e(3, "flow", "coordinator", "revises", "Reopened the lab feed. Everything else holds: the walls, the cuts and the rule budget.", {
+      plan: { name: "ER, ICU and lab feeds open", devices: d3, patients: p3, cuts: cuts3, rules: rules3 },
     }),
-    e(3, "inventory", "coordinator", "approves", `${rules3} rules, under budget. Nothing unidentified.`),
-    e(3, "clinical_workflow", "coordinator", "approves", "Every protected clinical feed is open. No critical service down past two steps."),
-    e(3, "coordinator", "humans", "recommends", `Both reviewers accept. Recommending “Critical care and lab holes” for sign-off: ${d3} machines, ${p3} patients, down from ${baseline.devices} and ${baseline.patients}.`),
+    e(3, "inventory", "coordinator", "approves", `I approve. ${rules3} rules, still under budget, nothing unknown on the list.`),
+    e(3, "clinical_workflow", "coordinator", "approves", "I approve. Every feed that care depends on is open, and no critical service is down for long."),
+    e(3, "coordinator", "humans", "recommends", `Both reviewers approve. I'm sending “ER, ICU and lab feeds open” to the humans for sign-off: ${d3} machines and ${p3} patients instead of ${baseline.devices} and ${baseline.patients}.`),
   ];
 }

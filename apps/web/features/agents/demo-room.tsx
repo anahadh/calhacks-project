@@ -23,13 +23,13 @@ const NODE: Record<Who, { x: number; y: number; r: number }> = {
 };
 
 const VERB: Record<Verb, { label: string; color: string; glyph: string }> = {
-  opens: { label: "opens", color: "#A1A8AE", glyph: "▷" },
-  proposes: { label: "proposed", color: "#4DB0FF", glyph: "◆" },
-  revises: { label: "revised", color: "#4DB0FF", glyph: "↻" },
-  declines: { label: "declined", color: "#FF5C5C", glyph: "✕" },
-  approves: { label: "approved", color: "#3DD68C", glyph: "●" },
-  asks: { label: "asked a human", color: "#F2C14E", glyph: "?" },
-  recommends: { label: "recommended", color: "#3DD68C", glyph: "■" },
+  opens: { label: "opens the round", color: "#A1A8AE", glyph: "▷" },
+  proposes: { label: "suggests a plan", color: "#4DB0FF", glyph: "◆" },
+  revises: { label: "improves the plan", color: "#4DB0FF", glyph: "↻" },
+  declines: { label: "says no", color: "#FF5C5C", glyph: "✕" },
+  approves: { label: "approves", color: "#3DD68C", glyph: "●" },
+  asks: { label: "asks a human", color: "#F2C14E", glyph: "?" },
+  recommends: { label: "sends for sign-off", color: "#3DD68C", glyph: "■" },
 };
 
 export function DemoRoom({ onClose }: { onClose?: () => void }) {
@@ -225,7 +225,7 @@ function Bubble({ e, fresh }: { e: DemoEvent; fresh: boolean }) {
         )}
         {e.needs && (
           <div className="num mt-2 text-[12px] text-ink-muted">
-            Needs: <span className="text-ink">{e.needs}</span>
+            What it takes to get a yes: <span className="text-ink">{e.needs}</span>
           </div>
         )}
       </div>
