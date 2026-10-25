@@ -6,13 +6,8 @@
     "floors": [
       {
         "id": "fl_0",
-        "name": "Ground",
+        "name": "Main floor",
         "level": 0
-      },
-      {
-        "id": "fl_1",
-        "name": "Level 1",
-        "level": 1
       }
     ],
     "rooms": [
@@ -168,125 +163,125 @@
       },
       {
         "id": "rm_icu",
-        "floorId": "fl_1",
+        "floorId": "fl_0",
         "name": "ICU",
         "type": "icu",
         "zone": "critical_care",
         "polygon": [
           [
-            0,
+            40,
             0
           ],
           [
-            16,
+            56,
             0
           ],
           [
-            16,
+            56,
             12
           ],
           [
-            0,
+            40,
             12
           ]
         ]
       },
       {
         "id": "rm_or",
-        "floorId": "fl_1",
+        "floorId": "fl_0",
         "name": "Operating rooms",
         "type": "or",
         "zone": "critical_care",
         "polygon": [
           [
-            16,
+            56,
             0
           ],
           [
-            30,
+            70,
             0
           ],
           [
-            30,
+            70,
             12
           ],
           [
-            16,
+            56,
             12
           ]
         ]
       },
       {
         "id": "rm_server",
-        "floorId": "fl_1",
+        "floorId": "fl_0",
         "name": "Server room",
         "type": "server",
         "zone": "it_core",
         "polygon": [
           [
-            30,
+            70,
             0
           ],
           [
-            40,
+            80,
             0
           ],
           [
-            40,
+            80,
             12
           ],
           [
-            30,
+            70,
             12
           ]
         ]
       },
       {
         "id": "rm_ward",
-        "floorId": "fl_1",
+        "floorId": "fl_0",
         "name": "Ward 3B",
         "type": "ward",
         "zone": "inpatient",
         "polygon": [
           [
-            0,
+            40,
             12
           ],
           [
-            24,
+            64,
             12
           ],
           [
-            24,
+            64,
             24
           ],
           [
-            0,
+            40,
             24
           ]
         ]
       },
       {
         "id": "rm_reading",
-        "floorId": "fl_1",
+        "floorId": "fl_0",
         "name": "Radiology reading",
         "type": "imaging",
         "zone": "imaging",
         "polygon": [
           [
-            24,
+            64,
             12
           ],
           [
-            40,
+            80,
             12
           ],
           [
-            40,
+            80,
             24
           ],
           [
-            24,
+            64,
             24
           ]
         ]
@@ -639,7 +634,7 @@
         "criticality": "life_support",
         "vlan": 10,
         "position": [
-          2,
+          42,
           3.75
         ]
       },
@@ -653,7 +648,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          6,
+          46,
           3.75
         ]
       },
@@ -667,7 +662,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          10,
+          50,
           3.75
         ]
       },
@@ -681,7 +676,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          14,
+          54,
           3.75
         ]
       },
@@ -695,7 +690,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          2,
+          42,
           8.25
         ]
       },
@@ -709,7 +704,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          6,
+          46,
           8.25
         ]
       },
@@ -723,7 +718,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          10,
+          50,
           8.25
         ]
       },
@@ -737,7 +732,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          18.333333333333332,
+          58.33333333333333,
           3.75
         ]
       },
@@ -751,7 +746,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          23,
+          63,
           3.75
         ]
       },
@@ -765,7 +760,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          27.666666666666664,
+          67.66666666666666,
           3.75
         ]
       },
@@ -779,7 +774,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          18.333333333333332,
+          58.33333333333333,
           8.25
         ]
       },
@@ -793,7 +788,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          23,
+          63,
           8.25
         ]
       },
@@ -807,7 +802,7 @@
         "criticality": "high",
         "vlan": 10,
         "position": [
-          32.5,
+          72.5,
           3.75
         ],
         "role": "pacs"
@@ -822,7 +817,7 @@
         "criticality": "high",
         "vlan": 10,
         "position": [
-          37.5,
+          77.5,
           3.75
         ],
         "role": "ehr_engine"
@@ -837,7 +832,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          32.5,
+          72.5,
           8.25
         ],
         "role": "file_server"
@@ -852,7 +847,7 @@
         "criticality": "high",
         "vlan": 10,
         "position": [
-          37.5,
+          77.5,
           8.25
         ],
         "role": "domain_controller"
@@ -867,7 +862,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          3,
+          43,
           15.75
         ]
       },
@@ -881,7 +876,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          9,
+          49,
           15.75
         ]
       },
@@ -895,7 +890,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          15,
+          55,
           15.75
         ]
       },
@@ -909,7 +904,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          21,
+          61,
           15.75
         ]
       },
@@ -923,7 +918,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          3,
+          43,
           20.25
         ]
       },
@@ -937,7 +932,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          28,
+          68,
           15.75
         ]
       },
@@ -951,7 +946,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          36,
+          76,
           15.75
         ]
       },
@@ -965,7 +960,7 @@
         "criticality": "medium",
         "vlan": 10,
         "position": [
-          28,
+          68,
           20.25
         ]
       },
