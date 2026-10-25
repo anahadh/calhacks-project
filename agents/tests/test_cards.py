@@ -164,3 +164,22 @@ def test_trace_card_hides_coordinator_handoffs_but_keeps_mcp():
     _, root = payload(cards.trace_card(H, "s", "MRI 2", lines, 1, "running", "http://x"))
     s = json.dumps(root)
     assert "asked @hippocratech-flow" not in s and "MCP" in s and "accepted" in s
+
+
+def test_floor_tiles_draw_every_room_with_native_elements():
+    tiles = cards.floor_tiles(H)
+    s = json.dumps(tiles)
+    for r in H.rooms.values():
+        assert r["name"] in s
+    cards.validate(tiles)
+    hit = json.dumps(cards.floor_tiles(H, infected={"mri_2", "srv_pacs"}))
+    assert "infected" in hit and '"variant": "warning"' in hit
+    both = json.dumps(cards.floor_tiles(H, infected={"mri_2", "srv_pacs"}, after={"mri_2"}), ensure_ascii=False)
+    assert "→" in both
+
+
+def test_hospital_and_recommendation_cards_carry_the_floor():
+    _, root = payload(cards.hospital_card(H, ["mri_2", "ct_1"], None, "Here."))
+    assert "Emergency" in json.dumps(root)
+    _, root = payload(cards.recommendation_card(H, "s", rec, base, "http://x", "Done."))
+    assert "Imaging" in json.dumps(root) and "→" in json.dumps(root, ensure_ascii=False)

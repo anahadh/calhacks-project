@@ -71,6 +71,7 @@ class ChatRound:
     flush: asyncio.Task | None = None  # the pending coalesced send, if any
     summary_sent: bool = False
     map_image: str | None = None  # the baseline spread on the floor plan, once known
+    infected: set | None = None  # devices the baseline attack reaches
 
 
 NARRATE_INTERVAL_S = 10.0  # ASI:One rate-limits bursts (429): at most one trace message per interval
@@ -154,6 +155,7 @@ async def begin(ctx: Context, req: StartRound) -> RestAck:
                 raise RuntimeError(got["error"])
             baseline = RunResult.parse_obj(got)
             if req.sessionId in chats:
+                chats[req.sessionId].infected = {d.id for d in baseline.infectedDevices}
                 try:
                     pz = H.devices[req.patientZero]["name"]
                     chats[req.sessionId].map_image = viz.data_uri(viz.hospital_map(
@@ -299,7 +301,7 @@ async def _flush_trace(ctx: Context, session_id: str, wait: float) -> None:
     c.last_sent = time.monotonic()
     rnd = rounds.get(session_id)
     msg = cards.trace_card(H, session_id, c.device_name, list(c.trace), rnd.round if rnd else 1,
-                           rnd.state if rnd else "starting", room_url(session_id), map_src=c.map_image)
+                           rnd.state if rnd else "starting", room_url(session_id), map_src=c.map_image, infected=c.infected)
     await reply_card(ctx, c.sender, msg, session_id)
 
 

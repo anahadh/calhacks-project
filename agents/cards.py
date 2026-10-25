@@ -180,6 +180,29 @@ def affected(result) -> int:
 # --- cards ---
 
 
+def floor_tiles(h: HospitalIndex, infected: set | None = None, after: set | None = None) -> Node:
+    """The floor plan drawn with card elements: rooms in two rows as on the floor (top half,
+    bottom half, left to right), each tile its name and a badge. With `infected`, the badge
+    counts infected devices (warning); with `after` too, it shows before → after."""
+    rooms = sorted(h.rooms.values(), key=lambda r: (min(p[1] for p in r["polygon"]), min(p[0] for p in r["polygon"])))
+    mid = sorted(min(p[1] for p in r["polygon"]) for r in rooms)[len(rooms) // 2]
+    rows = [[r for r in rooms if min(p[1] for p in r["polygon"]) < mid], [r for r in rooms if min(p[1] for p in r["polygon"]) >= mid]]
+    def tile(r) -> Node:
+        devs = [d for d, x in h.devices.items() if x["roomId"] == r["id"]]
+        if infected is None:
+            b = badge(f"{len(devs)} devices", "info")
+        else:
+            n = sum(d in infected for d in devs)
+            if after is not None:
+                m = sum(d in after for d in devs)
+                b = badge("clean" if not n and not m else f"{n} → {m} infected", "warning" if m else "success")
+            else:
+                b = badge(f"{n}/{len(devs)} infected" if n else "clean", "warning" if n else "success")
+        return group([text(r["name"], "emphasis"), b], gap=4)
+    return group([group([tile(r) for r in sorted(row, key=lambda r: min(p[0] for p in r["polygon"]))], direction="row", gap=10)
+                  for row in rows if row], gap=12)
+
+
 def hospital_card(h: HospitalIndex, on_network: list[str], image_src: str | None, bubble: str) -> ChatMessage:
     """The hospital at a glance: the floor-plan image, the counts, and six devices to start an attack from."""
     picks = [d for d in PICK_DEVICES if d in on_network][:6]
@@ -191,7 +214,7 @@ def hospital_card(h: HospitalIndex, on_network: list[str], image_src: str | None
         item([group([badge(h.zone(d).replace("_", " "), "info"), text(device_name(h, d), "body")], direction="row", gap=8)],
              "simulate", device=d) for d in picks]}
     root = section(f"{h.name}" if hasattr(h, "name") else "Your hospital",
-                   image(image_src, "Floor plan of the hospital") + [stats, DIVIDER,
+                   image(image_src, "Floor plan of the hospital") + [floor_tiles(h), stats, DIVIDER,
                     text("Tap a device to simulate a ransomware attack starting there:", "muted"), rows],
                    subtitle="Synthetic hospital · simulation only")
     return message(bubble, root, True)
@@ -262,7 +285,7 @@ def round_of(line: str, current: int) -> int:
 
 
 def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list[str], round: int, state: str,
-               room_url: str, map_src: str | None = None) -> ChatMessage:
+               room_url: str, map_src: str | None = None, infected: set | None = None) -> ChatMessage:
     """The live negotiation as a card: each agent's state as a badge, then the trace grouped
     by round (who did what, in order), then the live-room button. The bubble is the whole
     trace as text, so the one message ASI:One shows per turn carries everything so far."""
@@ -272,7 +295,8 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
         item([group([badge(*agent_state(lines, "@" + PROFILES[a].handle)), text("@" + PROFILES[a].handle, "muted"),
                      text("tap to ask", "muted")], direction="row", gap=8)], "ask", agent=a, about="")
         for a in ("flow", "inventory", "clinical_workflow")]}
-    children: list[Node] = image(map_src, "Where the attack spreads with no plan") + [lanes, DIVIDER]
+    children: list[Node] = image(map_src, "Where the attack spreads with no plan") + \
+        ([text("Where the attack spreads with no plan:", "muted"), floor_tiles(h, infected=infected)] if infected else []) + [lanes, DIVIDER]
     current, open_round = 0, None
     shown = [l for l in lines if not (l.startswith("[ @hippocratech-coordinator ]") and " MCP " not in l and "agree on" not in l)]
     for line in shown[-TRACE_LINES:]:
@@ -301,7 +325,10 @@ def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_u
         pair("Patients affected", affected(before) if before else None, affected(after)),
     ], direction="row", gap=16)
     roles = group([badge(ROLE_NAMES[r], "warning") for r in rec.requiredRoles], direction="row", gap=6)
-    children = image(floor, "The attack without and with the plan") + image(chart, "Devices infected per plan the agents negotiated") + [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
+    children = image(floor, "The attack without and with the plan") + image(chart, "Devices infected per plan the agents negotiated")
+    if before is not None:
+        children += [text("Infected devices per room, without → with the plan:", "muted"),
+                     floor_tiles(h, infected={d.id for d in before.infectedDevices}, after={d.id for d in after.infectedDevices})] + [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
                 text("Must sign off in the Hippocra.tech app (agents agreeing is not approval):", "muted"), roles, DIVIDER,
                 text("Ask an agent why:", "muted"),
                 group([button(f"Ask {SHORT[PROFILES[a].handle]}", "ask", False, agent=a, about="")
