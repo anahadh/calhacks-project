@@ -249,7 +249,8 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
         for a in ("flow", "inventory", "clinical_workflow")]}
     children: list[Node] = [lanes, DIVIDER]
     current, open_round = 0, None
-    for line in lines[-TRACE_LINES:]:
+    shown = [l for l in lines if not (l.startswith("[ @hippocratech-coordinator ]") and " MCP " not in l and "agree on" not in l)]
+    for line in shown[-TRACE_LINES:]:
         r = round_of(line, current)
         if r != current or open_round is None:
             if r != current:

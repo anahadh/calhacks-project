@@ -154,3 +154,12 @@ def test_recommendation_card_can_carry_the_chart_image():
     _, root = payload(m)
     imgs = [n for n in walk(root) if n["type"] == "image"]
     assert imgs and imgs[0]["src"] == "data:image/png;base64,AAAA" and imgs[0]["alt"]
+
+
+def test_trace_card_hides_coordinator_handoffs_but_keeps_mcp():
+    lines = ["[ @hippocratech-coordinator ] MCP hospital.test_run(mri_2) → 9 devices infected over 9 ticks.",
+             "[ @hippocratech-coordinator ] asked @hippocratech-flow for a plan (round 1).",
+             "[ @hippocratech-inventory · round 1 ] accepted."]
+    _, root = payload(cards.trace_card(H, "s", "MRI 2", lines, 1, "running", "http://x"))
+    s = json.dumps(root)
+    assert "asked @hippocratech-flow" not in s and "MCP" in s and "accepted" in s
