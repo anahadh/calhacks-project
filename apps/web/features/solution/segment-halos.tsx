@@ -18,9 +18,10 @@ import type { Segment } from "./pair";
 // (topology from the hospital file and the run's removed flows), infection
 // from the run's device_state rows (rule 16).
 
-const RING_IN = 0.95;
-const RING_OUT = 1.2;
-const DISC = 1.7;
+// A puddle, not a blob: the machine's footprint plus a hair, flat, faint.
+const RING_IN = 0.62;
+const RING_OUT = 0.7;
+const DISC = 0.62;
 
 export function SegmentHalos({
   hospital,
@@ -71,16 +72,21 @@ export function SegmentHalos({
     <>
       {halos.filter((h) => shown(h.floorId)).map((h) => {
         const lit = !!h.zone && (litZone === h.zone || infectedZones.has(h.zone));
+        // On demand: nothing by default; a hovered or infected segment shows its machines' puddles
+        // (grey when healthy, orange when infected) and a thin ring in the segment's color.
+        if (!lit && !h.infected) return null;
         return (
           <group key={h.id} position={h.at}>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[h.infected ? DISC + 0.3 : DISC, 40]} />
-              <meshBasicMaterial color={h.infected ? C.infected : h.color} transparent opacity={h.infected ? 0.6 : lit ? 0.65 : h.zone ? 0.45 : 0.06} depthWrite={false} side={THREE.DoubleSide} />
+              <circleGeometry args={[DISC, 32]} />
+              <meshBasicMaterial color={h.infected ? C.infected : "#1E1E22"} transparent opacity={h.infected ? 0.25 : 0.08} depthWrite={false} side={THREE.DoubleSide} />
             </mesh>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-              <ringGeometry args={[RING_IN, RING_OUT, 40]} />
-              <meshBasicMaterial color={h.color} transparent opacity={h.zone ? (lit ? 1 : 0.8) : 0.3} depthWrite={false} side={THREE.DoubleSide} />
-            </mesh>
+            {lit && (
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+                <ringGeometry args={[RING_IN, RING_OUT, 32]} />
+                <meshBasicMaterial color={h.color} transparent opacity={0.9} depthWrite={false} side={THREE.DoubleSide} />
+              </mesh>
+            )}
           </group>
         );
       })}
