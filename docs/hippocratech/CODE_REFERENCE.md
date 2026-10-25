@@ -218,6 +218,7 @@ computes spread (hard rules 3, 4). `packages/sim-core` is retired.
 | `apps/web/features/review/*` | F3 | Avatars, follow, review row, log drawer, memo editor |
 | `apps/web/app/api/memo/route.ts` | F3 | Claude draft, number check, `memo_save_draft` |
 | `apps/web/app/api/export/[sessionId]/route.ts` | F3 | Memo plus ruleset |
+| `apps/web/app/api/floor/route.tsx` | F1 | The hospital floor as a PNG (`next/og` ImageResponse, edge) for ASI:One cards: `?start=&infected=&after=` lights up devices; with `after`, without/with the plan side by side. Drawn from `data/hospitals/demo.json` and the ids in the URL only; the agents link it via `viz.floor_url()` (`IMAGE_BASE_URL`, default `https://hippocratech.vercel.app`) |
 | `apps/web/server/ruleset.ts` | F3 | Policy → allow-list JSON and ACL text |
 
 ## Data
