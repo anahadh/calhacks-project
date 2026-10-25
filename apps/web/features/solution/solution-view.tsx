@@ -9,7 +9,7 @@ import { pairOf, roundRefusal, SPEEDS, type PlaybackControl } from "@/lib/stdb/r
 import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
 import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
 import {
-  beforeAfter, cutStops, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending,
+  beforeAfter, cutStops, pairClock, planSegmentsOf, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending,
   withoutSegmentation, type Delta, type Segment,
 } from "./pair";
 import { PlanScene, sharedCamera } from "./plan-scene";
@@ -47,7 +47,11 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const longer = (none?.finalTick ?? 0) >= (planRun?.finalTick ?? 0)
     ? { run: base.run ?? none, snapshots: base.snapshots }
     : { run: planRun, snapshots: rows.snapshots };
-  const segments = useMemo(() => segmentsOf(hospital, rows.devices), [hospital, rows.devices]);
+  // The plan's own segments (what its cuts leave connected), so each plan draws different walls.
+  const segments = useMemo(
+    () => (planRun ? planSegmentsOf(hospital, rows.devices, planRun.removedFlows ?? []) : segmentsOf(hospital, rows.devices)),
+    [hospital, rows.devices, planRun],
+  );
   const flows = useMemo(() => planFlows(hospital, planRun), [hospital, planRun]);
   const stops = useMemo(() => cutStops(flows.cut, rows.devices), [flows.cut, rows.devices]);
   const deltas = beforeAfter(hospital, none, planRun, rec?.rules.length);

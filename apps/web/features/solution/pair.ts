@@ -308,3 +308,54 @@ export function keptWorking(
     services: hospital.services.filter((s) => s.critical).map((s) => ({ id: s.id, name: s.name, down: !!down.get(s.id) })),
   };
 }
+
+const MEDICAL_TYPES = new Set(["mri", "ct", "patient_monitor", "infusion_pump", "anesthesia_machine", "lab_analyzer"]);
+const SEGMENT_COLORS = ["#B08CFF", "#4DB0FF", "#3DD68C", "#F2C14E", "#FF5C5C", "#5FD3D3", "#E07BE0", "#A1A8AE"];
+
+/**
+ * The plan's segments as an attacker would meet them: machines still joined by file-sharing or
+ * remote-desktop links after the plan's cuts form one segment (the reach an attack would have).
+ * Topology from the hospital file and the run's removed flows; no spread is computed here.
+ * Named after the zones each one spans, largest first. Machines with no such link are left out.
+ */
+export function planSegmentsOf(hospital: Hospital, devices: readonly DeviceStateRow[], removedFlows: readonly string[]): Segment[] {
+  const infected = new Set(devices.filter((d) => d.infected).map((d) => d.deviceId));
+  const removed = new Set(removedFlows);
+  const room = new Map(hospital.rooms.map((r) => [r.id, r]));
+  const level = new Map(hospital.floors.map((f) => [f.id, f.level]));
+  const dev = new Map(hospital.devices.map((d) => [d.id, d]));
+  const attackable = (id: string) => {
+    const d = dev.get(id);
+    return !!d && (["workstation", "nurse_station", "server_rack"].includes(d.type) || (MEDICAL_TYPES.has(d.type) && String(d.os ?? "").startsWith("windows")));
+  };
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    let r = x;
+    while (parent.get(r) !== r) r = parent.get(r)!;
+    parent.set(x, r);
+    return r;
+  };
+  for (const f of hospital.flows) {
+    if (removed.has(f.id) || (f.protocol !== "smb" && f.protocol !== "rdp") || f.active === false) continue;
+    if (!attackable(f.from) || !attackable(f.to)) continue;
+    for (const x of [f.from, f.to]) if (!parent.has(x)) parent.set(x, x);
+    parent.set(find(f.from), find(f.to));
+  }
+  const groups = new Map<string, string[]>();
+  for (const id of parent.keys()) groups.set(find(id), [...(groups.get(find(id)) ?? []), id]);
+  return [...groups.values()]
+    .filter((ids) => ids.length > 1)
+    .sort((a, b) => b.length - a.length || a[0].localeCompare(b[0]))
+    .map((ids, i) => {
+      const zones = [...new Set(ids.map((id) => room.get(dev.get(id)!.roomId)?.zone ?? ""))];
+      const floorIds = [...new Set(ids.map((id) => room.get(dev.get(id)!.roomId)?.floorId ?? ""))].sort((a, b) => (level.get(a) ?? 0) - (level.get(b) ?? 0));
+      const all = hospital.floors.length > 1 && floorIds.length === hospital.floors.length;
+      return {
+        zone: `seg_${i}`,
+        name: zones.length > 2 ? `${zoneName(zones[0])} + ${zones.length - 1} zones` : zones.map(zoneName).join(" + "),
+        color: SEGMENT_COLORS[i % SEGMENT_COLORS.length],
+        floors: all ? "Both floors" : floorIds.map((id) => hospital.floors.find((f) => f.id === id)?.name ?? id).join(" · "),
+        floorIds, deviceIds: ids, total: ids.length, infected: ids.filter((id) => infected.has(id)).length,
+      };
+    });
+}

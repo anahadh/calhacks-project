@@ -102,6 +102,50 @@ def lateral_route(h: HospitalIndex, path: set[str]) -> set[str]:
     return {fid for fid in path if h.flows[fid]["protocol"] in LATERAL}
 
 
+# --- the optimizer: fewest lateral cuts so no attack spreads beyond LIMIT devices ---
+
+INFECTABLE = {"workstation", "nurse_station", "server_rack"}  # plus Windows medical consoles (the engine's rule)
+
+
+def infectable(h: HospitalIndex, device_id: str) -> bool:
+    d = h.devices[device_id]
+    return d["type"] in INFECTABLE or (d["type"] in MEDICAL_TYPES and str(d.get("os", "")).startswith("windows"))
+
+
+def reach(h: HospitalIndex, start: str, open_links: list[Row]) -> set[str]:
+    """Devices an attack from `start` can reach over the open file-sharing and remote-desktop links."""
+    adj: dict[str, set[str]] = {}
+    for f in open_links:
+        if infectable(h, f["from"]) and infectable(h, f["to"]):
+            adj.setdefault(f["from"], set()).add(f["to"])
+            adj.setdefault(f["to"], set()).add(f["from"])
+    seen, todo = {start}, [start]
+    while todo:
+        for n in adj.get(todo.pop(), ()):
+            if n not in seen:
+                seen.add(n)
+                todo.append(n)
+    return seen
+
+
+def optimized_cuts(h: HospitalIndex, starts: list[str], keep: set[str], limit: int = 3) -> set[str]:
+    """Greedy: while some start can reach more than `limit` devices, cut the lateral link whose
+    removal most reduces the total reach over every start. Links in `keep` are never cut.
+    The engine's test run then judges the result like any other plan."""
+    links = [f for f in active_flows(h) if f["protocol"] in LATERAL]
+    cut: set[str] = set()
+    total = lambda open_: sum(len(reach(h, s, open_)) for s in starts)
+    while True:
+        open_ = [f for f in links if f["id"] not in cut]
+        if max((len(reach(h, s, open_)) for s in starts), default=0) <= limit:
+            return cut
+        options = [f for f in open_ if f["id"] not in keep]
+        if not options:
+            return cut
+        best = min(options, key=lambda f: (total([g for g in open_ if g is not f]), f["id"]))
+        cut.add(best["id"])
+
+
 # --- a cut set as an allow-list ---
 
 
@@ -170,7 +214,7 @@ def candidate(h: HospitalIndex, id: str, strategy: str, name: str, cut: set[str]
 
 
 def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constraints: list[Constraint],
-             path: set[str] | None = None) -> list[Candidate]:
+             path: set[str] | None = None, starts: list[str] | None = None) -> list[Candidate]:
     """The candidate plans for this attack. `path` overrides the attack path (the Flow
     Agent widens it with each test run, as the attack reroutes around a cut)."""
     keep = kept_by_constraints(constraints)
@@ -190,6 +234,10 @@ def generate(h: HospitalIndex, baseline: RunResult, patient_zero: str, constrain
         candidate(h, f"quarantine_{start}", "max_containment", f"Quarantine {zone_name(start)}", quarantine(h, start), keep,
                   f"The attack starts in {zone_name(start)}; that zone keeps only clinical traffic to the rest of the hospital.",
                   f"{zone_name(start).capitalize()} loses file shares and remote access outside the zone."),
+        candidate(h, "optimized_min_cuts", "least_disruption", "Optimized: fewest cuts that hold every attack",
+                  optimized_cuts(h, starts or [patient_zero], keep), keep,
+                  "The fewest file-sharing and remote-desktop links to cut so an attack from any workstation reaches at most 3 devices.",
+                  "Chosen by an optimizer over every starting point, not just this one."),
         candidate(h, "block_attack_route", "max_containment", "Block the attack's file-sharing route", lateral_route(h, path), keep,
                   "An emergency cut: the file-sharing and remote-desktop links the attack used in the test run.",
                   "Targeted to this attack; a different starting point may need a different cut."),

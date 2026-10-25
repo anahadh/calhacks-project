@@ -65,7 +65,7 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         if settings().hippo_opt_bin:
             candidates = optimize(hospital_without_protection(), req.baseline, req.constraints)
         else:
-            candidates = candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints)
+            candidates = candidates_mod.generate(H, req.baseline, req.patientZero, req.constraints, starts=STARTS)
         tested = [(c, run_sim(c, req.patientZero, req.seed, req.challenges)) for c in candidates]
         chosen = flow.choose([(c.policy, r) for c, r in tested], req.constraints, H)
         if chosen is None:
