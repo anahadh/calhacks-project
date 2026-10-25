@@ -317,34 +317,6 @@
         ]
       },
       {
-        "id": "pm_er_2",
-        "roomId": "rm_er",
-        "type": "patient_monitor",
-        "name": "ER monitor 2",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          21.0,
-          3.4
-        ]
-      },
-      {
-        "id": "pm_er_3",
-        "roomId": "rm_er",
-        "type": "patient_monitor",
-        "name": "ER monitor 3",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          26.0,
-          3.4
-        ]
-      },
-      {
         "id": "ws_er_1",
         "roomId": "rm_er",
         "type": "workstation",
@@ -384,20 +356,6 @@
         "position": [
           6.0,
           14.6
-        ]
-      },
-      {
-        "id": "badge_er",
-        "roomId": "rm_waiting",
-        "type": "badge_reader",
-        "name": "ER badge reader",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          13.4,
-          9.0
         ]
       },
       {
@@ -499,20 +457,6 @@
         ]
       },
       {
-        "id": "la_2",
-        "roomId": "rm_lab",
-        "type": "lab_analyzer",
-        "name": "Analyzer 2",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          60.5,
-          4.4
-        ]
-      },
-      {
         "id": "ws_lab",
         "roomId": "rm_lab",
         "type": "workstation",
@@ -583,20 +527,6 @@
         ]
       },
       {
-        "id": "ws_admin_3",
-        "roomId": "rm_admin",
-        "type": "workstation",
-        "name": "Admin WS 3",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          4.6,
-          31.0
-        ]
-      },
-      {
         "id": "hvac_1",
         "roomId": "rm_admin",
         "type": "hvac",
@@ -608,20 +538,6 @@
         "position": [
           10.4,
           35.8
-        ]
-      },
-      {
-        "id": "badge_admin",
-        "roomId": "rm_admin",
-        "type": "badge_reader",
-        "name": "Admin badge reader",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          3.0,
-          21.6
         ]
       },
       {
@@ -653,48 +569,6 @@
         ]
       },
       {
-        "id": "pm_icu_2",
-        "roomId": "rm_icu",
-        "type": "patient_monitor",
-        "name": "ICU monitor 2",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          25.0,
-          36.6
-        ]
-      },
-      {
-        "id": "pm_icu_3",
-        "roomId": "rm_icu",
-        "type": "patient_monitor",
-        "name": "ICU monitor 3",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          28.4,
-          36.6
-        ]
-      },
-      {
-        "id": "pm_icu_4",
-        "roomId": "rm_icu",
-        "type": "patient_monitor",
-        "name": "ICU monitor 4",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          31.8,
-          36.6
-        ]
-      },
-      {
         "id": "ip_icu_1",
         "roomId": "rm_icu",
         "type": "infusion_pump",
@@ -705,20 +579,6 @@
         "vlan": 10,
         "position": [
           23.4,
-          33.0
-        ]
-      },
-      {
-        "id": "ip_icu_2",
-        "roomId": "rm_icu",
-        "type": "infusion_pump",
-        "name": "ICU pump 2",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          30.2,
           33.0
         ]
       },
@@ -737,20 +597,6 @@
         ]
       },
       {
-        "id": "am_or_2",
-        "roomId": "rm_or",
-        "type": "anesthesia_machine",
-        "name": "Anesthesia 2",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          43.0,
-          28.6
-        ]
-      },
-      {
         "id": "pm_or_1",
         "roomId": "rm_or",
         "type": "patient_monitor",
@@ -761,20 +607,6 @@
         "vlan": 10,
         "position": [
           38.6,
-          35.8
-        ]
-      },
-      {
-        "id": "pm_or_2",
-        "roomId": "rm_or",
-        "type": "patient_monitor",
-        "name": "OR monitor 2",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          45.6,
           35.8
         ]
       },
@@ -881,20 +713,6 @@
         ]
       },
       {
-        "id": "pm_ward_2",
-        "roomId": "rm_ward",
-        "type": "patient_monitor",
-        "name": "Ward monitor 2",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          56.6,
-          29.0
-        ]
-      },
-      {
         "id": "ip_ward_1",
         "roomId": "rm_ward",
         "type": "infusion_pump",
@@ -949,20 +767,6 @@
           50.4,
           5.0
         ]
-      },
-      {
-        "id": "ws_rad_3",
-        "roomId": "rm_reading",
-        "type": "workstation",
-        "name": "Reading WS 3",
-        "os": "linux",
-        "vulnerable": false,
-        "criticality": "medium",
-        "vlan": 10,
-        "position": [
-          45.6,
-          11.0
-        ]
       }
     ],
     "flows": [
@@ -1014,15 +818,6 @@
       {
         "id": "fl_6",
         "from": "ws_rad_2",
-        "to": "srv_pacs",
-        "protocol": "https",
-        "port": 443,
-        "protected": true,
-        "purpose": "Radiologists view images"
-      },
-      {
-        "id": "fl_7",
-        "from": "ws_rad_3",
         "to": "srv_pacs",
         "protocol": "https",
         "port": 443,
@@ -1184,14 +979,6 @@
         "protected": false
       },
       {
-        "id": "fl_27",
-        "from": "ws_admin_3",
-        "to": "srv_file",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false
-      },
-      {
         "id": "fl_28",
         "from": "ns_er",
         "to": "srv_ehr",
@@ -1227,22 +1014,6 @@
         "protected": false
       },
       {
-        "id": "fl_32",
-        "from": "pm_er_2",
-        "to": "ns_er",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
-        "id": "fl_33",
-        "from": "pm_er_3",
-        "to": "ns_er",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
         "id": "fl_34",
         "from": "ip_er_1",
         "to": "ns_er",
@@ -1259,30 +1030,6 @@
         "protected": false
       },
       {
-        "id": "fl_36",
-        "from": "pm_icu_2",
-        "to": "ns_icu",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
-        "id": "fl_37",
-        "from": "pm_icu_3",
-        "to": "ns_icu",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
-        "id": "fl_38",
-        "from": "pm_icu_4",
-        "to": "ns_icu",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
         "id": "fl_39",
         "from": "ip_icu_1",
         "to": "ns_icu",
@@ -1291,24 +1038,8 @@
         "protected": false
       },
       {
-        "id": "fl_40",
-        "from": "ip_icu_2",
-        "to": "ns_icu",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
         "id": "fl_41",
         "from": "pm_ward_1",
-        "to": "ns_ward",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
-        "id": "fl_42",
-        "from": "pm_ward_2",
         "to": "ns_ward",
         "protocol": "hl7",
         "port": 2575,
@@ -1331,14 +1062,6 @@
         "protected": false
       },
       {
-        "id": "fl_45",
-        "from": "am_or_2",
-        "to": "ws_or",
-        "protocol": "other",
-        "port": 5000,
-        "protected": false
-      },
-      {
         "id": "fl_46",
         "from": "pm_or_1",
         "to": "ws_or",
@@ -1347,24 +1070,8 @@
         "protected": false
       },
       {
-        "id": "fl_47",
-        "from": "pm_or_2",
-        "to": "ws_or",
-        "protocol": "other",
-        "port": 5000,
-        "protected": false
-      },
-      {
         "id": "fl_48",
         "from": "la_1",
-        "to": "ws_lab",
-        "protocol": "hl7",
-        "port": 2575,
-        "protected": false
-      },
-      {
-        "id": "fl_49",
-        "from": "la_2",
         "to": "ws_lab",
         "protocol": "hl7",
         "port": 2575,
@@ -1393,30 +1100,6 @@
         "to": "srv_dc",
         "protocol": "rdp",
         "port": 3389,
-        "protected": false
-      },
-      {
-        "id": "fl_53",
-        "from": "hvac_1",
-        "to": "ws_admin_3",
-        "protocol": "http",
-        "port": 80,
-        "protected": false
-      },
-      {
-        "id": "fl_54",
-        "from": "badge_er",
-        "to": "srv_dc",
-        "protocol": "http",
-        "port": 80,
-        "protected": false
-      },
-      {
-        "id": "fl_55",
-        "from": "badge_admin",
-        "to": "srv_dc",
-        "protocol": "http",
-        "port": 80,
         "protected": false
       },
       {
@@ -1467,15 +1150,6 @@
       {
         "id": "fl_62",
         "from": "ws_rad_2",
-        "to": "srv_file",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false,
-        "purpose": "Shared drive (policies, shift handoff notes)"
-      },
-      {
-        "id": "fl_63",
-        "from": "ws_rad_3",
         "to": "srv_file",
         "protocol": "smb",
         "port": 445,
@@ -1618,15 +1292,6 @@
         "purpose": "Imaging techs hand studies to the reading room over a share"
       },
       {
-        "id": "fl_84",
-        "from": "ws_rad_2",
-        "to": "ws_rad_3",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false,
-        "purpose": "Department file sharing between neighboring PCs"
-      },
-      {
         "id": "fl_85",
         "from": "ns_icu",
         "to": "ns_er",
@@ -1643,15 +1308,6 @@
         "port": 445,
         "protected": false,
         "purpose": "OR desk shares case files with the ICU station"
-      },
-      {
-        "id": "fl_87",
-        "from": "ws_admin_2",
-        "to": "ws_admin_3",
-        "protocol": "smb",
-        "port": 445,
-        "protected": false,
-        "purpose": "Department file sharing between neighboring PCs"
       },
       {
         "id": "fl_88",
@@ -1726,7 +1382,6 @@
         "name": "Lab results",
         "dependsOnDevices": [
           "la_1",
-          "la_2",
           "ws_lab"
         ],
         "consequence": "Results are phoned through"

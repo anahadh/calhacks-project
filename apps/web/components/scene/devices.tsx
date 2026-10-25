@@ -39,7 +39,7 @@ const GLYPH_OF: Partial<Record<DeviceType, keyof typeof GLYPH>> = {
 /** How high the chip floats above its floor (scene units). */
 export const CHIP_LIFT = 2.6;
 /** Chip size in CSS px at the design distance (Html distanceFactor in hospital-scene.tsx). */
-const CHIP_PX = 30;
+const CHIP_PX = 44;
 
 /**
  * One device as the design draws it: an icon chip (rounded square, dark fill,
@@ -172,7 +172,7 @@ export function DeviceBox({
               ...(pop ? { animationDelay: `${Math.max(0, popDelay)}ms` } : {}),
             }}
           >
-            <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="25" height="25" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               {glyph}
             </svg>
           </div>
