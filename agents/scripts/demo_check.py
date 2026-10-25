@@ -21,7 +21,7 @@ from dotenv import dotenv_values
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import cached_run  # noqa: E402
-from config import AGENTS, PORTS, SEED_VARS, ConfigError, settings  # noqa: E402
+from config import AGENTS, CORE_AGENTS, PORTS, SEED_VARS, ConfigError, scorekeeper_enabled, settings  # noqa: E402
 
 AGENTS_DIR = Path(__file__).parent.parent
 AGENTVERSE_URL = "https://agentverse.ai"
@@ -38,10 +38,13 @@ def check_env(path: Path = AGENTS_DIR / ".env") -> Check:
     if not path.exists():
         return Check("agents/.env", False, f"missing ({path}): copy the team's seeds and keys into it")
     values = dotenv_values(path)
-    missing = [var for var in SEED_VARS.values() if not (values.get(var) or "").strip()]
+    # The Scorekeeper's seed is needed only with SCOREKEEPER=1 (in the file or the shell).
+    with_scorekeeper = scorekeeper_enabled() or (values.get("SCOREKEEPER") or "").strip() == "1"
+    wanted = CORE_AGENTS + (("scorekeeper",) if with_scorekeeper else ())
+    missing = [SEED_VARS[a] for a in wanted if not (values.get(SEED_VARS[a]) or "").strip()]
     if missing:
         return Check("agents/.env", False, f"present, but no {', '.join(missing)}")
-    return Check("agents/.env", True, "present, all four seeds set")
+    return Check("agents/.env", True, f"present, all {'five' if with_scorekeeper else 'four'} seeds set")
 
 
 def check_engine() -> Check:
@@ -103,7 +106,7 @@ def check_ports() -> Check:
             ours = False
         ok &= ours
         notes.append(f"{port} {agent} /health ok" if ours else f"{port} held by something else")
-    return Check("Ports 8001-8004", ok, "; ".join(notes))
+    return Check(f"Ports 8001-{PORTS[AGENTS[-1]]}", ok, "; ".join(notes))
 
 
 def check_relay() -> Check:

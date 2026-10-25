@@ -138,7 +138,7 @@ def optimize(hospital: dict, baseline: RunResult, constraints: list[Constraint])
 
 COLORS = {
     "inventory": "\033[36m", "flow": "\033[35m", "clinical_workflow": "\033[34m",
-    "coordinator": "\033[33m", "humans": "\033[32m", "relay": "\033[37m",
+    "coordinator": "\033[33m", "scorekeeper": "\033[94m", "humans": "\033[32m", "relay": "\033[37m",
 }
 RESET, DIM, BOLD = "\033[0m", "\033[2m", "\033[1m"
 
@@ -172,6 +172,10 @@ def summary(type: str, p: dict) -> str:
     if type == "chat":
         text = " ".join(p["text"].split())
         return f"“{text[:150]}{'…' if len(text) > 150 else ''}”"
+    if type == "score_input":
+        return f"round {p['round']}: copy of {len(p['candidates'])} judged plans"
+    if type == "scorecard":
+        return f"ranking after round {p['round']}: " + ", ".join(f"{r['rank']}. {r['name']}" for r in p["rows"])
     if type == "round_state":
         return f"round {p['round']}: {p['state']}" + (f" ({p['detail']})" if p.get("detail") else "")
     return json.dumps(p)[:200]

@@ -18,7 +18,7 @@ import httpx
 import pytest
 from uagents.crypto import Identity
 
-from config import PORTS, SEED_VARS
+from config import CORE_AGENTS, PORTS, SEED_VARS
 from llm import FORBIDDEN
 
 AGENTS_DIR = Path(__file__).parent.parent
@@ -52,6 +52,7 @@ def messages(log: Path) -> list[dict]:
 
 
 CHAT_SENDER_SEED = "live test seed for the chat sender"
+LIVE_PORTS = {a: PORTS[a] for a in CORE_AGENTS}  # run_all with SCOREKEEPER=0: the four agents
 CHAT_SENDER_PORT = 8010
 FAKE_ASI1_PORT = 8019
 FAKE_ASI1_TEXT = "Worded by the test model from the facts given."
@@ -117,7 +118,7 @@ def env_for(tmp_path, **extra):
     return {
         **os.environ,
         **{var: f"live test seed for {agent}" for agent, var in SEED_VARS.items()},
-        "LOCAL_RESOLVE": "1", "AGENT_MAILBOX": "0", "HIPPO_SIM_FIXTURES": "0",
+        "LOCAL_RESOLVE": "1", "AGENT_MAILBOX": "0", "HIPPO_SIM_FIXTURES": "0", "SCOREKEEPER": "0",
         "WATCHER_RELAY_URL": "", "RELAY_TOKEN": "", "HIPPO_SIM_BIN": str(HIPPO_SIM), "HIPPO_OPT_BIN": "",
         "RELAY_LOG_DIR": str(tmp_path),
         # Never call a real model from tests: the agents word messages through the fake ASI:One above.
@@ -132,14 +133,15 @@ def env_for(tmp_path, **extra):
 
 @contextmanager
 def running_agents(tmp_path, **extra_env):
-    busy = [p for p in [*PORTS.values(), CHAT_SENDER_PORT] if listening(p)]
+    ports = {**LIVE_PORTS, **({"scorekeeper": PORTS["scorekeeper"]} if extra_env.get("SCOREKEEPER") == "1" else {})}
+    busy = [p for p in [*ports.values(), CHAT_SENDER_PORT] if listening(p)]
     if busy:
         pytest.fail(f"ports {busy} are already in use; stop run_all.py first")
     out = open(tmp_path / "run_all.out", "w")
     proc = subprocess.Popen([sys.executable, "-u", "run_all.py"], cwd=AGENTS_DIR, env=env_for(tmp_path, **extra_env),
                             stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
     try:
-        wait_until(lambda: all(listening(p) for p in PORTS.values()) or proc.poll() is not None, 30, "the agents to listen")
+        wait_until(lambda: all(listening(p) for p in ports.values()) or proc.poll() is not None, 30, "the agents to listen")
         assert proc.poll() is None, (tmp_path / "run_all.out").read_text()
         yield tmp_path
     finally:
@@ -251,6 +253,41 @@ def test_live_challenge_pauses_for_a_human_and_resumes(agents):
     assert after and set(after) == {"accept"}
 
 
+def test_live_round_with_the_scorekeeper_ends_the_same(tmp_path):
+    """SCOREKEEPER=1, five processes: the round's messages between the four and its
+    recommendations are exactly those of the four-agent round, and every Scorekeeper
+    message is relayed by both ends with its templated text."""
+    def one_round(d, **env):
+        d.mkdir()
+        with running_agents(d, **env):
+            start_round(SESSION)
+            wait_until(round_state(d / f"{SESSION}.jsonl", "done"), TIMEOUT_S, "the round to finish")
+            time.sleep(1.5)  # let the last Scorecard land
+            return messages(d / f"{SESSION}.jsonl")
+
+    def core(rows):
+        return sorted((m["from"], m["to"], m["type"], m["direction"], json.dumps(m["payload"], sort_keys=True)) for m in rows
+                      if m["table"] == "agent_message" and "scorekeeper" not in (m["from"], m["to"]))
+
+    four = one_round(tmp_path / "four")
+    five = one_round(tmp_path / "five", SCOREKEEPER="1")
+    assert core(five) == core(four)
+    assert not [m for m in four if "scorekeeper" in (m.get("from"), m.get("to"), m.get("agent"))]
+    sk = [m for m in five if m["table"] == "agent_message" and "scorekeeper" in (m["from"], m["to"])]
+    copies = [m for m in sk if m["type"] == "score_input"]
+    cards = [m for m in sk if m["type"] == "scorecard"]
+    assert copies and cards
+    assert {(m["from"], m["to"], m["direction"]) for m in copies} == {("coordinator", "scorekeeper", "sent"), ("coordinator", "scorekeeper", "received")}
+    assert {(m["from"], m["to"], m["direction"]) for m in cards} == {("scorekeeper", "coordinator", "sent"), ("scorekeeper", "coordinator", "received")}
+    for m in cards:
+        assert m["reason"] == m["payload"]["why"] and m["reasonSource"] == "template"
+    sent_cards = [m["payload"] for m in cards if m["direction"] == "sent"]
+    assert len(sent_cards) == len([m for m in copies if m["direction"] == "sent"])
+    assert [r["rank"] for r in sent_cards[-1]["rows"]] == list(range(1, len(sent_cards[-1]["rows"]) + 1))
+    status = [m for m in five if m["table"] == "agent_status" and m["agent"] == "scorekeeper"]
+    assert status and status[-1]["status"] == "idle"
+
+
 WORDED = {"verdict": "reason", "proposal": "reason", "revision": "reason", "question": "text", "recommendation": "explanation"}
 
 
@@ -274,7 +311,7 @@ def test_live_mailbox_mode_keeps_local_delivery(tmp_path):
     (which can't connect here) and still serves /health and /submit at 127.0.0.1, so a
     whole round runs over direct local messages."""
     with running_agents(tmp_path, AGENT_MAILBOX="1") as d:
-        for agent, port in PORTS.items():
+        for agent, port in LIVE_PORTS.items():
             h = health(port)
             assert h["agent"] == agent and h["mailbox"] is True and h["localResolve"] is True
         log = d / f"{SESSION}.jsonl"

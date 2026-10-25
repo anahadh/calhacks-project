@@ -1,4 +1,4 @@
-"""Shared plumbing for the four uAgents: building the Agent, and sending and receiving
+"""Shared plumbing for the uAgents: building the Agent, and sending and receiving
 so that every message goes through the relay (AGENTS.md rule 9) and every agent
 reports its status (thinking → speaking → idle/waiting).
 
@@ -20,7 +20,7 @@ from uagents_core.types import DeliveryStatus  # noqa: E402
 
 import addresses  # noqa: E402
 from config import PORTS, seed, settings  # noqa: E402
-from protocol import Strict  # noqa: E402
+from protocol import Scorecard, Strict  # noqa: E402
 from llm import TEXT_FIELDS  # noqa: E402
 from tools import ToolError, relay  # noqa: E402
 
@@ -84,7 +84,13 @@ PROFILES = {
     "coordinator": Profile(
         "Hippocratech Orchestrator", "hippocratech-coordinator",
         "Orchestrator: chat with me on ASI:One. I run Inventory, Flow and Clinical Workflow agents to build a ransomware "
-        "segmentation plan for a simulated hospital, then route it to the humans who must sign off. Try 'simulate ransomware from MRI 2'.",
+        "segmentation plan for a simulated hospital, then route it to the humans who must sign off. "
+        "@hippocratech-scorekeeper explains the ranking. Try 'simulate ransomware from MRI 2'.",
+    ),
+    "scorekeeper": Profile(
+        "Hippocratech Scorekeeper", "hippocratech-scorekeeper",
+        "Specialist agent of the Hippocratech Orchestrator; chat to see the ranking. Explains how the agents' segmentation plans "
+        "rank, from the simulator's numbers, with no AI model; it never votes. Simulation only.",
     ),
 }
 
@@ -173,15 +179,19 @@ def round_of(msg: Strict) -> int:
 
 def reason_of(msg: Strict) -> tuple[str | None, str | None]:
     """A message's worded text and who wrote it ("claude", "asi1" or "template"), for the relay row."""
+    if isinstance(msg, Scorecard):
+        return msg.why, msg.whySource
     fields = TEXT_FIELDS.get(type(msg))
     if fields is None:
         return None, None
     return getattr(msg, fields[0]), getattr(msg, fields[1])
 
 
-async def send(ctx: Context, me: str, to: str, type: str, msg: Strict) -> None:
-    """Relay first, then send; a message that can't be relayed is not sent (rule 9)."""
-    await relay.status(msg.sessionId, me, "speaking")
+async def send(ctx: Context, me: str, to: str, type: str, msg: Strict, status: bool = True) -> None:
+    """Relay first, then send; a message that can't be relayed is not sent (rule 9).
+    status=False leaves the sender's agent_status alone (the Coordinator's Scorekeeper copies)."""
+    if status:
+        await relay.status(msg.sessionId, me, "speaking")
     reason, source = reason_of(msg)
     await relay.post(msg.sessionId, round_of(msg), me, to, type, msg, reason, direction="sent", reason_source=source)
     status = await ctx.send(addresses.address(to), msg)
@@ -191,15 +201,16 @@ async def send(ctx: Context, me: str, to: str, type: str, msg: Strict) -> None:
         raise DeliveryError(f"{type} to {to} not delivered: {status.status.value}, {status.detail}")
 
 
-async def received(me: str, sender_address: str, type: str, msg: Strict) -> str:
-    """Relay an incoming message and mark this agent thinking. Returns the sender's name."""
+async def received(me: str, sender_address: str, type: str, msg: Strict, status: bool = True) -> str:
+    """Relay an incoming message and mark this agent thinking (unless status=False). Returns the sender's name."""
     names = {addr: name for name, addr in addresses.all_addresses().items()}
     sender = names.get(sender_address)
     if sender is None:
         raise DeliveryError(f"{type} from unknown address {sender_address}")
     reason, source = reason_of(msg)
     await relay.post(msg.sessionId, round_of(msg), sender, me, type, msg, reason, direction="received", reason_source=source)
-    await relay.status(msg.sessionId, me, "thinking")
+    if status:
+        await relay.status(msg.sessionId, me, "thinking")
     return sender
 
 

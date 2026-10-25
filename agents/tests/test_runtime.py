@@ -184,7 +184,7 @@ def test_mailbox_agents_keep_their_local_server(monkeypatch, name):
     assert status == 200
 
 
-@pytest.mark.parametrize("name", config.AGENTS)
+@pytest.mark.parametrize("name", config.CORE_AGENTS)  # the Scorekeeper's: tests/test_scorekeeper.py
 def test_profiles(name):
     import runtime
 

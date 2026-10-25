@@ -13,6 +13,7 @@ AGENT_NAMES = {
     "flow": "Flow Agent",
     "clinical_workflow": "Clinical Workflow Agent",
     "coordinator": "Sign-off Coordinator",
+    "scorekeeper": "Scorekeeper",
 }
 ROLE_NAMES = {"security": "Security", "clinical_engineering": "Clinical engineering", "operations": "Operations"}
 TYPE_NAMES = {

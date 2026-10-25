@@ -1,8 +1,9 @@
-"""Start the four uAgents as separate processes, with colored [agent] prefixes.
+"""Start the uAgents as separate processes, with colored [agent] prefixes: the four, plus
+the Scorekeeper with SCOREKEEPER=1.
 
     cd agents && .venv/bin/python run_all.py          # HIPPO_SIM_FIXTURES=1 for fixture results
 
-Ctrl-C (or SIGTERM) stops all four. If one exits on its own, the others are stopped too.
+Ctrl-C (or SIGTERM) stops them all. If one exits on its own, the others are stopped too.
 """
 
 import os
@@ -17,7 +18,9 @@ from pathlib import Path
 from config import AGENTS, PORTS, ConfigError, seed
 
 HERE = Path(__file__).parent
-COLORS = {"inventory": "\033[36m", "flow": "\033[35m", "clinical_workflow": "\033[34m", "coordinator": "\033[33m"}
+COLORS = {"inventory": "\033[36m", "flow": "\033[35m", "clinical_workflow": "\033[34m", "coordinator": "\033[33m",
+          "scorekeeper": "\033[94m"}
+COUNT = {4: "four", 5: "five"}
 RESET = "\033[0m"
 COLOR = sys.stdout.isatty() or bool(os.environ.get("FORCE_COLOR"))
 print_lock = threading.Lock()
@@ -45,7 +48,7 @@ def listening(port: int) -> bool:
 def main() -> int:
     try:
         for a in AGENTS:
-            seed(a)  # fail here, once, rather than in four processes
+            seed(a)  # fail here, once, rather than in every process
     except ConfigError as e:
         print(f"run_all: {e}", file=sys.stderr)
         return 2
@@ -80,7 +83,7 @@ def main() -> int:
                 ready |= {a for a in AGENTS if a not in ready and listening(PORTS[a])}
                 if len(ready) == len(AGENTS):
                     with print_lock:
-                        print(f"run_all: all four agents are listening on ports {', '.join(str(PORTS[a]) for a in AGENTS)}", flush=True)
+                        print(f"run_all: all {COUNT.get(len(AGENTS), len(AGENTS))} agents are listening on ports {', '.join(str(PORTS[a]) for a in AGENTS)}", flush=True)
                 elif time.time() > deadline:
                     print(f"run_all: not listening after 30 s: {sorted(set(AGENTS) - ready)}", flush=True)
                     return 1

@@ -29,7 +29,7 @@ Every round has a live page in the Hippocra.tech app where you can watch the age
 
 Devices are named as in the demo hospital, for example MRI 2, CT 1, PACS, File server, ER WS 1. If I don't know a name, I'll list some I do know. While the simulator isn't connected, results come from fixture files and my summary says so.
 
-## The four agents
+## The agents
 
 | Agent | Handle | Address |
 |---|---|---|
@@ -37,8 +37,9 @@ Devices are named as in the demo hospital, for example MRI 2, CT 1, PACS, File s
 | Hippocratech Inventory Agent | `@hippocratech-inventory` | `agent1qtmzpr90e9dlv2aqz3g06xs9zwjqfnf9nfw32fjgxraz45f7y6atqnnf7mp` |
 | Hippocratech Flow Agent | `@hippocratech-flow` | `agent1qv33yl56hxarmtxnyu42rllrldwdpkyszzcnwzphtlgvsr7end77cyu8wrq` |
 | Hippocratech Clinical Workflow | `@hippocratech-clinical-workflow` | `agent1qvszrjp505888yx3959ywsy8w39u20lsuplr6he4ta5j49u9sv2ucask9sh` |
+| Hippocratech Scorekeeper (with `SCOREKEEPER=1`) | `@hippocratech-scorekeeper` | `agent1q2s820gl5wr763x98pkkph4yz4pwfly5jdzc3q5cjh86xhdmvfsqz600tsv` |
 
-All four are uAgents with Agentverse mailboxes. Every message between them goes over uAgents messaging, and every one is mirrored into the app's live Agent Room. Each specialist also answers a chat with what it does and the last thing it said.
+All four are uAgents with Agentverse mailboxes. The Scorekeeper is an optional fifth: I send it a copy of every judged plan, and it explains how they rank, with no AI model. It never votes, and I never wait for it. Every message between them goes over uAgents messaging, and every one is mirrored into the app's live Agent Room. Each specialist also answers a chat with what it does and the last thing it said.
 
 ## Messages
 

@@ -37,10 +37,11 @@ import facts
 import llm
 import mcp_server
 import narrate
-from config import AGENTS, settings
+from config import AGENTS, scorekeeper_enabled, settings
 from logic import hospital as hospital_mod
 from logic.coordinator import Action, Round
-from protocol import Answer, Proposal, Question, Reassess, RestAck, Resume, Revision, StartRound, Verdict
+from logic.scorekeeper import CopyTracker
+from protocol import Answer, Proposal, Question, Reassess, RestAck, Resume, Revision, Scorecard, StartRound, Verdict
 from pathlib import Path
 
 from runtime import PROFILES, fail, make_agent, reason_of, received, send
@@ -56,6 +57,10 @@ started: dict[str, float] = {}
 STALE_ROUND_S = 90.0
 events: dict[str, list[tuple[str, object]]] = {}  # session → (type, message) seen, for chat summaries
 lock = asyncio.Lock()  # one event at a time, REST, messages and chat alike
+SCOREKEEPER = scorekeeper_enabled()  # SCOREKEEPER=1: copy each judged round to the Scorekeeper
+score_tracks: dict[str, CopyTracker] = {}  # session → what its negotiation has judged so far
+score_lock = asyncio.Lock()  # copies go out one at a time, in order, outside `lock`
+score_tasks: set[asyncio.Task] = set()
 
 
 @dataclass
@@ -124,6 +129,7 @@ async def begin(ctx: Context, req: StartRound) -> RestAck:
             await relay.status(req.sessionId, NAME, "thinking")
             baseline = run_sim(None, req.patientZero, req.seed, req.challenges)
             rnd = Round(req.sessionId, H)
+            score_tracks.pop(req.sessionId, None)  # a new negotiation: the Scorekeeper starts over
             ctx.logger.info(f"[begin] baseline done: {baseline.infectedCount} infected over {baseline.ticks} ticks")
             await narrate_chat(ctx, req.sessionId, narrate.started(H, baseline))
             actions = rnd.start(req.runId, req.patientZero, baseline, req.seed, req.challenges)
@@ -179,6 +185,7 @@ async def handle(ctx: Context, sender: str, type: str, msg, event):
             events.setdefault(msg.sessionId, []).append((type, msg))
             await narrate_chat(ctx, msg.sessionId, narrate.line(H, type, msg, baseline=rnd.baseline))
             await execute(ctx, rnd, event(rnd))
+            copy_to_scorekeeper(ctx, type, msg)
         except Exception as e:
             await fail(ctx, NAME, msg.sessionId, e)
             await narrate_chat(ctx, msg.sessionId, narrate.failed(NAME, f"{e.__class__.__name__}: {e}"))
@@ -202,6 +209,50 @@ async def on_verdict(ctx: Context, sender: str, msg: Verdict):
 @protocol.on_message(Question)
 async def on_question(ctx: Context, sender: str, msg: Question):
     await handle(ctx, sender, "question", msg, lambda r: r.on_questions([msg]))
+
+
+# --- the Scorekeeper (SCOREKEEPER=1): copies out, Scorecards in, nothing decided ---
+
+
+def copy_to_scorekeeper(ctx: Context, type: str, msg) -> None:
+    """Feed the round's plan or verdict to the session's CopyTracker; when a round's plans
+    are all judged, send the Scorekeeper a copy in the background. Never waits, retries or
+    raises: the round goes on whatever happens to the copy."""
+    if not SCOREKEEPER:
+        return
+    try:
+        track = score_tracks.setdefault(msg.sessionId, CopyTracker(msg.sessionId))
+        if type in ("proposal", "revision"):
+            track.on_plan(msg)
+            return
+        copy = track.on_verdict(msg) if type == "verdict" else None
+    except Exception as e:
+        ctx.logger.warning(f"Scorekeeper copy skipped (the round goes on): {type(e).__name__}: {e}")
+        return
+    if copy is not None:
+        task = asyncio.get_event_loop().create_task(_send_copy(ctx, copy))
+        score_tasks.add(task)
+        task.add_done_callback(score_tasks.discard)
+
+
+async def _send_copy(ctx: Context, copy) -> None:
+    try:
+        async with score_lock:
+            await send(ctx, NAME, "scorekeeper", "score_input", copy, status=False)
+    except Exception as e:
+        ctx.logger.warning(f"Scorekeeper copy not delivered (the round goes on): {type(e).__name__}: {e}")
+
+
+async def on_scorecard(ctx: Context, sender: str, msg: Scorecard):
+    """Relayed (rule 10), and nothing else: a Scorecard never reaches a round decision."""
+    try:
+        await received(NAME, sender, "scorecard", msg, status=False)
+    except Exception as e:
+        ctx.logger.warning(f"Scorecard not relayed: {type(e).__name__}: {e}")
+
+
+if SCOREKEEPER:  # registered only with the flag, so the protocol is unchanged without it
+    protocol.on_message(Scorecard)(on_scorecard)
 
 
 # --- chat protocol (ASI:One) ---
