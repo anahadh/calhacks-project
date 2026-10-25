@@ -9,10 +9,12 @@ import type { Hospital, Point, Room } from "@/lib/stdb/types";
 import type { Segment } from "./pair";
 
 // The plan's segmentation drawn over the simulation scene (HospitalScene's
-// children), room by room: every room's floor is tinted in its segment's color,
-// and a translucent fence stands on each room edge that does not face another
-// room of the same segment. So two Imaging rooms side by side read as one
-// fenced area, and the fence is exactly where the plan's walls are. A segment
+// children), room by room: a segment is the set of machines still joined by
+// file-sharing or remote-desktop links after the plan's cuts (pair.ts
+// planSegmentsOf), each room is tinted in the color of the segment that owns
+// its devices, and a translucent fence stands on each room edge that does not
+// face another room of the same segment. So the fences move when the plan
+// changes: a plan that cuts nothing draws one fence around the whole floor. A segment
 // the infection reached, or whose device is hovered or whose row in the side
 // column is hovered, is drawn stronger with its label. Everything comes from the
 // hospital file and the run's rows (rule 16).
@@ -38,9 +40,21 @@ export function SegmentOutlines({
     const level = new Map(hospital.floors.map((f) => [f.id, f.level]));
     const color = new Map(segments.map((s) => [s.zone, s.color]));
     const out: { key: string; zone: string; level: number; floorId: string; color: string; rooms: Room[]; edges: [Point, Point][]; anchor: Point }[] = [];
+    // A room belongs to the segment that has the most of its devices; rooms with no
+    // segmented device get no fence (nothing an attack moves through lives there).
+    const roomOf = new Map(hospital.devices.map((d) => [d.id, d.roomId]));
+    const claim = new Map<string, { zone: string; n: number }>();
+    for (const s of segments) {
+      const n = new Map<string, number>();
+      for (const id of s.deviceIds) {
+        const rid = roomOf.get(id);
+        if (rid) n.set(rid, (n.get(rid) ?? 0) + 1);
+      }
+      for (const [rid, count] of n) if ((claim.get(rid)?.n ?? 0) < count) claim.set(rid, { zone: s.zone, n: count });
+    }
     for (const s of segments) {
       for (const fid of s.floorIds) {
-        const rooms = hospital.rooms.filter((r) => r.zone === s.zone && r.floorId === fid && r.polygon.length >= 3);
+        const rooms = hospital.rooms.filter((r) => claim.get(r.id)?.zone === s.zone && r.floorId === fid && r.polygon.length >= 3);
         if (!rooms.length) continue;
         const edges: [Point, Point][] = [];
         for (const r of rooms) {

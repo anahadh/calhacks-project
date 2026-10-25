@@ -13,10 +13,11 @@ import { useRunRows, useSessionIndex } from "@/lib/stdb/use-session";
 import type { RunRow, SessionSnapshot } from "@/lib/stdb/types";
 import type { SessionIndex } from "@/lib/stdb/use-session";
 import {
-  beforeAfter, pairClock, pairRefusal, pairTarget, planFlows, sceneOf, segmentsOf, stripPending, withoutSegmentation,
+  beforeAfter, cutStops, pairClock, pairRefusal, pairTarget, planFlows, planSegmentsOf, sceneOf, stripPending, withoutSegmentation,
   type Delta, type Segment,
 } from "./pair";
 import { Conclusion } from "./conclusion";
+import { PlanArcs } from "./plan-arcs";
 import { SegmentOutlines } from "./segment-outlines";
 
 // The segmentation plan screen (UX.md "Solution view"): the same attack
@@ -50,9 +51,15 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
   const clock = pairClock(sides);
   const tick = clock.tick;
   const flows = useMemo(() => planFlows(hospital, planRun), [hospital, planRun]);
-  // The plan's segments (the zones the walls go around), with the run's infected counts.
-  const segments = useMemo(() => segmentsOf(hospital, planScene.devices), [hospital, planScene.devices]);
-  const hoveredZone = hovered ? index.room.get(index.device.get(hovered)?.roomId ?? "")?.zone ?? null : null;
+  // The plan's segments: machines still joined by lateral links after its cuts, with the run's infected counts.
+  const segments = useMemo(() => planSegmentsOf(hospital, planScene.devices, planRun?.removedFlows ?? []), [hospital, planScene.devices, planRun?.removedFlows]);
+  const segmentOf = useMemo(() => new Map(segments.flatMap((s) => s.deviceIds.map((id) => [id, s.zone] as const))), [segments]);
+  const hoveredZone = hovered ? segmentOf.get(hovered) ?? null : null;
+  const stops = useMemo(() => cutStops(flows.cut, rows.devices), [flows.cut, rows.devices]);
+  const keptAcross = useMemo(
+    () => flows.kept.filter((f) => segmentOf.get(f.from) !== segmentOf.get(f.to) && (f.protected || f.protocol === "smb" || f.protocol === "rdp")),
+    [flows.kept, segmentOf],
+  );
   const rowsError = base.error ?? rows.error;
   // The side column: this step's count on both sides, and the final numbers once each side is done.
   const infectedNow = planScene.devices.filter((d) => d.infected).length;
@@ -156,6 +163,7 @@ export function SolutionView({ session }: { session: SessionSnapshot }) {
                     view={roleView}
                   >
                     <SegmentOutlines hospital={hospital} segments={segments} floorId={floor === "all" ? undefined : floor} litZone={hoveredZone ?? listZone} />
+                    <PlanArcs hospital={hospital} cut={flows.cut} stops={stops} keptAcross={keptAcross} floorId={floor === "all" ? undefined : floor} />
                   </HospitalScene>
                 </SceneBoundary>
               </div>
@@ -410,7 +418,7 @@ function Saved({ deltas, pending }: { deltas: Delta[]; pending: string | null })
 function Segments({ segments, hovered, onHover }: { segments: Segment[]; hovered: string | null; onHover: (zone: string | null) => void }) {
   return (
     <section aria-labelledby="segments" className="flex flex-col gap-3">
-      <h2 id="segments" className="eyebrow m-0">Segments · {segments.length} · the fences on the map</h2>
+      <h2 id="segments" className="eyebrow m-0">Segments the plan makes · {segments.length}</h2>
       <ul className="m-0 flex list-none flex-col overflow-hidden rounded-panel border border-line p-0" onMouseLeave={() => onHover(null)}>
         {segments.map((s) => {
           const lit = s.infected > 0 || hovered === s.zone;
@@ -459,6 +467,12 @@ function Legend() {
           <path d="M21 6.5 17 6.8 18.6 3.3z" fill="#FF6A2E" />
         </svg>
         Infection path
+      </li>
+      <li className="inline-flex items-center gap-2">
+        <svg width="22" height="8" viewBox="0 0 22 8" aria-hidden>
+          <path d="M1 7Q11 -1 21 7" fill="none" stroke="#6B7378" strokeWidth="1.5" strokeDasharray="3 2" />
+        </svg>
+        Cut by the plan
       </li>
       <li className="inline-flex items-center gap-2">
         <span className="font-disp grid h-4 w-4 place-items-center rounded-full border border-state-infected text-[10px] font-bold text-state-infected">✕</span>

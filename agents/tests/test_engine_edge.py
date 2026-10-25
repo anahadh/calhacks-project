@@ -62,7 +62,7 @@ def test_results_follow_the_engine_contract(demo):
         assert all(H.flows[f]["protected"] for f in r.protectedBroken), name
     assert demo["baseline"].removedFlows == demo["baseline"].protectedBroken == []
     # The engine applies the agents' policies (engine/sim_core/app_policy.py): flows kept by no rule are removed.
-    assert demo["cand_isolate_imaging"].removedFlows == [*IMAGING_PROTECTED, "fl_8", "fl_9", "fl_10", "fl_61", "fl_62", "fl_63", "fl_72"]
+    assert demo["cand_isolate_imaging"].removedFlows == [*IMAGING_PROTECTED, "fl_8", "fl_9", "fl_10", "fl_61", "fl_62", "fl_63", "fl_72", "fl_82", "fl_83", "fl_84"]
     assert demo["cand_keep_scans"].removedFlows == ["fl_8", "fl_9", "fl_10", "fl_61", "fl_62", "fl_63", "fl_72"]
     assert demo["cand_unknown_cut"].removedFlows == []  # the demo hospital has no unidentified device
 

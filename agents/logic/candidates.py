@@ -60,10 +60,12 @@ def cross_zone(h: HospitalIndex, f: Row) -> bool:
 
 
 def boundary(h: HospitalIndex, f: Row) -> bool:
-    """A connection that crosses a segment wall: between departments (zones, the server room included)
-    or to and from a medical device. Links inside a department stay: staff share files with the PC
-    next to them, and cutting those makes islands of uselessness."""
-    return cross_zone(h, f) or any(h.devices[d]["type"] in MEDICAL_TYPES for d in (f["from"], f["to"]))
+    """A connection that crosses a segment wall: between departments (zones, the server room
+    included). Links inside a department stay, a medical console's included: staff share files
+    with the PC next to them, the scanner's console with the tech's workstation, and cutting
+    those makes islands of uselessness. So a plan holds an attack to the department it starts
+    in; it does not promise that nothing beside patient zero is touched."""
+    return cross_zone(h, f)
 
 
 def zone_wall(h: HospitalIndex, zone: str) -> set[str]:

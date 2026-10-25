@@ -1598,6 +1598,69 @@
         "port": 445,
         "protected": false,
         "purpose": "Department file sharing between neighboring PCs"
+      },
+      {
+        "id": "fl_82",
+        "from": "ws_img_1",
+        "to": "ws_img_2",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Department file sharing between neighboring PCs"
+      },
+      {
+        "id": "fl_83",
+        "from": "ws_img_2",
+        "to": "ws_rad_1",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Imaging techs hand studies to the reading room over a share"
+      },
+      {
+        "id": "fl_84",
+        "from": "ws_rad_2",
+        "to": "ws_rad_3",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Department file sharing between neighboring PCs"
+      },
+      {
+        "id": "fl_85",
+        "from": "ns_icu",
+        "to": "ns_er",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Shift handoff notes shared between the ER and ICU stations"
+      },
+      {
+        "id": "fl_86",
+        "from": "ws_or",
+        "to": "ns_icu",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "OR desk shares case files with the ICU station"
+      },
+      {
+        "id": "fl_87",
+        "from": "ws_admin_2",
+        "to": "ws_admin_3",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Department file sharing between neighboring PCs"
+      },
+      {
+        "id": "fl_88",
+        "from": "ws_lab",
+        "to": "pc_1",
+        "protocol": "smb",
+        "port": 445,
+        "protected": false,
+        "purpose": "Lab results dropped on the pharmacy cabinet's share"
       }
     ],
     "services": [

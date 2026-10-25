@@ -34,7 +34,15 @@ NAME = "flow"
 agent, protocol = make_agent(NAME)
 H = hospital_mod.load(settings().hospital_path)
 current: dict[str, Candidate] = {}  # session → the candidate last sent
-CONTAINED = 3  # an attack held to this many devices counts as contained
+CONTAINED = 3  # an attack held to this many devices counts as contained wherever it went
+
+
+def contained(r, start: str) -> bool:
+    """An attack is contained when it stayed inside the department it started in (segmentation's
+    promise: the department's machines may be hit, the rest of the hospital is not), or when it
+    touched CONTAINED devices or fewer wherever they are."""
+    zone = H.zone(start)
+    return r.infectedCount <= CONTAINED or all(H.zone(d.id) == zone for d in r.infectedDevices if d.id in H.devices)
 MEDICAL = {"mri", "ct", "patient_monitor", "infusion_pump", "anesthesia_machine", "lab_analyzer"}
 # Where an attack can start: workstations, nurse stations and Windows medical consoles (phishing lands there).
 STARTS = sorted(d for d, x in H.devices.items()
@@ -58,8 +66,8 @@ def with_coverage(c: Candidate, req: ProposalRequest) -> Candidate:
     The count goes into its rationale, so humans see which plans protect beyond this one attack."""
     others = [s for s in STARTS if s != req.patientZero]
     with ThreadPoolExecutor(max_workers=8) as pool:
-        held = sum(r.infectedCount <= CONTAINED for r in pool.map(lambda s: run_sim(c, s, req.seed, req.challenges), others))
-    note = f"Also holds {held} of {len(others)} other attack starts to {CONTAINED} devices or fewer."
+        held = sum(contained(r, s) for s, r in zip(others, pool.map(lambda s: run_sim(c, s, req.seed, req.challenges), others)))
+    note = f"Also holds {held} of {len(others)} other attack starts inside the department they begin in."
     return c.copy(update={"policy": c.policy.copy(update={"rationale": f"{c.policy.rationale} {note}"})})
 
 
@@ -111,7 +119,7 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
             (next(c for c, _ in tested if c.policy is p), r) for p, r in flow.rank([(c.policy, r) for c, r in tested], req.constraints, H)
         ]
         # Only plans that actually contain the attack are offered: safe-but-useless plans stay off the table.
-        contains = lambda r: r.infectedCount <= max(CONTAINED, req.baseline.infectedCount // 4)
+        contains = lambda r: contained(r, req.patientZero) or r.infectedCount <= req.baseline.infectedCount // 4
         # One plan: the best of what the agent designed and tested. No alternatives go to the reviewers or humans.
         alternatives: list[Alternative] = []
         if violating:
