@@ -33,36 +33,36 @@ export function demoScript(baseline = { devices: 9, patients: 90 }): DemoEvent[]
   const p1 = rand(44, 56);
   const p2 = rand(28, 36);
   const p3 = rand(14, 22);
-  const rules1 = rand(26, 29);
-  const rules2 = rand(19, 22);
-  const rules3 = rand(20, 23);
-  const cuts1 = rand(24, 27);
-  const cuts2 = cuts1 - rand(3, 4);
-  const cuts3 = cuts2 - rand(2, 3);
+  const rules1 = rand(4, 6);
+  const rules2 = rand(27, 31);
+  const rules3 = rand(19, 23);
+  const cuts1 = rand(8, 10);
+  const cuts2 = rand(22, 26);
+  const cuts3 = rand(15, 18);
   let seq = 0;
   const e = (round: number, agent: AgentId, to: DemoEvent["to"], verb: Verb, line: string, extra: Partial<DemoEvent> = {}): DemoEvent => ({
     seq: ++seq, round, agent, to, verb, line, ...extra,
   });
   return [
     e(1, "coordinator", "flow", "opens", "Starting round 1. Without any plan, the attack from MRI 2 reached 9 machines and disrupted care for 90 patients. Flow, give us a plan."),
-    e(1, "flow", "coordinator", "proposes", "My first plan is strict on purpose. I split the hospital into five networks and block every connection between them except the chart and the clock. Clinical can tell me which feeds they need back.", {
-      plan: { name: "Strict walls", devices: d1, patients: p1, cuts: cuts1, rules: rules1 },
+    e(1, "flow", "coordinator", "proposes", "Simplest thing first: the attack started in Imaging, so I wall Imaging off from the rest of the hospital completely.", {
+      plan: { name: "Wall off Imaging", devices: d1, patients: p1, cuts: cuts1, rules: rules1 },
     }),
     e(1, "coordinator", "inventory", "opens", "Inventory and Clinical Workflow, please review Flow's plan."),
-    e(1, "inventory", "coordinator", "declines", `I can't approve this. It needs ${rules1} firewall rules and our switches can only hold 24. Flow has to combine rules.`, { needs: "24 rules or fewer" }),
-    e(1, "clinical_workflow", "coordinator", "declines", "I can't approve this either. It cuts the ER and ICU monitors off from the patient chart, so nurses would lose live vitals and bed assignments. Those two feeds must stay open.", { needs: "ER and ICU monitor feeds stay open" }),
-    e(2, "coordinator", "flow", "opens", "Starting round 2. Flow, both reviewers said no. Keep the ER and ICU feeds open and get under 24 rules."),
-    e(2, "flow", "coordinator", "revises", "Done. I reopened the ER and ICU monitor feeds and merged rules by department, which brought the count down. The attack still can't leave its own network.", {
-      plan: { name: "ER and ICU feeds open", devices: d2, patients: p2, cuts: cuts2, rules: rules2 },
+    e(1, "inventory", "coordinator", "approves", `I approve. ${rules1} rules is easy for our switches, and every machine it touches is one we know.`),
+    e(1, "clinical_workflow", "coordinator", "declines", "I can't approve this. Walling off Imaging cuts the scanners off from PACS, so no radiologist can read a scan. And it does nothing for an attack that starts anywhere else.", { needs: "scans still reach PACS; protect the whole hospital" }),
+    e(2, "coordinator", "flow", "opens", "Starting round 2. Flow, keep scans flowing to PACS, and plan for an attack from any desk, not only MRI 2."),
+    e(2, "flow", "coordinator", "revises", "Second try: a wall around every department, scans allowed through to PACS. Now an attack from any desk stays in its own department.", {
+      plan: { name: "Walls around every department", devices: d2, patients: p2, cuts: cuts2, rules: rules2 },
     }),
-    e(2, "inventory", "coordinator", "approves", `I approve. ${rules2} rules fits our switches, and every machine this plan touches is one we know.`),
-    e(2, "clinical_workflow", "coordinator", "declines", "Closer, but still no. The lab can't send results to the chart anymore, so doctors would wait on paper. That feed must stay open too.", { needs: "lab results feed stays open" }),
-    e(3, "coordinator", "flow", "opens", "Starting round 3. Flow, one more fix: keep the lab results feed open."),
-    e(3, "flow", "coordinator", "revises", "Reopened the lab feed. Everything else holds: the walls, the cuts and the rule budget.", {
-      plan: { name: "ER, ICU and lab feeds open", devices: d3, patients: p3, cuts: cuts3, rules: rules3 },
+    e(2, "inventory", "coordinator", "declines", `I can't approve this. Seven departments means ${rules2} firewall rules, and our switches hold 24. Combine them.`, { needs: "24 rules or fewer" }),
+    e(2, "clinical_workflow", "coordinator", "declines", "Not yet. The ER, ICU and ward monitors sit in different departments from the chart server, so this cuts their vitals and bed assignments off. Those feeds must stay open.", { needs: "monitor feeds to the chart stay open" }),
+    e(3, "coordinator", "flow", "opens", "Starting round 3. Flow, fewer rules, and the monitor feeds must reach the chart."),
+    e(3, "flow", "coordinator", "revises", "Third plan, by function instead of by room: five networks, one for servers, one for imaging and PACS, one for bedside monitors, one for clinical desks, one for business. I cut only file sharing and remote desktop between them and leave every clinical feed open.", {
+      plan: { name: "Five networks by function", devices: d3, patients: p3, cuts: cuts3, rules: rules3 },
     }),
-    e(3, "inventory", "coordinator", "approves", `I approve. ${rules3} rules, still under budget, nothing unknown on the list.`),
-    e(3, "clinical_workflow", "coordinator", "approves", "I approve. Every feed that care depends on is open, and no critical service is down for long."),
-    e(3, "coordinator", "humans", "recommends", `Both reviewers approve. I'm sending “ER, ICU and lab feeds open” to the humans for sign-off: ${d3} machines and ${p3} patients instead of ${baseline.devices} and ${baseline.patients}.`),
+    e(3, "inventory", "coordinator", "approves", `I approve. ${rules3} rules fits the switches, nothing unknown on the list.`),
+    e(3, "clinical_workflow", "coordinator", "approves", "I approve. Scans reach PACS, every monitor reaches the chart, the lab reaches the chart, and no critical service is down for long."),
+    e(3, "coordinator", "humans", "recommends", `Both reviewers approve. I'm sending “Five networks by function” to the humans for sign-off: ${d3} machines and ${p3} patients instead of ${baseline.devices} and ${baseline.patients}.`),
   ];
 }
