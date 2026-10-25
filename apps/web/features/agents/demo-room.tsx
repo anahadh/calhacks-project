@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AgentId } from "@/lib/stdb/types";
 import { AgentGlyph } from "./agent-icon";
 import { SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
+import { DemoScene } from "./demo-scene";
 import { demoScript, type DemoEvent, type Verb } from "./demo-script";
 
 // The scripted negotiation, top and center: a web of the four agents around the
@@ -92,19 +93,23 @@ export function DemoRoom({ onClose }: { onClose?: () => void }) {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-rows-[300px_minmax(0,1fr)] lg:grid-rows-[340px_minmax(0,1fr)]">
-        <section aria-label="Who is talking" className="relative border-b border-line">
-          <Web newest={newest} />
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <div className="grid min-h-0 grid-rows-[300px_minmax(0,1fr)] border-b border-line lg:border-b-0 lg:border-r">
+          <section aria-label="Who is talking" className="relative border-b border-line">
+            <Web newest={newest} />
+          </section>
+          <section aria-label="Contributions" className="min-h-0">
+            <ol ref={feed} className="scroll-quiet m-0 flex h-full list-none flex-col gap-2 overflow-y-auto p-5">
+              {events.map((e, i) => (
+                <Bubble key={e.seq} e={e} fresh={i === events.length - 1} />
+              ))}
+              {!events.length && <li className="num text-[13px] text-ink-faint">The Coordinator is opening the round…</li>}
+            </ol>
+          </section>
+        </div>
+        <section aria-label="The plan on the hospital" className="relative min-h-[420px]">
+          <DemoScene plan={plans.length} infected={plans[plans.length - 1]?.devices ?? 9} />
           {plans.length > 0 && <PlanTrail plans={plans} />}
-        </section>
-
-        <section aria-label="Contributions" className="min-h-0">
-          <ol ref={feed} className="scroll-quiet m-0 flex h-full list-none flex-col gap-2 overflow-y-auto p-5">
-            {events.map((e, i) => (
-              <Bubble key={e.seq} e={e} fresh={i === events.length - 1} />
-            ))}
-            {!events.length && <li className="num text-[13px] text-ink-faint">The Coordinator is opening the round…</li>}
-          </ol>
         </section>
       </div>
     </div>
