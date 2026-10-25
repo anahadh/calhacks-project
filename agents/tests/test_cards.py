@@ -147,3 +147,10 @@ def walk_items(node):
     for n in walk(node):
         for i in n.get("items", []):
             yield i
+
+
+def test_recommendation_card_can_carry_the_chart_image():
+    m = cards.recommendation_card(H, "s", rec, base, "http://x", "Done.", chart="data:image/png;base64,AAAA")
+    _, root = payload(m)
+    imgs = [n for n in walk(root) if n["type"] == "image"]
+    assert imgs and imgs[0]["src"] == "data:image/png;base64,AAAA" and imgs[0]["alt"]

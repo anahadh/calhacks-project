@@ -38,6 +38,7 @@ import facts
 import llm
 import mcp_server
 import narrate
+import viz
 from config import AGENTS, settings
 from logic import hospital as hospital_mod
 from logic.coordinator import Action, Round
@@ -525,7 +526,15 @@ async def chat_turn(ctx: Context, sender: str, text: str, session_id: str | None
         rsid = want.split(":", 1)[1]
         rnd = rounds.get(rsid)
         if rnd is not None and rnd.recommendation is not None:
-            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), out)
+            chart = None
+            try:
+                rows = viz.rows_from_events(events.get(rsid, []))
+                if rows and rnd.baseline is not None:
+                    device = chats[rsid].device_name if rsid in chats else rnd.patient_zero
+                    chart = viz.data_uri(viz.negotiation_chart(device, rnd.baseline.infectedCount, rows))
+            except Exception as e:  # the chart is a garnish: the card still goes without it
+                ctx.logger.error(f"chart failed: {e!r}")
+            card = cards.recommendation_card(H, rsid, rnd.recommendation, rnd.baseline, room_url(rsid), out, chart=chart)
     if card is not None:
         await reply_card(ctx, sender, card, sid)
     else:

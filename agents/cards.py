@@ -262,7 +262,8 @@ def trace_card(h: HospitalIndex, session_id: str, device_label: str, lines: list
     return message(narrate.render(lines), root, False)
 
 
-def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_url: str, bubble: str) -> ChatMessage:
+def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_url: str, bubble: str,
+                        chart: str | None = None) -> ChatMessage:
     """The round's result: the plan, before and after, who must sign off, and a button per
     agent to ask it why (the link out to the web app is gone: judges stay in ASI:One)."""
     from runtime import PROFILES
@@ -274,7 +275,8 @@ def recommendation_card(h: HospitalIndex, session_id: str, rec, baseline, room_u
         pair("Patients affected", affected(before) if before else None, affected(after)),
     ], direction="row", gap=16)
     roles = group([badge(ROLE_NAMES[r], "warning") for r in rec.requiredRoles], direction="row", gap=6)
-    children = [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
+    children = ([{"type": "image", "src": chart, "alt": "Devices infected per plan the agents negotiated", "aspect_ratio": "16:9"}]
+                if chart else []) + [heading(rec.policy.name), numbers, text(rec.explanation), DIVIDER,
                 text("Must sign off in the Hippocra.tech app (agents agreeing is not approval):", "muted"), roles, DIVIDER,
                 text("Ask an agent why:", "muted"),
                 group([button(f"Ask {SHORT[PROFILES[a].handle]}", "ask", False, agent=a, about="")
