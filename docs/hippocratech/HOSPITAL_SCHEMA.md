@@ -75,7 +75,7 @@ One JSON object, at most 2 MB.
   "schemaVersion": 1,
   "hospital": {
     "id": "demo_general",          // [a-z0-9_]{3,40}
-    "name": "Bayview General (demo)",
+    "name": "Bayview General",
     "floors":   [ /* Floor */ ],
     "rooms":    [ /* Room */ ],
     "devices":  [ /* Device */ ],

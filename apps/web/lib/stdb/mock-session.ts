@@ -128,7 +128,7 @@ const flows: Flow[] = [
 
 const hospital: Hospital = {
   id: "demo_general",
-  name: "Bayview General (demo)",
+  name: "Bayview General",
   floors: [
     { id: "fl_0", name: "Ground", level: 0 },
     { id: "fl_1", name: "Level 1", level: 1 },

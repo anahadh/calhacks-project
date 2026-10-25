@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "hospital": {
     "id": "demo_general",
-    "name": "Bayview General (demo)",
+    "name": "Bayview General",
     "floors": [
       {
         "id": "fl_0",
