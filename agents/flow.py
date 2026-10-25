@@ -29,7 +29,7 @@ from logic.segments import segment_of
 from logic import candidates as candidates_mod
 from logic import flow
 from logic import hospital as hospital_mod
-from protocol import Alternative, Candidate, Policy, Proposal, ProposalRequest, Revision
+from protocol import StartEvidence, Alternative, Candidate, Policy, Proposal, ProposalRequest, Revision
 from runtime import fail, make_agent, received, send
 from tools import optimize, relay, run_sim
 from protocol import RunResult  # the chat tools' FlowSession
@@ -38,6 +38,7 @@ NAME = "flow"
 agent, protocol = make_agent(NAME)
 H = hospital_mod.load(settings().hospital_path)
 current: dict[str, Candidate] = {}  # session → the candidate last sent
+
 
 @dataclass
 class FlowSession:
@@ -87,7 +88,6 @@ def tools() -> list[brain.Tool]:
         brain.Tool("why_revised", "Why the last plan was revised, when it was.", obj({}), why_revised),
     ]
 CONTAINED = 3  # an attack held to this many devices counts as contained wherever it went
-CONTAINED = 3  # an attack held to this many devices counts as contained wherever it went
 
 
 def contained(r, start: str) -> bool:
@@ -102,16 +102,25 @@ STARTS = sorted(d for d, x in H.devices.items()
                 if x["type"] in ("workstation", "nurse_station") or (x["type"] in MEDICAL and str(x.get("os", "")).startswith("windows")))
 
 
-def average_infected(c: Candidate | None, req: ProposalRequest) -> float:
-    """The objective: mean devices infected over every place an attack could start (None = no plan)."""
+def per_start(c: Candidate | None, req: ProposalRequest) -> dict[str, int]:
+    """Devices infected from every place an attack could start (None = no plan): the engine's count per start."""
     with ThreadPoolExecutor(max_workers=8) as pool:
         counts = list(pool.map(lambda s: run_sim(c, s, req.seed, req.challenges).infectedCount, STARTS))
-    return sum(counts) / len(counts)
+    return dict(zip(STARTS, counts))
 
 
-def with_average(c: Candidate, avg: float, baseline_avg: float) -> Candidate:
+def average_infected(c: Candidate | None, req: ProposalRequest, counts: dict[str, int] | None = None) -> float:
+    """The objective: mean devices infected over every place an attack could start (None = no plan)."""
+    counts = counts or per_start(c, req)
+    return sum(counts.values()) / len(counts)
+
+
+def with_average(c: Candidate, avg: float, baseline_avg: float, plan: dict[str, int] | None = None,
+                 base: dict[str, int] | None = None) -> Candidate:
+    """The average in the rationale, and the per-start counts as the policy's evidence (the proof humans see)."""
     note = f"Average over {len(STARTS)} attack starts: {avg:.1f} devices infected (vs {baseline_avg:.1f} without segmentation)."
-    return c.copy(update={"policy": c.policy.copy(update={"rationale": f"{c.policy.rationale} {note}"})})
+    evidence = [StartEvidence(start=s, name=H.devices[s]["name"], baseline=(base or {}).get(s, 0), plan=(plan or {}).get(s, 0)) for s in STARTS] if plan and base else []
+    return c.copy(update={"policy": c.policy.copy(update={"rationale": f"{c.policy.rationale} {note}", "evidence": evidence})})
 
 
 def with_coverage(c: Candidate, req: ProposalRequest) -> Candidate:
@@ -161,12 +170,14 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
         # The objective is the whole hospital, not this one machine: phishing can land on any workstation.
         # Among plans that meet every constraint, the lowest average infection over every attack start wins
         # (fewest connections cut breaks a tie). With none meeting them all, the least-violating one goes.
-        averages = {c.id: average_infected(c, req) for c, _ in tested}
+        counts = {c.id: per_start(c, req) for c, _ in tested}
+        averages = {c.id: average_infected(c, req, counts[c.id]) for c, _ in tested}
+        base_counts = per_start(None, req)
         ok = [(c, r) for c, r in tested if not flow.violates(r, req.constraints, H, len(c.policy.rules))]
         violating = not ok
         pool_ = ok or [min(tested, key=lambda cr: flow.violation_count(cr[1], req.constraints, H, len(cr[0].policy.rules)))]
         cand, result = min(pool_, key=lambda cr: (averages[cr[0].id], len(cr[1].removedFlows), cr[0].id))
-        cand = with_average(cand, averages[cand.id], average_infected(None, req))
+        cand = with_average(cand, averages[cand.id], average_infected(None, req, base_counts), counts[cand.id], base_counts)
         policy = cand.policy
         # The other plans that meet every constraint, best first: offered alongside the lead.
         ranked = [] if violating else [
@@ -186,7 +197,7 @@ async def on_request(ctx: Context, sender: str, req: ProposalRequest):
             type = "proposal"
             words = facts.plan(H, policy, result, req.baseline, req.round)
         else:
-            changed = {k: getattr(policy, k) for k in ("strategy", "name", "rationale", "tradeoff")
+            changed = {k: getattr(policy, k) for k in ("strategy", "name", "rationale", "tradeoff", "evidence")
                        if getattr(policy, k) != getattr(prev.policy, k)}
             diff = flow.diff(prev.policy, policy)
             msg = Revision(sessionId=req.sessionId, round=req.round, policyId=cand.id,

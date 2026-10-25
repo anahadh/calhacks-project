@@ -175,6 +175,7 @@ class Round:
             rules=proposal.rules,
             rationale=proposal.rationale,
             tradeoff=proposal.tradeoff,
+            evidence=proposal.evidence,
         )
         return self._forward(proposal, "proposal")
 
@@ -186,7 +187,7 @@ class Round:
         if self.state != "running" or revision.round != self.round or self._policy is None:
             return []
         rules = flow.apply_diff(self._policy.rules, revision.diff)
-        changed = {k: getattr(revision, k) for k in ("strategy", "name", "rationale", "tradeoff") if getattr(revision, k) is not None}
+        changed = {k: getattr(revision, k) for k in ("strategy", "name", "rationale", "tradeoff", "evidence") if getattr(revision, k) is not None}
         # parse_obj re-validates (e.g. still at most 40 rules); copy(update=...) would not.
         self._policy = Policy.parse_obj({**self._policy.dict(), **changed, "rules": [r.dict() for r in rules]})
         return self._forward(revision, "revision")

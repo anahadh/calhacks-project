@@ -315,6 +315,8 @@ export type RecommendationRow = {
   option: number;
   /** The plan's own why and cost, from the Flow Agent (includes how many other attack starts it also holds). */
   rationale?: string;
+  /** The proof: the engine's count from every place an attack could start, without and with the plan. */
+  evidence?: { start: string; name: string; baseline: number; plan: number }[];
   tradeoff?: string;
   name: string;
   rules: string[];

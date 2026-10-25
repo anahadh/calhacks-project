@@ -78,12 +78,24 @@ class PolicyRule(Strict):
     plain: NonEmptyStr
 
 
+class StartEvidence(Strict):
+    """One starting point the plan was tested from: devices infected without and with it."""
+
+    start: NonEmptyStr  # device id
+    name: NonEmptyStr
+    baseline: NonNegInt
+    plan: NonNegInt
+
+
 class Policy(Strict):
     strategy: Strategy
     name: NonEmptyStr
     rules: conlist(PolicyRule, max_items=40)
     rationale: str
     tradeoff: str
+    # The proof: the engine's result from every place an attack could start (the Flow
+    # Agent tests each plan from all of them). The engine ignores it (the watcher strips it).
+    evidence: list[StartEvidence] = []
 
     @root_validator(skip_on_failure=True)
     def _fastest_deploy_selects_by_vlan_and_port(cls, values):
@@ -184,6 +196,7 @@ class Proposal(Strict):
     reason: str | None = None  # "why this plan", worded by llm.py
     reasonSource: TextSource | None = None
     alternatives: conlist(Alternative, max_items=3) = []  # Flow's other tested plans, best first
+    evidence: list[StartEvidence] = []  # the policy's per-start proof (Policy.evidence), carried with the plan
 
 
 class Verdict(Strict):
@@ -213,6 +226,7 @@ class Revision(Strict):
     name: NonEmptyStr | None = None
     rationale: str | None = None
     tradeoff: str | None = None
+    evidence: list[StartEvidence] | None = None
     testResult: RunResult
     reason: str | None = None  # what changed and why, worded by llm.py
     reasonSource: TextSource | None = None

@@ -193,6 +193,8 @@ function runDriver(deps: RunDeps) {
     if (!hospital) return { ok: false, detail: `The watcher can't read the hospital of session "${r.sessionId}".` };
     const policy = r.policyJson ? jsonObject(r.policyJson) : null;
     if (policy === undefined) return { ok: false, detail: "The run's policy is not a JSON object." };
+    // The plan's per-start evidence is for humans; the engine's policy schema forbids unknown fields.
+    if (policy && "evidence" in policy) delete (policy as Record<string, unknown>).evidence;
     const challenges = stringList(r.challengesJson);
     if (!challenges) return { ok: false, detail: "The run's challenges are not a JSON list of ids." };
     let reply: EngineReply;

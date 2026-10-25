@@ -125,12 +125,12 @@ export function recommendationsOf(rows: Iterable<Recommendation>): Recommendatio
   return [...rows]
     .sort((a, b) => b.round - a.round || optionOf(a.id) - optionOf(b.id))
     .map((r) => {
-      const policy = parse<{ rules?: Rule[]; rationale?: string; tradeoff?: string }>(r.policyJson) ?? {};
+      const policy = parse<{ rules?: Rule[]; rationale?: string; tradeoff?: string; evidence?: RecommendationRow["evidence"] }>(r.policyJson) ?? {};
       const result = parse<RunResult>(r.verifiedJson);
       const verdicts = parse<{ agent: AgentId; decision: "accept" | "reject"; reason: string }[]>(r.verdictsJson) ?? [];
       return {
         id: r.id, round: r.round, option: optionOf(r.id), name: r.name, rules: (policy.rules ?? []).map((x) => x.plain),
-        rationale: policy.rationale, tradeoff: policy.tradeoff,
+        rationale: policy.rationale, tradeoff: policy.tradeoff, evidence: policy.evidence,
         explanation: r.explanation, source: source(r.explanationSource),
         verified: {
           patientsAffected: result ? affected(result) : 0, devicesCompromised: result?.infectedCount ?? 0,
@@ -167,7 +167,7 @@ export function recommendationsFromMessages(rows: Iterable<AgentMessage>): Recom
   const round = Math.max(...sent.map((m) => m.round), -1);
   const out: RecommendationRow[] = [];
   for (const m of sent.filter((r) => r.round === round)) {
-    const p = parse<{ policy?: { name?: string; rules?: Rule[]; rationale?: string; tradeoff?: string }; testResult?: RunResult; verdicts?: { agent: AgentId; decision: "accept" | "reject"; reason: string }[];
+    const p = parse<{ policy?: { name?: string; rules?: Rule[]; rationale?: string; tradeoff?: string; evidence?: RecommendationRow["evidence"] }; testResult?: RunResult; verdicts?: { agent: AgentId; decision: "accept" | "reject"; reason: string }[];
       explanation?: string; explanationSource?: string; requiredRoles?: ReviewRole[]; option?: number }>(m.payloadJson);
     if (!p) continue;
     const r = p.testResult;
@@ -175,7 +175,7 @@ export function recommendationsFromMessages(rows: Iterable<AgentMessage>): Recom
     out.push({
       id: option === 1 ? `${m.sessionId}:${m.round}` : `${m.sessionId}:${m.round}:${option}`, round: m.round, option,
       name: p.policy?.name ?? "", rules: (p.policy?.rules ?? []).map((x) => x.plain),
-      rationale: p.policy?.rationale, tradeoff: p.policy?.tradeoff,
+      rationale: p.policy?.rationale, tradeoff: p.policy?.tradeoff, evidence: p.policy?.evidence,
       explanation: p.explanation ?? "", source: source(p.explanationSource ?? ""),
       verified: {
         patientsAffected: r ? affected(r) : 0, devicesCompromised: r?.infectedCount ?? 0,

@@ -8,7 +8,7 @@ import { showBlocker } from "@/features/solution/pair";
 import { AgentGlyph } from "./agent-icon";
 import { SPEAKER_COLOR, SPEAKER_LABEL } from "./agents";
 import { DefendButton } from "./defend-button";
-import { coordinatorStamp, lanesOf, negotiationOf, REVIEWERS, type ConstraintChip, type Lane, type Names, type PlanColumn, type Stamp } from "./negotiation";
+import { coordinatorStamp, lanesOf, needsLabel, negotiationOf, REVIEWERS, type ConstraintChip, type Lane, type Names, type PlanColumn, type Stamp } from "./negotiation";
 import { RevealClock } from "./reveal";
 import { createdMs, elapsedLabel, entryOf, statusLine, type TimedMessage } from "./transcript";
 
@@ -142,13 +142,16 @@ export function AgentRoomFrame(props: {
             <Graph newest={newest} speaking={speaking} asi1={viaAsi1} />
           </div>
           <div className="flex min-h-[44px] flex-wrap items-center gap-3 border-t border-line px-5 py-3">
-            <span className="eyebrow">Now talking</span>
+            <span className="eyebrow">Latest</span>
             {newest ? (
-              <span className="inline-flex h-9 items-center gap-2 rounded-ctl border border-line2 bg-panel2 px-3 text-[15px]">
-                <Party who={newest.from} />
-                <span className="text-ink-faint">→</span>
-                {newest.to === "all" ? <span className="text-ink-muted">everyone</span> : <Party who={newest.to} />}
-              </span>
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-[15px] leading-6 text-ink">
+                  <span style={{ color: SPEAKER_COLOR[newest.from] }}>{SPEAKER_LABEL[newest.from]}</span> {saidOf(newest, names)}
+                </span>
+                {newest.reason && newest.type !== "request" && (
+                  <span className="line-clamp-2 text-[14px] leading-5 text-ink-muted">“{newest.reason}”</span>
+                )}
+              </div>
             ) : (
               <span className="num text-[13px] text-ink-faint">No one yet</span>
             )}
@@ -261,15 +264,6 @@ function useRevealed(messages: readonly AgentMessageRow[]): { shown: (TimedMessa
   return { shown, skip };
 }
 
-function Party({ who }: { who: Speaker }) {
-  return (
-    <span className="inline-flex items-center gap-2" style={{ color: SPEAKER_COLOR[who] }}>
-      <AgentGlyph who={who} size={15} />
-      {SPEAKER_LABEL[who]}
-    </span>
-  );
-}
-
 // --- The node graph. Positions are fixed; only the rows decide what lights up. ---
 
 const NODE: Record<Speaker, { x: number; y: number; r: number }> = {
@@ -284,32 +278,24 @@ const SPOKES: Speaker[] = ["flow", "inventory", "clinical_workflow", "humans", "
 
 function Graph({ newest, speaking, asi1 }: { newest: AgentMessageRow | undefined; speaking: Set<Speaker>; asi1: boolean }) {
   const from = newest?.from;
-  const to = newest?.to;
-  const lit = (a: Speaker, b: Speaker) =>
-    !!newest && ((from === a && (to === b || to === "all")) || (from === b && (to === a || to === "all")));
-  const litColor = from ? SPEAKER_COLOR[from] : SPEAKER_COLOR.coordinator;
-  // A message between two spokes (no coordinator end) gets its own lit line, since the row says so.
-  const extra = newest && from !== "coordinator" && to !== "coordinator" && to !== "all" ? [from!, to as Speaker] : undefined;
-  const targets: Speaker[] = !newest ? [] : to === "all" ? SPOKES.filter((s) => s !== from && s !== "asi1") : [to as Speaker];
-
+  const bubble = newest ? VERB[newest.type] : undefined;
   return (
     <svg viewBox="0 0 640 400" className="absolute inset-0 h-full w-full" role="img" aria-label="The orchestrator and the agents it calls">
-      <style>{`@keyframes agent-room-dash { to { stroke-dashoffset: -16; } }`}</style>
       {SPOKES.map((s) => (
-        <Edge key={s} a="coordinator" b={s} lit={lit("coordinator", s)} color={litColor} faint={s === "asi1" && !asi1} />
+        <Edge key={s} a="coordinator" b={s} lit={false} color={SPEAKER_COLOR.coordinator} faint={s === "asi1" && !asi1} />
       ))}
-      {extra && <Edge a={extra[0]} b={extra[1]} lit color={litColor} />}
-      {/* One particle per message row, sender → receiver, restarted by the row's seq. */}
-      {newest &&
-        targets.map((t) => (
-          <circle key={`${newest.seq}-${t}`} r={5} fill={litColor}>
-            <animateMotion dur="0.9s" fill="freeze" path={`M${NODE[newest.from].x},${NODE[newest.from].y} L${NODE[t].x},${NODE[t].y}`} />
-            <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.8;1" dur="0.9s" fill="freeze" />
-          </circle>
-        ))}
       {(Object.keys(NODE) as Speaker[]).map((who) => (
         <Node key={who} who={who} glow={speaking.has(who)} dim={who === "asi1" && !asi1} />
       ))}
+      {/* What the newest message is, said by its sender: a bubble beside the node, restarted by the row's seq. */}
+      {newest && from && bubble && (
+        <g key={newest.seq} transform={`translate(${NODE[from].x + (NODE[from].x > 320 ? -NODE[from].r - 8 : NODE[from].r + 8)} ${NODE[from].y - NODE[from].r - 6})`} className="fx-pop">
+          <rect x={NODE[from].x > 320 ? -(bubble.length * 7.2 + 18) : 0} y={-11} width={bubble.length * 7.2 + 18} height={22} rx={4} fill="#0D0F10" stroke={SPEAKER_COLOR[from]} strokeWidth={1} />
+          <text x={NODE[from].x > 320 ? -(bubble.length * 7.2 + 18) / 2 : (bubble.length * 7.2 + 18) / 2} y={4} textAnchor="middle" className="font-mono text-[12px]" style={{ fill: SPEAKER_COLOR[from] }}>
+            {bubble}
+          </text>
+        </g>
+      )}
       <text x={NODE.coordinator.x} y={NODE.coordinator.y + NODE.coordinator.r + 20} textAnchor="middle" className="fill-[#A1A8AE] font-mono text-[12px]">
         ORCHESTRATOR
       </text>
@@ -321,6 +307,52 @@ function Graph({ newest, speaking, asi1 }: { newest: AgentMessageRow | undefined
       </text>
     </svg>
   );
+}
+
+/** The verb on the bubble beside the sender's node. */
+const VERB: Record<AgentMessageRow["type"], string> = {
+  request: "opens the round",
+  proposal: "proposes",
+  revision: "revises",
+  accept: "accepts",
+  reject: "rejects",
+  question: "asks a human",
+  answer: "answers",
+  recommendation: "recommends",
+  chat: "chats",
+};
+
+/**
+ * What a message did, in a sentence after the sender's name: "proposed “Strict” · 26 links cut",
+ * "rejected it · needs: keep ER vitals, ICU vitals", "accepted it". From the row only.
+ */
+function saidOf(m: AgentMessageRow, names: Names): string {
+  const device = (id: string) => names.device.get(id)?.name ?? id;
+  const tested = m.tested ? ` · ${m.tested.devicesCompromised ?? "?"} ${m.tested.devicesCompromised === 1 ? "machine" : "machines"} compromised in the test` : "";
+  switch (m.type) {
+    case "request":
+      return m.round > 1 ? `opened round ${m.round} and asked Flow to revise` : "opened the round and asked Flow for a plan";
+    case "proposal":
+      return m.from === "coordinator"
+        ? `sent the plan to ${SPEAKER_LABEL[m.to].replace(" Agent", "")} to review`
+        : `proposed ${m.name ? `“${m.name}”` : "a plan"}${m.rules?.length ? ` · ${m.rules.length} rules` : ""}${tested}`;
+    case "revision":
+      return m.from === "coordinator"
+        ? `sent the revised plan to ${SPEAKER_LABEL[m.to].replace(" Agent", "")}`
+        : `revised the plan${m.diff?.length ? ` · ${m.diff.length} changes` : ""}${tested}`;
+    case "accept":
+      return "accepted it";
+    case "reject":
+      return `rejected it${m.constraint ? ` · needs: ${needsLabel(m.constraint, names).toLowerCase()}` : ""}`;
+    case "question":
+      return `stopped to ask a person${m.constraint?.targetIds.length ? ` about ${m.constraint.targetIds.map(device).join(", ")}` : ""}`;
+    case "answer":
+      return `answered: ${m.reason}`;
+    case "recommendation":
+      return `recommended ${m.name ? `“${m.name}”` : "the plan"} to the humans${m.option && m.option > 1 ? ` as option ${m.option}` : ""}`;
+    case "chat":
+      return m.from === "asi1" ? "asked on ASI:One" : "replied on ASI:One";
+  }
 }
 
 function Edge({ a, b, lit, color, faint }: { a: Speaker; b: Speaker; lit: boolean; color: string; faint?: boolean }) {

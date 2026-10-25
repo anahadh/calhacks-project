@@ -67,7 +67,7 @@ def run_sim(candidate: Candidate | None, patient_zero: str, seed: int, challenge
         # without forking a process per run (forking beside uAgents' gRPC threads crashed runs with a signal).
         body = {"hospital": _hospital(), "patient_zero": patient_zero, "challenges": challenges}
         if candidate is not None:
-            body["policy"] = json.loads(candidate.policy.json(exclude_none=True, by_alias=True))
+            body["policy"] = json.loads(candidate.policy.json(exclude_none=True, by_alias=True, exclude={"evidence"}))  # evidence is for humans; the engine forbids unknown fields
         try:
             r = httpx.post(f"{engine}/app/run_result", json=body, timeout=SIM_TIMEOUT_S)
         except httpx.HTTPError as e:
@@ -85,7 +85,7 @@ def run_sim(candidate: Candidate | None, patient_zero: str, seed: int, challenge
         cmd = [s.hippo_sim_bin, "--hospital", str(s.hospital_path), "--patient-zero", patient_zero, "--seed", str(seed)]
         if candidate is not None:
             policy_path = Path(tmp) / f"{candidate.id}.json"
-            policy_path.write_text(candidate.policy.json(exclude_none=True))
+            policy_path.write_text(candidate.policy.json(exclude_none=True, exclude={"evidence"}))
             cmd += ["--policy", str(policy_path)]
         for c in challenges:
             cmd += ["--challenge", c]
