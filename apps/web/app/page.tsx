@@ -11,7 +11,6 @@ import type { Hospital } from "@/lib/stdb/types";
 
 // Load screen (UX: "/"). Simulate attacks creates a session in SpacetimeDB and
 // opens it; the session page then offers the link to send to others.
-// Add hospital (Upload JSON) and Edit hospital wait for packages/schema's validator.
 export default function Home() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -58,9 +57,6 @@ export default function Home() {
                 </span>
               </div>
               <div className="flex flex-[0_1_auto] flex-wrap gap-3">
-                <button type="button" disabled title="Editing a hospital isn't built yet." className="btn min-h-14 px-6 text-[15px]">
-                  Edit hospital
-                </button>
                 <button type="button" onClick={start} disabled={busy} className="btn btn-primary min-h-14 px-6 text-[15px]">
                   {busy ? "Starting…" : "Simulate attacks"}
                   <ArrowRight />
@@ -69,16 +65,6 @@ export default function Home() {
             </li>
           </ul>
           {error && <p role="alert" className="num m-0 text-xs text-ink-muted">{error}</p>}
-
-          <button
-            type="button"
-            disabled
-            title="Uploading a hospital JSON file comes with the schema validator."
-            className="num flex min-h-[76px] w-full items-center justify-center gap-3 rounded-panel border border-dashed border-line2 bg-transparent text-[15px] text-ink enabled:hover:border-ink-faint disabled:cursor-not-allowed disabled:opacity-disabled"
-          >
-            <Plus />
-            Add hospital
-          </button>
         </section>
       </main>
 
@@ -93,14 +79,6 @@ function ArrowRight() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
       <path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function Plus() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
-      <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }

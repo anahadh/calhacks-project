@@ -36,7 +36,7 @@ Every screen exists to make one of those three visible. The demo walks them in o
 
 ### Load screen `/`
 
-"Run a simulation", then **My hospitals**: one row per hospital with a drawn model of the building (every floor and device, from the file), its counts ("2 floors · 11 rooms · 48 devices"), **Edit hospital**, and **Simulate attacks**, which creates a new session and opens it; its link (`/s/<id>`) is what you send to the others. Under the list, a dashed **Add hospital** row opens the JSON upload: **Download template**, **Download demo**, a valid file shows its summary, an invalid file shows every error with its path. Add hospital waits for the schema validator, and Edit hospital is not built yet; both show as disabled until then.
+"Run a simulation" beside the big caduceus mark, then **My hospitals**: one row per hospital with a drawn model of the building (every floor and device, from the file), its counts ("2 floors · 11 rooms · 48 devices"), and **Simulate attacks**, which creates a new session and opens it; its link (`/s/<id>`) is what you send to the others. There is no Edit hospital or Add hospital.
 
 ### Join modal (first visit to `/s/[sessionId]`)
 
